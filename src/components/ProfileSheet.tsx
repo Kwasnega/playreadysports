@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, ReactNode } from "react";
-import { LogOut, User, Mail, Moon, Sun, ChevronRight, Trash2, Pencil, Star, Trophy } from "lucide-react";
+import { LogOut, User, Mail, Moon, Sun, ChevronRight, Pencil, Star, Trophy } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/components/ThemeToggle";
@@ -84,16 +84,6 @@ export const ProfileSheet = ({ trigger }: Props) => {
     nav("/profile/edit");
   };
 
-  const clearLocalData = () => {
-    if (!confirm("Clear all local data? Your bookings and registered pitches on this device will be removed.")) return;
-    window.localStorage.removeItem("playready.bookings.v1");
-    window.localStorage.removeItem("playready.turfs.v1");
-    window.dispatchEvent(new Event("playready:bookings"));
-    window.dispatchEvent(new Event("playready:turfs"));
-    toast.success("Local data cleared");
-    close();
-  };
-
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>{trigger}</SheetTrigger>
@@ -160,16 +150,6 @@ export const ProfileSheet = ({ trigger }: Props) => {
             <Row icon={theme === "dark" ? Moon : Sun} label="Appearance" value={theme === "dark" ? "Dark" : "Light"} onClick={toggleTheme} />
             <div className="border-t border-border" />
             <Row icon={User} label="Account" value={user ? "Active" : "Guest"} />
-          </section>
-
-          {/* Danger */}
-          <section className="bg-card rounded-3xl overflow-hidden" style={{ boxShadow: "var(--shadow-card)" }}>
-            <button
-              onClick={clearLocalData}
-              className="w-full px-5 py-4 flex items-center gap-3 text-left text-sm font-semibold text-destructive hover:bg-destructive/5"
-            >
-              <Trash2 className="w-4 h-4" /> Clear local data
-            </button>
           </section>
 
           <p className="text-[11px] text-muted-foreground/70 text-center pt-2">
