@@ -1,0 +1,133 @@
+import { HomeMatch } from "@/hooks/useHomeMatches";
+
+/* ------------------------------------------------------------
+   Match helpers — transform Supabase rows → UI-friendly shapes
+   ------------------------------------------------------------ */
+
+/** Count active core participants for a match */
+export function getActiveCoreCount(match: HomeMatch): number {
+  return match.participants.filter(
+    (p) => p.status === "active" && p.slot_type === "core"
+  ).length;
+}
+
+/** Spots left = max_core_players minus active core count */
+export function getSpotsLeft(match: HomeMatch): number {
+  const max = match.max_core_players ?? match.players_per_side ?? 10;
+  return Math.max(0, max - getActiveCoreCount(match));
+}
+
+/** Is the match completely full? */
+export function isMatchFull(match: HomeMatch): boolean {
+  return getSpotsLeft(match) === 0;
+}
+
+/** Urgency label — returns text like "4 spots left" or "1 spot left" */
+export function getUrgencyLabel(spotsLeft: number): string {
+  if (spotsLeft <= 0) return "Full";
+  if (spotsLeft === 1) return "1 spot left";
+  return `${spotsLeft} spots left`;
+}
+
+/** Haversine distance in km between two lat/lng points */
+export function getDistanceKm(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number
+): number {
+  const R = 6371; // Earth radius in km
+  const dLat = deg2rad(lat2 - lat1);
+  const dLng = deg2rad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(deg2rad(lat1)) *
+      Math.cos(deg2rad(lat2)) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function deg2rad(deg: number): number {
+  return deg * (Math.PI / 180);
+}
+
+/** Format a match date into friendly display text
+ *  "Tonight · 7:30 PM" / "Sat · 4:00 PM" / "In 2h 15m"
+ */
+export function getFormattedTime(matchDate: string): string {
+  const now = new Date();
+  const date = new Date(matchDate);
+  const diffMs = date.getTime() - now.getTime();
+  const diffHrs = diffMs / (1000 * 60 * 60);
+
+  // Within 6 hours → show countdown
+  if (diffHrs > 0 && diffHrs <= 6) {
+    const hrs = Math.floor(diffHrs);
+    const mins = Math.floor((diffHrs - hrs) * 60);
+    if (hrs === 0) return `In ${mins}m`;
+    return `In ${hrs}h ${mins}m`;
+  }
+
+  // Today
+  if (isSameDay(date, now)) {
+    return `Tonight · ${formatTime(date)}`;
+  }
+
+  // Tomorrow
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  if (isSameDay(date, tomorrow)) {
+    return `Tomorrow · ${formatTime(date)}`;
+  }
+
+  // Day name
+  const dayName = date.toLocaleDateString("en-US", { weekday: "short" });
+  return `${dayName} · ${formatTime(date)}`;
+}
+
+function isSameDay(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+function formatTime(date: Date): string {
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+/** Format match mode from DB value to UI value */
+export function formatMatchMode(mode: string): string {
+  if (mode === "two_team") return "two-team";
+  if (mode === "gala") return "gala";
+  return mode;
+}
+
+/** Extract format number, e.g. "6v6" → "6" */
+export function extractFormatNumber(fmt: string): string {
+  return fmt.split("v")[0] ?? fmt;
+}
+
+/** Count distinct teams in a gala match (teams != 'unassigned') */
+export function getGalaTeamsIn(match: HomeMatch): number {
+  const teams = new Set(
+    match.participants
+      .filter((p) => p.status === "active" && p.team && p.team !== "unassigned")
+      .map((p) => p.team)
+  );
+  return teams.size;
+}
+
+/** Estimated max teams for gala = max_core_players / players_per_side */
+export function getGalaMaxTeams(match: HomeMatch): number {
+  const side = match.players_per_side ?? 5;
+  const max = match.max_core_players ?? side * 2;
+  return Math.max(2, Math.floor(max / side));
+}

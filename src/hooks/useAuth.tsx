@@ -1,0 +1,282 @@
+import { createContext, useCallback, useContext, useEffect, useRef, useState, ReactNode } from "react";
+import { supabase } from "@/integrations/supabase/client";
+
+// App-facing user shape — kept stable so existing components keep working.
+type AppUser = {
+  id: string;
+  email: string;
+  user_metadata: { full_name: string };
+};
+
+const toAppUser = (u: any): AppUser => ({
+  id: u.id,
+  email: u.email ?? "",
+  user_metadata: { full_name: u.user_metadata?.full_name || u.user_metadata?.displayName || (u.email?.split("@")[0] ?? "Player") },
+});
+
+// Map Supabase / OAuth errors to friendly messages.
+const friendly = (err: any): string => {
+  const msg = (err?.message ?? err?.code ?? "").toLowerCase();
+  if (msg.includes("invalid-email")) return "Enter a valid email address.";
+  if (msg.includes("email-already-in-use") || msg.includes("already registered")) return "An account with that email already exists.";
+  if (msg.includes("weak-password") || msg.includes("password")) return "Password must be at least 6 characters.";
+  if (msg.includes("user-not-found") || msg.includes("wrong-password") || msg.includes("invalid-credential") || msg.includes("invalid login")) return "Incorrect email or password.";
+  if (msg.includes("too-many-requests")) return "Too many attempts. Try again later.";
+  if (msg.includes("network")) return "Network error. Check your connection.";
+  if (msg.includes("popup-closed")) return "Sign-in cancelled.";
+  if (msg.includes("popup-blocked")) return "Popup blocked by your browser.";
+  if (msg.includes("email not confirmed")) return "Please verify your email before signing in.";
+  return "Something went wrong. Please try again.";
+};
+
+type AuthCtx = {
+  user: AppUser | null;
+  loading: boolean;
+  signUpWithEmail: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>;
+  signInWithEmail: (email: string, password: string) => Promise<{ error: string | null }>;
+  signInWithGoogle: () => Promise<{ error: string | null }>;
+  requestPasswordReset: (email: string) => Promise<{ error: string | null }>;
+  signOut: () => Promise<void>;
+  // Auth modal control
+  authOpen: boolean;
+  authMode: "signin" | "signup";
+  openAuth: (mode?: "signin" | "signup") => void;
+  closeAuth: () => void;
+  requireAuth: (action: () => void, mode?: "signin" | "signup") => void;
+  // Verification modal
+  pendingVerifyEmail: string | null;
+  resendVerification: () => Promise<{ error: string | null }>;
+  checkVerification: () => Promise<boolean>;
+  cancelVerification: () => Promise<void>;
+};
+
+const Ctx = createContext<AuthCtx>(null as any);
+
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [sbUser, setSbUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
+  const [pendingVerifyEmail, setPendingVerifyEmail] = useState<string | null>(null);
+  const pendingActionRef = useRef<(() => void) | null>(null);
+
+  const isVerified = (u: any) =>
+    u?.email_confirmed_at != null || u?.app_metadata?.provider !== "email";
+
+  // Track auth state across reloads.
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const u = session?.user ?? null;
+      setSbUser(u);
+      setLoading(false);
+      if (u && !isVerified(u)) setPendingVerifyEmail(u.email);
+      else setPendingVerifyEmail(null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const u = session?.user ?? null;
+      setSbUser(u);
+      setLoading(false);
+      if (u && !isVerified(u)) setPendingVerifyEmail(u.email);
+      else setPendingVerifyEmail(null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Poll for verification while the modal is showing.
+  useEffect(() => {
+    if (!pendingVerifyEmail) return;
+    const id = window.setInterval(async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user && isVerified(user)) {
+          setSbUser(user);
+          setPendingVerifyEmail(null);
+          runPending();
+        }
+      } catch {}
+    }, 3000);
+    return () => window.clearInterval(id);
+  }, [pendingVerifyEmail]);
+
+  const runPending = () => {
+    const fn = pendingActionRef.current;
+    if (fn) {
+      pendingActionRef.current = null;
+      setTimeout(fn, 50);
+    }
+  };
+
+  const openAuth = useCallback((mode: "signin" | "signup" = "signin") => {
+    setAuthMode(mode);
+    setAuthOpen(true);
+  }, []);
+  const closeAuth = useCallback(() => {
+    setAuthOpen(false);
+    pendingActionRef.current = null;
+  }, []);
+  const requireAuth = useCallback((action: () => void, _mode?: "signin" | "signup") => {
+    action();
+  }, []);
+
+  const signUpWithEmail = async (email: string, password: string, fullName: string) => {
+    try {
+      const name = fullName.trim() || email.split("@")[0];
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: { data: { full_name: name } },
+      });
+      if (error) return { error: friendly(error) };
+
+      const u = data.user;
+      if (!u) {
+        return { error: "Unable to create account. Please try again." };
+      }
+
+      // Supabase returns a user with empty identities when the email already exists (enumeration protection)
+      if (!u.identities || u.identities.length === 0) {
+        return { error: "An account with that email already exists. Please sign in instead." };
+      }
+
+      setSbUser(u);
+      setAuthOpen(false);
+      if (!isVerified(u)) {
+        setPendingVerifyEmail(u.email);
+      }
+      return { error: null };
+    } catch (e: any) {
+      return { error: friendly(e) };
+    }
+  };
+
+  const signInWithEmail = async (email: string, password: string) => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      if (error) {
+        const msg = ((error.message ?? "") + " " + (error.code ?? "")).toLowerCase();
+        if (msg.includes("email not confirmed") || msg.includes("email_not_confirmed")) {
+          setPendingVerifyEmail(email.trim());
+          return { error: null };
+        }
+        return { error: friendly(error) };
+      }
+      const u = data.user;
+      if (u && !isVerified(u)) {
+        setSbUser(u);
+        setAuthOpen(false);
+        setPendingVerifyEmail(u.email);
+        return { error: null };
+      }
+      setSbUser(u);
+      setAuthOpen(false);
+      runPending();
+      return { error: null };
+    } catch (e: any) {
+      return { error: friendly(e) };
+    }
+  };
+
+  const signInWithGoogle = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}${window.location.pathname}`,
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
+        },
+      });
+      if (error) return { error: friendly(error) };
+      setAuthOpen(false);
+      setPendingVerifyEmail(null);
+      return { error: null };
+    } catch (e: any) {
+      return { error: friendly(e) };
+    }
+  };
+
+  const requestPasswordReset = async (email: string) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: window.location.origin + "/",
+      });
+      if (error) return { error: friendly(error) };
+      return { error: null };
+    } catch (e: any) {
+      return { error: friendly(e) };
+    }
+  };
+
+  const resendVerification = async () => {
+    if (!pendingVerifyEmail) return { error: "Not signed in." };
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: pendingVerifyEmail,
+      });
+      if (error) return { error: friendly(error) };
+      return { error: null };
+    } catch (e: any) {
+      return { error: friendly(e) };
+    }
+  };
+
+  const checkVerification = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && isVerified(user)) {
+        setSbUser(user);
+        setPendingVerifyEmail(null);
+        runPending();
+        return true;
+      }
+    } catch {}
+    return false;
+  };
+
+  const cancelVerification = async () => {
+    setPendingVerifyEmail(null);
+    await supabase.auth.signOut();
+  };
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    setPendingVerifyEmail(null);
+  };
+
+  // Only expose the user to the rest of the app once verified (or OAuth).
+  const exposed: AppUser | null = sbUser && isVerified(sbUser) ? toAppUser(sbUser) : null;
+
+  return (
+    <Ctx.Provider
+      value={{
+        user: exposed,
+        loading,
+        signUpWithEmail,
+        signInWithEmail,
+        signInWithGoogle,
+        requestPasswordReset,
+        signOut,
+        authOpen,
+        authMode,
+        openAuth,
+        closeAuth,
+        requireAuth,
+        pendingVerifyEmail,
+        resendVerification,
+        checkVerification,
+        cancelVerification,
+      }}
+    >
+      {children}
+    </Ctx.Provider>
+  );
+};
+
+export const useAuth = () => useContext(Ctx);
