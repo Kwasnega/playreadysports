@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   ArrowLeft, Star, MapPin, ShieldAlert, Calendar, Trophy,
-  Swords, MessageSquare, User, Flag,
+  Swords, MessageSquare, User, Flag, UserPlus, UserCheck, UserX, Loader2,
 } from "lucide-react";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/hooks/useAuth";
+import { useFriends } from "@/hooks/useFriends";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getFormattedTime } from "@/lib/matchHelpers";
@@ -109,9 +110,62 @@ const PlayerProfile = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { profile, stats, matchHistory, reviews, loading } = useProfile(username);
+  const { sendRequest, acceptRequest, unfriend, getFriendshipStatus } = useFriends();
   const [reportOpen, setReportOpen] = useState(false);
+  const [friendStatus, setFriendStatus] = useState<"none" | "pending_sent" | "pending_received" | "friends">("none");
+  const [friendLoading, setFriendLoading] = useState(false);
+  const [friendshipId, setFriendshipId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!profile?.id || !user || isOwn) return;
+    let cancelled = false;
+    getFriendshipStatus(profile.id).then((status) => {
+      if (cancelled) return;
+      setFriendStatus(status);
+    });
+    // Also fetch the friendship ID for unfriend/cancel
+    // @ts-ignore — friendships table not in generated types yet
+    supabase
+      .from("friendships")
+      .select("id, requester_id, status")
+      .or(`and(requester_id.eq.${user.id},recipient_id.eq.${profile.id}),and(requester_id.eq.${profile.id},recipient_id.eq.${user.id})`)
+      .maybeSingle()
+      // @ts-ignore
+      .then((res: any) => {
+        if (cancelled) return;
+        if (res.data) setFriendshipId(res.data.id);
+      });
+    return () => { cancelled = true; };
+  }, [profile?.id, user?.id]);
 
   const isOwn = user?.id === profile?.id;
+
+  const handleAddFriend = async () => {
+    if (!profile?.id) return;
+    setFriendLoading(true);
+    const result = await sendRequest(profile.id);
+    if (!result.error) {
+      setFriendStatus("pending_sent");
+    }
+    setFriendLoading(false);
+  };
+
+  const handleAccept = async () => {
+    if (!friendshipId) return;
+    setFriendLoading(true);
+    await acceptRequest(friendshipId);
+    setFriendStatus("friends");
+    setFriendLoading(false);
+  };
+
+  const handleUnfriend = async () => {
+    if (!friendshipId) return;
+    setFriendLoading(true);
+    await unfriend(friendshipId);
+    setFriendStatus("none");
+    setFriendshipId(null);
+    setFriendLoading(false);
+  };
 
   return (
     <main className="min-h-screen bg-background pb-10">
@@ -176,12 +230,49 @@ const PlayerProfile = () => {
                   <span className="text-xs font-semibold text-muted-foreground">{profile.reputation_score?.toFixed(1) ?? "5.0"}</span>
                 </div>
                 {!isOwn && (
-                  <button
-                    onClick={() => setReportOpen(true)}
-                    className="text-[11px] text-muted-foreground hover:text-destructive underline mt-1 inline-flex items-center gap-1"
-                  >
-                    <ShieldAlert className="w-3 h-3" /> Report
-                  </button>
+                  <div className="flex items-center gap-3 mt-2">
+                    {friendStatus === "none" && (
+                      <button
+                        onClick={handleAddFriend}
+                        disabled={friendLoading}
+                        className="inline-flex items-center gap-1.5 text-[11px] font-semibold bg-primary/10 text-primary hover:bg-primary/20 rounded-full px-3 py-1.5 disabled:opacity-50"
+                      >
+                        {friendLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserPlus className="w-3 h-3" />}
+                        Add friend
+                      </button>
+                    )}
+                    {friendStatus === "pending_sent" && (
+                      <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold bg-secondary text-muted-foreground rounded-full px-3 py-1.5">
+                        <Loader2 className="w-3 h-3" /> Request sent
+                      </span>
+                    )}
+                    {friendStatus === "pending_received" && (
+                      <button
+                        onClick={handleAccept}
+                        disabled={friendLoading}
+                        className="inline-flex items-center gap-1.5 text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 rounded-full px-3 py-1.5 disabled:opacity-50"
+                      >
+                        {friendLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserCheck className="w-3 h-3" />}
+                        Accept request
+                      </button>
+                    )}
+                    {friendStatus === "friends" && (
+                      <button
+                        onClick={handleUnfriend}
+                        disabled={friendLoading}
+                        className="inline-flex items-center gap-1.5 text-[11px] font-semibold bg-secondary text-muted-foreground hover:text-destructive rounded-full px-3 py-1.5 disabled:opacity-50"
+                      >
+                        {friendLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserCheck className="w-3 h-3" />}
+                        Friends
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setReportOpen(true)}
+                      className="text-[11px] text-muted-foreground hover:text-destructive underline inline-flex items-center gap-1"
+                    >
+                      <ShieldAlert className="w-3 h-3" /> Report
+                    </button>
+                  </div>
                 )}
               </div>
             </div>

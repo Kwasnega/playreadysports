@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import {
-  Home, User, LogIn, Bell, Trophy, Zap, UserPlus, CalendarDays, KeyRound, Sparkles, MapPin, Clock, Wallet,
+  Home, User, LogIn, Trophy, Zap, UserPlus, CalendarDays, KeyRound, Sparkles, MapPin, Clock, Wallet, Users,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NearYou } from "@/components/NearYou";
@@ -9,11 +9,12 @@ import { ProfileSheet } from "@/components/ProfileSheet";
 import { useAuth } from "@/hooks/useAuth";
 import { useEnter } from "@/hooks/useReveal";
 import { NotificationsBell } from "@/components/NotificationsBell";
-import { useNotifications } from "@/hooks/useNotifications";
+import { FriendsSheet } from "@/components/FriendsSheet";
 import { useHomeMatches, HomeMatch } from "@/hooks/useHomeMatches";
 import { useUserLocation } from "@/hooks/useUserLocation";
 import { useHomeStats } from "@/hooks/useHomeStats";
 import { useSmartRecommendations } from "@/hooks/useSmartRecommendations";
+import { useFriendsPlaying } from "@/hooks/useFriendsPlaying";
 import { supabase } from "@/integrations/supabase/client";
 import {
   getFormattedTime,
@@ -173,7 +174,6 @@ const QuickActions = () => {
 };
 
 const MobileTabs = () => {
-  const { unreadCount } = useNotifications();
   return (
     <nav className="fixed bottom-0 inset-x-0 z-30 bg-background/95 backdrop-blur-md border-t border-border">
       <div className="max-w-[680px] mx-auto grid grid-cols-4 h-16">
@@ -186,21 +186,14 @@ const MobileTabs = () => {
             <span className="text-[10px] font-semibold">{t.label}</span>
           </Link>
         ))}
-        <button
-          onClick={() => document.querySelector<HTMLButtonElement>('[aria-label="Notifications"]')?.click()}
-          className="relative flex flex-col items-center justify-center gap-1 text-muted-foreground"
-          aria-label="Open notifications"
-        >
-          <span className="relative">
-            <Bell className="w-5 h-5" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1.5 -right-2 min-w-[16px] h-[16px] px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-bold leading-[16px] text-center">
-                {unreadCount > 9 ? "9+" : unreadCount}
-              </span>
-            )}
-          </span>
-          <span className="text-[10px] font-semibold">Alerts</span>
-        </button>
+        <FriendsSheet
+          trigger={
+            <button className="flex flex-col items-center justify-center gap-1 text-muted-foreground" aria-label="Open friends">
+              <Users className="w-5 h-5" />
+              <span className="text-[10px] font-semibold">Friends</span>
+            </button>
+          }
+        />
         <ProfileSheet
           trigger={
             <button className="flex flex-col items-center justify-center gap-1 text-muted-foreground" aria-label="Open profile">
@@ -334,6 +327,62 @@ const RecommendationsRail = () => {
   );
 };
 
+/* Friends playing rail */
+const FriendsPlayingRail = () => {
+  const { matches, loading } = useFriendsPlaying();
+  const navigate = useNavigate();
+  if (loading) return null;
+  if (matches.length === 0) return null;
+
+  return (
+    <section className="px-5 pt-4 pb-2">
+      <div className="max-w-[680px] mx-auto">
+        <div className="flex items-center gap-2 mb-3">
+          <Users className="w-4 h-4 text-primary" />
+          <h2 className="text-sm font-bold text-foreground">Friends playing</h2>
+        </div>
+        <div className="flex gap-3 overflow-x-auto pb-2 -mx-5 px-5 scrollbar-hide">
+          {matches.map((m) => (
+            <button
+              key={m.id}
+              onClick={() => navigate(`/lobby/${m.join_code}`)}
+              className="flex-shrink-0 w-[260px] bg-card rounded-2xl border border-border/60 p-4 text-left hover:border-primary/40 transition-all"
+              style={{ boxShadow: "var(--shadow-card)" }}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                {m.friend_avatar ? (
+                  <img src={m.friend_avatar} alt="" className="w-5 h-5 rounded-full object-cover" />
+                ) : (
+                  <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-[8px] font-bold">
+                    {(m.friend_name[0] || "?").toUpperCase()}
+                  </div>
+                )}
+                <span className="text-[11px] font-semibold text-muted-foreground">{m.friend_name} joined</span>
+              </div>
+              <p className="font-display font-bold text-sm truncate">{m.venue?.name ?? "Venue"}</p>
+              <p className="text-[11px] text-muted-foreground truncate flex items-center gap-1 mt-0.5">
+                <MapPin className="w-3 h-3" /> {m.venue?.area ?? m.venue?.city ?? ""}
+              </p>
+              <div className="flex items-center gap-3 mt-2.5 text-[11px] text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3 h-3" /> {getFormattedTime(m.match_date)}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Wallet className="w-3 h-3" />
+                  {m.entry_fee > 0 ? `₵${m.entry_fee}` : "Free"}
+                </span>
+                <span className="flex items-center gap-1">
+                  <UserPlus className="w-3 h-3" /> {m.core_paid_count}/{m.max_core_players}
+                </span>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};
+
 const Index = () => {
   const { matches, loading: matchesLoading } = useHomeMatches();
   const { location } = useUserLocation();
@@ -353,6 +402,7 @@ const Index = () => {
       <QuickActions />
       <LiveStatsBar matches={stats.matchesToday} players={stats.playersOnline} />
       <RecommendationsRail />
+      <FriendsPlayingRail />
       <div id="near-you">
         <NearYou variant="curated" limit={3} items={feedItems} isLoading={matchesLoading} />
       </div>
