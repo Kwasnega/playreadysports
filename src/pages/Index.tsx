@@ -217,8 +217,12 @@ const MobileTabs = () => {
 function transformMatches(
   matches: HomeMatch[],
   userLat: number,
-  userLng: number
+  userLng: number,
+  userId?: string
 ): Parameters<typeof NearYou>[0]["items"] {
+  const isJoined = (m: HomeMatch) =>
+    userId ? m.participants.some((p) => p.user_id === userId && p.status === "active") : false;
+
   return matches
     .filter((m) => m.venue)
     .map((m) => {
@@ -227,6 +231,7 @@ function transformMatches(
         venue.lat && venue.lng
           ? getDistanceKm(userLat, userLng, venue.lat, venue.lng)
           : 0;
+      const joined = isJoined(m);
 
       if (m.match_mode === "gala") {
         return {
@@ -241,6 +246,7 @@ function transformMatches(
           capTeams: getGalaMaxTeams(m),
           pricePerPlayer: Number(m.entry_fee),
           km,
+          joined,
         };
       }
 
@@ -256,6 +262,7 @@ function transformMatches(
         cap: m.max_core_players ?? m.players_per_side ?? 10,
         pricePerPlayer: Number(m.entry_fee),
         km,
+        joined,
       };
     });
 }
@@ -278,12 +285,13 @@ const Index = () => {
   const { matches, loading: matchesLoading } = useHomeMatches();
   const { location } = useUserLocation();
   const { stats } = useHomeStats();
+  const { user } = useAuth();
 
   const userLat = location?.lat ?? 5.6037; // Accra default
   const userLng = location?.lng ?? -0.187;
 
   const liveCount = matches.filter((m) => m.status === "live").length;
-  const feedItems = transformMatches(matches, userLat, userLng);
+  const feedItems = transformMatches(matches, userLat, userLng, user?.id);
 
   return (
     <main className="min-h-screen bg-background pb-20">

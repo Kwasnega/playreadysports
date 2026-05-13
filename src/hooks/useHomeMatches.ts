@@ -20,6 +20,7 @@ export type Organizer = {
 
 export type Participant = {
   id: string;
+  user_id: string;
   status: string;
   team: string;
   slot_type: string;
@@ -67,7 +68,7 @@ export function useHomeMatches() {
           *,
           venue:venues(id, name, city, area, lat, lng),
           organizer:profiles(id, username, full_name, avatar_url, reputation_score),
-          participants:match_participants(id, status, team, slot_type, payment_status)
+          participants:match_participants(id, user_id, status, team, slot_type, payment_status)
         `)
         .in("status", ["upcoming", "live"] as any)
         .eq("match_type", "public" as any)

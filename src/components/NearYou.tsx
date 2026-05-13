@@ -13,6 +13,7 @@ type GalaOpening = {
   capTeams: number;
   pricePerPlayer: number;
   km: number;
+  joined?: boolean;
 };
 
 type TwoTeamOpening = {
@@ -27,6 +28,7 @@ type TwoTeamOpening = {
   cap: number;
   pricePerPlayer: number;
   km: number;
+  joined?: boolean;
 };
 
 type LiveScore = {
@@ -245,6 +247,13 @@ const JoinCTA = ({ label = "Join", onClick }: { label?: string; onClick?: (e: Re
   </button>
 );
 
+const JoinedCTA = () => (
+  <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full pl-3 pr-3 h-10 text-sm font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+    Joined
+  </span>
+);
+
 /* ---- Variants ---- */
 
 const GalaRow = ({ s }: { s: GalaOpening }) => {
@@ -272,7 +281,7 @@ const GalaRow = ({ s }: { s: GalaOpening }) => {
             </Chip>
           </div>
         </div>
-        <JoinCTA onClick={onJoin} />
+        {s.joined ? <JoinedCTA /> : <JoinCTA onClick={onJoin} />}
       </div>
     </RowShell>
   );
@@ -303,7 +312,7 @@ const TwoTeamRow = ({ s }: { s: TwoTeamOpening }) => {
             </Chip>
           </div>
         </div>
-        <JoinCTA onClick={onJoin} />
+        {s.joined ? <JoinedCTA /> : <JoinCTA onClick={onJoin} />}
       </div>
     </RowShell>
   );
