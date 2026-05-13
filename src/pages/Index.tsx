@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import {
-  Home, User, LogIn, Bell, Trophy, Zap, UserPlus, CalendarDays, KeyRound,
+  Home, User, LogIn, Bell, Trophy, Zap, UserPlus, CalendarDays, KeyRound, Sparkles, MapPin, Clock, Wallet,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NearYou } from "@/components/NearYou";
@@ -13,6 +13,7 @@ import { useNotifications } from "@/hooks/useNotifications";
 import { useHomeMatches, HomeMatch } from "@/hooks/useHomeMatches";
 import { useUserLocation } from "@/hooks/useUserLocation";
 import { useHomeStats } from "@/hooks/useHomeStats";
+import { useSmartRecommendations } from "@/hooks/useSmartRecommendations";
 import { supabase } from "@/integrations/supabase/client";
 import {
   getFormattedTime,
@@ -281,6 +282,58 @@ const LiveStatsBar = ({ matches, players }: { matches: number; players: number }
   </section>
 );
 
+/* Smart recommendations rail */
+const RecommendationsRail = () => {
+  const { recommendations, loading } = useSmartRecommendations();
+  const navigate = useNavigate();
+  if (loading) return null;
+  if (recommendations.length === 0) return null;
+
+  return (
+    <section className="px-5 pt-4 pb-2">
+      <div className="max-w-[680px] mx-auto">
+        <div className="flex items-center gap-2 mb-3">
+          <Sparkles className="w-4 h-4 text-amber-500" />
+          <h2 className="text-sm font-bold text-foreground">Recommended for you</h2>
+        </div>
+        <div className="flex gap-3 overflow-x-auto pb-2 -mx-5 px-5 scrollbar-hide">
+          {recommendations.map((m) => (
+            <button
+              key={m.id}
+              onClick={() => navigate(`/lobby/${m.join_code}`)}
+              className="flex-shrink-0 w-[260px] bg-card rounded-2xl border border-border/60 p-4 text-left hover:border-primary/40 transition-all"
+              style={{ boxShadow: "var(--shadow-card)" }}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                  {m.match_mode === "gala" ? "Gala" : "Two-team"}
+                </span>
+                <span className="text-[10px] text-muted-foreground">{m.reason}</span>
+              </div>
+              <p className="font-display font-bold text-sm truncate">{m.venue?.name ?? "Venue"}</p>
+              <p className="text-[11px] text-muted-foreground truncate flex items-center gap-1 mt-0.5">
+                <MapPin className="w-3 h-3" /> {m.venue?.area ?? m.venue?.city ?? ""}
+              </p>
+              <div className="flex items-center gap-3 mt-2.5 text-[11px] text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3 h-3" /> {getFormattedTime(m.match_date)}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Wallet className="w-3 h-3" />
+                  {m.entry_fee > 0 ? `₵${m.entry_fee}` : "Free"}
+                </span>
+                <span className="flex items-center gap-1">
+                  <UserPlus className="w-3 h-3" /> {m.core_paid_count}/{m.max_core_players}
+                </span>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};
+
 const Index = () => {
   const { matches, loading: matchesLoading } = useHomeMatches();
   const { location } = useUserLocation();
@@ -299,6 +352,7 @@ const Index = () => {
       <Hero liveCount={liveCount} />
       <QuickActions />
       <LiveStatsBar matches={stats.matchesToday} players={stats.playersOnline} />
+      <RecommendationsRail />
       <div id="near-you">
         <NearYou variant="curated" limit={3} items={feedItems} isLoading={matchesLoading} />
       </div>

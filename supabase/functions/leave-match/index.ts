@@ -82,14 +82,15 @@ Deno.serve(async (req) => {
 
     let refunded = false;
     let refundAmount = 0;
+    let paystackRefunded = false;
 
     if (eligibleForRefund) {
       refundAmount = match.entry_fee ?? 0;
 
-      // Call Paystack refund if configured
+      // Call Paystack refund first — only mark DB on success
       if (PAYSTACK_SECRET && participant.payment_reference) {
         try {
-          await fetch("https://api.paystack.co/refund", {
+          const refundRes = await fetch("https://api.paystack.co/refund", {
             method: "POST",
             headers: {
               Authorization: `Bearer ${PAYSTACK_SECRET}`,
@@ -100,22 +101,36 @@ Deno.serve(async (req) => {
               reason: "Player left match",
             }),
           });
+          const refundData = await refundRes.json();
+          if (refundData.status) {
+            paystackRefunded = true;
+          } else {
+            console.error("Paystack refund failed:", participant.payment_reference, refundData.message);
+          }
         } catch (e) {
-          console.error("Paystack refund failed:", e);
+          console.error("Paystack refund network error:", e);
         }
       }
 
-      // Insert refund transaction
-      await supabase.from("transactions").insert({
-        match_id: matchId,
-        user_id: user.id,
-        amount: refundAmount,
-        type: "refund" as any,
-        status: "completed" as any,
-        payment_reference: `refund-${participant.payment_reference}`,
-      });
+      // Only update DB if Paystack confirmed the refund
+      if (paystackRefunded) {
+        // Mark original entry_fee transaction as refunded
+        await supabase
+          .from("transactions")
+          .update({ status: "refunded" as any })
+          .eq("payment_reference", participant.payment_reference)
+          .eq("type", "entry_fee");
 
-      refunded = true;
+        await supabase.from("transactions").insert({
+          match_id: matchId,
+          user_id: user.id,
+          amount: refundAmount,
+          type: "refund" as any,
+          status: "completed" as any,
+          payment_reference: `refund-${participant.payment_reference}`,
+        });
+        refunded = true;
+      }
     }
 
     // Update participant status

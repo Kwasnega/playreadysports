@@ -39,6 +39,7 @@ export type LobbyMatch = {
     area: string | null;
     lat: number | null;
     lng: number | null;
+    image_urls: string[] | null;
   } | null;
   organizer: {
     id: string;
@@ -68,7 +69,7 @@ export function useMatchLobby(joinCode: string) {
         .from("matches")
         .select(`
           *,
-          venue:venues(id, name, city, area, lat, lng),
+          venue:venues(id, name, city, area, lat, lng, image_urls),
           organizer:profiles(id, username, full_name, avatar_url, reputation_score)
         `)
         .eq("join_code", joinCode)

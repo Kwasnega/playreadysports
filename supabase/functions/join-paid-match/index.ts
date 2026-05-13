@@ -1,4 +1,5 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { checkRateLimit } from "../_shared/rateLimiter.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -30,6 +31,14 @@ Deno.serve(async (req) => {
     if (authErr || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Rate limit: 3 paid joins per user per 5 minutes
+    const allowed = await checkRateLimit(supabase, user.id, "join_paid_match", 3, 5);
+    if (!allowed) {
+      return new Response(JSON.stringify({ error: "Rate limit exceeded — try again later" }), {
+        status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -91,70 +100,45 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check if user is already a participant
-    const { data: existing } = await supabase
-      .from("match_participants")
-      .select("id, status")
-      .eq("match_id", matchId)
-      .eq("user_id", user.id)
-      .maybeSingle();
+    // Atomic DB operation via RPC — participant upsert + transaction insert in one transaction
+    const { data: rpcResult, error: rpcErr } = await supabase.rpc("process_paid_join", {
+      p_match_id: matchId,
+      p_user_id: user.id,
+      p_team: team || "unassigned",
+      p_payment_reference: paystackReference,
+      p_amount: match.entry_fee ?? 0,
+      p_slot_type: "core",
+    });
 
-    if (existing && existing.status === "active") {
-      return new Response(JSON.stringify({ error: "Already joined this match" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Check match not full
-    const { count: activeCount } = await supabase
-      .from("match_participants")
-      .select("*", { count: "exact", head: true })
-      .eq("match_id", matchId)
-      .eq("status", "active")
-      .eq("slot_type", "core");
-
-    const maxCore = match.max_core_players ?? match.players_per_side ?? 10;
-    if ((activeCount ?? 0) >= maxCore) {
-      return new Response(JSON.stringify({ error: "Match is full" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Upsert participant as paid
-    console.log("Upserting participant for match:", matchId, "user:", user.id);
-    const { data: participant, error: pErr } = await supabase
-      .from("match_participants")
-      .upsert({
-        match_id: matchId,
-        user_id: user.id,
-        slot_type: "core" as any,
-        team: (team || "unassigned") as any,
-        status: "active" as any,
-        payment_status: "paid" as any,
-        payment_reference: paystackReference,
-      }, { onConflict: "match_id, user_id" })
-      .select("id")
-      .single();
-
-    if (pErr) {
-      console.error("Participant upsert error:", pErr.message);
-      return new Response(JSON.stringify({ error: pErr.message }), {
+    if (rpcErr) {
+      console.error("process_paid_join RPC error:", rpcErr.message);
+      return new Response(JSON.stringify({ error: rpcErr.message }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    console.log("Participant upserted:", participant?.id);
 
-    // Insert transaction record
-    console.log("Inserting transaction record");
-    const { error: txErr } = await supabase.from("transactions").insert({
-      match_id: matchId,
-      user_id: user.id,
-      amount: match.entry_fee ?? 0,
-      type: "entry_fee" as any,
-      status: "completed" as any,
-      payment_reference: paystackReference,
-    });
-    if (txErr) console.error("Transaction insert error:", txErr.message);
+    const result = rpcResult as any;
+    if (!result?.success) {
+      if (result?.error === "match_full") {
+        return new Response(JSON.stringify({ error: "Match is full" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (result?.error === "match_not_upcoming") {
+        return new Response(JSON.stringify({ error: "Match is not open for joining" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ error: result?.error || "Join failed" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (result?.already_processed) {
+      return new Response(JSON.stringify({ success: true, alreadyProcessed: true }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Notify organizer
     const joinerName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Someone";

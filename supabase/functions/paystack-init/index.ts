@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { matchId, callbackUrl } = body;
+    const { matchId, callbackUrl, team } = body;
     if (!matchId) {
       return new Response(JSON.stringify({ error: "Missing matchId" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -133,6 +133,8 @@ Deno.serve(async (req) => {
           match_id: matchId,
           user_id: user.id,
           join_code: match.join_code,
+          team: team || "unassigned",
+          entry_fee: match.entry_fee ?? 0,
         },
       }),
     });

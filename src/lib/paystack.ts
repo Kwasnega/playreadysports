@@ -23,6 +23,9 @@ export async function initPaystackPayment(config: {
   reference: string;
   matchId: string;
   userId: string;
+  joinCode: string;
+  team?: string;
+  entryFee?: number;
   onSuccess: (reference: string) => void;
   onClose: () => void;
 }): Promise<void> {
@@ -60,6 +63,9 @@ export async function initPaystackPayment(config: {
     metadata: {
       match_id: config.matchId,
       user_id: config.userId,
+      join_code: config.joinCode,
+      team: config.team || "unassigned",
+      entry_fee: config.entryFee ?? config.amount,
     },
     onSuccess: (transaction: any) => {
       config.onSuccess(transaction.reference);

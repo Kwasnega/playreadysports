@@ -80,26 +80,12 @@ Deno.serve(async (req) => {
     const refundPromises = (paidParticipants ?? []).map(async (p: any) => {
       if (!p.payment_reference) return;
 
-      // Mark as refunded + left
-      await supabase
-        .from("match_participants")
-        .update({ payment_status: "refunded" as any, status: "left" as any })
-        .eq("id", p.id);
+      let paystackRefunded = false;
 
-      // Insert refund transaction
-      await supabase.from("transactions").insert({
-        match_id: matchId,
-        user_id: p.user_id,
-        amount: match.entry_fee ?? 0,
-        type: "refund" as any,
-        status: "completed" as any,
-        payment_reference: `refund-${p.payment_reference}`,
-      });
-
-      // Call Paystack refund if configured
+      // Call Paystack refund first — only mark DB on success
       if (PAYSTACK_SECRET) {
         try {
-          await fetch("https://api.paystack.co/refund", {
+          const refundRes = await fetch("https://api.paystack.co/refund", {
             method: "POST",
             headers: {
               Authorization: `Bearer ${PAYSTACK_SECRET}`,
@@ -110,10 +96,41 @@ Deno.serve(async (req) => {
               reason: "Match cancelled by organizer",
             }),
           });
+          const refundData = await refundRes.json();
+          if (refundData.status) {
+            paystackRefunded = true;
+          } else {
+            console.error("Paystack refund failed:", p.payment_reference, refundData.message);
+          }
         } catch (e) {
-          console.error("Paystack refund failed for", p.user_id, e);
+          console.error("Paystack refund network error for", p.user_id, e);
         }
       }
+
+      if (!paystackRefunded) return; // Skip DB update if Paystack didn't confirm
+
+      // Mark participant as refunded + left
+      await supabase
+        .from("match_participants")
+        .update({ payment_status: "refunded" as any, status: "left" as any })
+        .eq("id", p.id);
+
+      // Mark original entry_fee transaction as refunded
+      await supabase
+        .from("transactions")
+        .update({ status: "refunded" as any })
+        .eq("payment_reference", p.payment_reference)
+        .eq("type", "entry_fee");
+
+      // Insert refund transaction
+      await supabase.from("transactions").insert({
+        match_id: matchId,
+        user_id: p.user_id,
+        amount: match.entry_fee ?? 0,
+        type: "refund" as any,
+        status: "completed" as any,
+        payment_reference: `refund-${p.payment_reference}`,
+      });
     });
 
     await Promise.all(refundPromises);

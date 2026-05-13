@@ -14,6 +14,7 @@ export type Venue = {
   price_per_hour: number | null;
   capacity: number | null;
   is_active: boolean;
+  image_urls: string[] | null;
 };
 
 export function useVenues(userLat?: number, userLng?: number) {

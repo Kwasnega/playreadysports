@@ -3,6 +3,7 @@ import { Link, useParams, useNavigate, useSearchParams } from "react-router-dom"
 import {
   ArrowLeft, Users, Clock, Wallet, Check, Share2, Flag, X, UserCheck,
   Calendar, MapPin, MessageCircle, Trophy, Hourglass, Zap, Crown, Star,
+  CloudSun, Droplets,
 } from "lucide-react";
 import { LobbyChat } from "@/components/LobbyChat";
 import { ShareMatchCard } from "@/components/matches/ShareMatchCard";
@@ -10,7 +11,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useMatchLobby } from "@/hooks/useMatchLobby";
 import { useJoinRequests } from "@/hooks/useJoinRequests";
 import { useMatchReviews } from "@/hooks/useReviews";
+import { useWeather } from "@/hooks/useWeather";
 import { PaymentModal } from "@/components/payment/PaymentModal";
+import ReportButton from "@/components/ReportButton";
 import { initPaystackPayment, generatePaymentReference } from "@/lib/paystack";
 import { getFormattedTime } from "@/lib/matchHelpers";
 import { supabase } from "@/integrations/supabase/client";
@@ -94,6 +97,7 @@ const Lobby = () => {
 
   const { acceptRequest, rejectRequest } = useJoinRequests(match?.id);
   const { myReviews, submitReview } = useMatchReviews(match?.id, user?.id);
+  const { weather } = useWeather(venue?.lat, venue?.lng, match?.match_date);
 
   const [tab, setTab] = useState<"match" | "teams" | "chat">("match");
   const [ending, setEnding] = useState(false);
@@ -302,6 +306,63 @@ const Lobby = () => {
               <FactRow icon={Trophy}  label="Code" value={matchCode} mono />
             </div>
 
+            {/* Weather forecast */}
+            {weather && (
+              <div className={`rounded-2xl p-4 flex items-center justify-between ${
+                weather.rainChance > 40
+                  ? "bg-blue-500/[0.07] border border-blue-500/20"
+                  : "bg-card border border-border/60"
+              }`} style={{ boxShadow: "var(--shadow-card)" }}>
+                <div className="flex items-center gap-3">
+                  {weather.icon ? (
+                    <img
+                      src={`https://openweathermap.org/img/wn/${weather.icon}@2x.png`}
+                      alt={weather.description}
+                      className="w-10 h-10 -my-2 -ml-1"
+                    />
+                  ) : (
+                    <CloudSun className="w-5 h-5 text-muted-foreground" />
+                  )}
+                  <div>
+                    <p className="text-sm font-semibold">
+                      {weather.temp}°C · {weather.description}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Humidity {weather.humidity}% · Wind {Math.round(weather.windSpeed)} m/s
+                    </p>
+                  </div>
+                </div>
+                {weather.rainChance > 0 && (
+                  <div className={`flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-full ${
+                    weather.rainChance > 40
+                      ? "bg-blue-500/10 text-blue-500"
+                      : "bg-secondary text-muted-foreground"
+                  }`}>
+                    <Droplets className="w-3 h-3" />
+                    {weather.rainChance}%
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Venue images */}
+            {venue?.image_urls && venue.image_urls.length > 0 && (
+              <div className="rounded-3xl overflow-hidden border border-border/60" style={{ boxShadow: "var(--shadow-card)" }}>
+                <div className="relative aspect-[16/9]">
+                  <img
+                    src={venue.image_urls[0]}
+                    alt={venue.name}
+                    className="w-full h-full object-cover"
+                  />
+                  {venue.image_urls.length > 1 && (
+                    <div className="absolute bottom-3 right-3 bg-black/60 text-white text-[11px] font-semibold px-2.5 py-1 rounded-full">
+                      +{venue.image_urls.length - 1} more
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Status banner */}
             <div className={`rounded-3xl p-5 ${allPaid ? "tile-cool" : "tile-cream"}`}>
               <div className="flex items-start gap-3">
@@ -370,6 +431,18 @@ const Lobby = () => {
               >
                 <X className="w-4 h-4" /> Leave match
               </button>
+            )}
+
+            {/* Report match / organizer */}
+            {userParticipant && !isOrganizer && match?.status !== "cancelled" && (
+              <div className="flex items-center justify-center">
+                <ReportButton
+                  matchId={match?.id}
+                  reportedUserId={match?.organizer_id}
+                  reportedName={organizer?.full_name || "organizer"}
+                  size="sm"
+                />
+              </div>
             )}
 
             {/* Post-match reviews */}
@@ -640,6 +713,9 @@ const Lobby = () => {
                 reference: ref,
                 matchId: match.id,
                 userId: user.id,
+                joinCode: match.join_code,
+                team: userParticipant?.team || teamFromUrl || "unassigned",
+                entryFee: sharePerPlayer,
                 onSuccess: handlePaystackSuccess,
                 onClose: () => setPaying(false),
               });

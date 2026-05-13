@@ -3,10 +3,12 @@ import { Link, useLocation, Outlet } from "react-router-dom";
 import { useAdmin } from "@/hooks/useAdmin";
 import {
   LayoutDashboard, Users, Trophy, MapPin, CreditCard, Flag, Megaphone, ChevronLeft, ChevronRight, LogOut, Shield,
+  Radio,
 } from "lucide-react";
 
 const links = [
   { to: "/admin", icon: LayoutDashboard, label: "Overview" },
+  { to: "/admin/live", icon: Radio, label: "Live Monitor" },
   { to: "/admin/players", icon: Users, label: "Players" },
   { to: "/admin/matches", icon: Trophy, label: "Matches" },
   { to: "/admin/venues", icon: MapPin, label: "Venues" },

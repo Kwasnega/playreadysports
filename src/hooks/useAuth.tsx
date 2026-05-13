@@ -73,12 +73,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       else setPendingVerifyEmail(null);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       const u = session?.user ?? null;
       setSbUser(u);
       setLoading(false);
       if (u && !isVerified(u)) setPendingVerifyEmail(u.email);
       else setPendingVerifyEmail(null);
+      if (event === 'SIGNED_IN' && pendingActionRef.current) {
+        const pending = pendingActionRef.current;
+        pendingActionRef.current = null;
+        setTimeout(pending, 100);
+      }
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -115,9 +120,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setAuthOpen(false);
     pendingActionRef.current = null;
   }, []);
-  const requireAuth = useCallback((action: () => void, _mode?: "signin" | "signup") => {
-    action();
-  }, []);
+  const requireAuth = useCallback((action: () => void, mode?: "signin" | "signup") => {
+    if (user) {
+      action();
+    } else {
+      pendingActionRef.current = action;
+      openAuth(mode ?? "signin");
+    }
+  }, [user, openAuth]);
 
   const signUpWithEmail = async (email: string, password: string, fullName: string) => {
     try {
@@ -182,10 +192,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signInWithGoogle = async () => {
     try {
+      // Use production URL from env if available, otherwise fall back to current origin
+      const appUrl = import.meta.env.VITE_APP_URL || window.location.origin;
+      const redirectTo = `${appUrl}/`;
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}${window.location.pathname}`,
+          redirectTo,
           queryParams: {
             access_type: "offline",
             prompt: "consent",
@@ -203,8 +216,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const requestPasswordReset = async (email: string) => {
     try {
+      const appUrl = import.meta.env.VITE_APP_URL || window.location.origin;
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: window.location.origin + "/",
+        redirectTo: `${appUrl}/`,
       });
       if (error) return { error: friendly(error) };
       return { error: null };

@@ -9,6 +9,10 @@ export type NotifType =
   | "match_leave"
   | "match_update"
   | "match_cancel"
+  | "match_confirmed"
+  | "match_reminder"
+  | "payment_received"
+  | "refund_processed"
   | "account"
   | "system";
 

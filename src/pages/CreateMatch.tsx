@@ -241,14 +241,21 @@ const CreateMatch = () => {
                     <li key={v.id}>
                       <button
                         onClick={() => setVenueId(v.id)}
-                        className={`w-full flex items-center justify-between py-4 text-left gap-3 rounded-2xl px-3 -mx-3 transition-colors ${
+                        className={`w-full flex items-center gap-3 py-4 text-left rounded-2xl px-3 -mx-3 transition-colors ${
                           active ? "bg-secondary" : ""
                         }`}
                       >
-                        <div className="min-w-0">
+                        {v.image_urls && v.image_urls.length > 0 ? (
+                          <img src={v.image_urls[0]} alt="" className="w-14 h-14 rounded-xl object-cover border border-border/60 shrink-0" />
+                        ) : (
+                          <div className="w-14 h-14 rounded-xl bg-muted border border-border/60 flex items-center justify-center shrink-0">
+                            <MapPin className="w-5 h-5 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
                           <p className="text-base font-semibold truncate">{v.name}</p>
                           <p className="text-xs text-muted-foreground mt-0.5 truncate flex items-center gap-1.5">
-                            <MapPin className="w-3 h-3" /> {v.area ?? v.city ?? ""}
+                            {v.area ?? v.city ?? ""}
                             {km && <span className="mx-1">·</span>}
                             {km && `${km} km`}
                             <span className="mx-1">·</span> {v.surface ?? "Pitch"}

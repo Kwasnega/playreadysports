@@ -15,6 +15,7 @@ import PlayerProfile from "./pages/PlayerProfile.tsx";
 import EditProfile from "./pages/EditProfile.tsx";
 import AdminLayout from "@/components/admin/AdminLayout";
 import AdminOverview from "@/pages/admin/AdminOverview";
+import AdminLiveMonitor from "@/pages/admin/AdminLiveMonitor";
 import AdminPlayers from "@/pages/admin/AdminPlayers";
 import AdminMatches from "@/pages/admin/AdminMatches";
 import AdminVenues from "@/pages/admin/AdminVenues";
@@ -76,6 +77,7 @@ const App = () => {
               {/* Admin dashboard */}
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminOverview />} />
+                <Route path="live" element={<AdminLiveMonitor />} />
                 <Route path="players" element={<AdminPlayers />} />
                 <Route path="matches" element={<AdminMatches />} />
                 <Route path="venues" element={<AdminVenues />} />
