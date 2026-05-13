@@ -62,17 +62,21 @@ Deno.serve(async (req) => {
 
     // Verify with Paystack
     if (!PAYSTACK_SECRET) {
+      console.error("PAYSTACK_SECRET_KEY is not set in Edge Function secrets");
       return new Response(JSON.stringify({ error: "Paystack not configured" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    console.log("Verifying Paystack ref:", paystackReference);
     const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${paystackReference}`, {
       headers: { Authorization: `Bearer ${PAYSTACK_SECRET}` },
     });
     const verifyData = await verifyRes.json();
+    console.log("Paystack verify response:", JSON.stringify(verifyData).slice(0, 500));
 
-    if (!verifyData.status || verifyData.data.status !== "success") {
+    if (!verifyData.status || verifyData.data?.status !== "success") {
+      console.error("Paystack verification failed:", verifyData.message);
       return new Response(JSON.stringify({ error: verifyData.message || "Payment verification failed" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -80,7 +84,8 @@ Deno.serve(async (req) => {
 
     // Check amount matches (in pesewas)
     const expectedPesewas = Math.round((match.entry_fee ?? 0) * 100);
-    if (verifyData.data.amount !== expectedPesewas) {
+    console.log("Amount check — expected:", expectedPesewas, "received:", verifyData.data?.amount);
+    if (verifyData.data?.amount !== expectedPesewas) {
       return new Response(JSON.stringify({ error: "Payment amount mismatch" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -116,6 +121,7 @@ Deno.serve(async (req) => {
     }
 
     // Upsert participant as paid
+    console.log("Upserting participant for match:", matchId, "user:", user.id);
     const { data: participant, error: pErr } = await supabase
       .from("match_participants")
       .upsert({
@@ -131,13 +137,16 @@ Deno.serve(async (req) => {
       .single();
 
     if (pErr) {
+      console.error("Participant upsert error:", pErr.message);
       return new Response(JSON.stringify({ error: pErr.message }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    console.log("Participant upserted:", participant?.id);
 
     // Insert transaction record
-    await supabase.from("transactions").insert({
+    console.log("Inserting transaction record");
+    const { error: txErr } = await supabase.from("transactions").insert({
       match_id: matchId,
       user_id: user.id,
       amount: match.entry_fee ?? 0,
@@ -145,38 +154,46 @@ Deno.serve(async (req) => {
       status: "completed" as any,
       payment_reference: paystackReference,
     });
+    if (txErr) console.error("Transaction insert error:", txErr.message);
 
     // Notify organizer
     const joinerName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Someone";
     const paidCount = (match.core_paid_count ?? 0) + 1;
+    console.log("Sending notification to organizer:", match.organizer_id);
 
-    await supabase.from("notifications").insert({
+    const { error: notifErr } = await supabase.from("notifications").insert({
       user_id: match.organizer_id,
       title: "New player joined (paid)",
       body: `${joinerName} paid and joined your match (${paidCount}/${maxCore})`,
       type: "payment_received" as any,
       data: { match_id: matchId, join_code: match.join_code },
     });
+    if (notifErr) console.error("Notification insert error:", notifErr.message);
 
     // Check if match now fully paid
-    const { data: updatedMatch } = await supabase
+    console.log("Checking if match is full");
+    const { data: updatedMatch, error: updErr } = await supabase
       .from("matches")
       .select("core_paid_count, max_core_players")
       .eq("id", matchId)
       .single();
+    if (updErr) console.error("Match re-fetch error:", updErr.message);
 
     const isFull = (updatedMatch?.core_paid_count ?? 0) >= (updatedMatch?.max_core_players ?? maxCore);
     if (isFull) {
-      await supabase
+      console.log("Match is full — updating escrow");
+      const { error: escErr } = await supabase
         .from("matches")
         .update({ escrow_status: "holding" as any })
         .eq("id", matchId);
+      if (escErr) console.error("Escrow update error:", escErr.message);
 
-      const { data: allParticipants } = await supabase
+      const { data: allParticipants, error: partErr } = await supabase
         .from("match_participants")
         .select("user_id")
         .eq("match_id", matchId)
         .eq("status", "active");
+      if (partErr) console.error("Participants fetch error:", partErr.message);
 
       const notifs = (allParticipants ?? []).map((p: any) => ({
         user_id: p.user_id,
@@ -187,7 +204,9 @@ Deno.serve(async (req) => {
       }));
 
       if (notifs.length) {
-        await supabase.from("notifications").insert(notifs);
+        console.log("Sending match confirmed notifications:", notifs.length);
+        const { error: bulkNotifErr } = await supabase.from("notifications").insert(notifs);
+        if (bulkNotifErr) console.error("Bulk notification error:", bulkNotifErr.message);
       }
     }
 
