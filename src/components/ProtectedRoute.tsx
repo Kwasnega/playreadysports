@@ -114,6 +114,7 @@ export function ProtectedRoute({ children, roles }: Props) {
 
   const isAdminRoute = roles?.some((r) => r === "admin" || r === "super_admin");
 
+  // Wait for initial auth to resolve
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -129,7 +130,18 @@ export function ProtectedRoute({ children, roles }: Props) {
     return <PlayerLoginGate />;
   }
 
+  // If roles are required, wait for profileRole to load before deciding.
+  // profileRole is null while the profile fetch is in-flight.
   if (roles && roles.length > 0) {
+    if (profileRole === null && !isAdmin) {
+      // Still loading profile — show spinner instead of "Access Denied"
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="w-6 h-6 border-2 border-foreground/30 border-t-foreground rounded-full animate-spin" />
+        </div>
+      );
+    }
+
     const hasRole = roles.includes(profileRole ?? "") || isAdmin;
     if (!hasRole) {
       return (
