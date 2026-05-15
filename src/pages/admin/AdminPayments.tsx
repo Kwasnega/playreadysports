@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Download, RotateCcw } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 
 interface Txn {
   id: string;
@@ -21,6 +22,7 @@ function logAudit(adminId: string, action: string, targetType: string, targetId:
 
 export default function AdminPayments() {
   const { user } = useAuth();
+  const confirm = useConfirm();
   const [txns, setTxns] = useState<Txn[]>([]);
   const [typeFilter, setTypeFilter] = useState<string>("all");
 
@@ -42,7 +44,13 @@ export default function AdminPayments() {
   }, [txns]);
 
   const refund = async (t: Txn) => {
-    if (!user || !confirm(`Refund ₵${t.amount} for ${t.payment_reference}?`)) return;
+    if (!user) return;
+    const ok = await confirm({
+      description: `Refund ₵${t.amount} for ${t.payment_reference}?`,
+      variant: "destructive",
+      confirmText: "Refund",
+    });
+    if (!ok) return;
     // Call edge function refund if reference exists
     if (t.payment_reference) {
       await fetch("https://api.paystack.co/refund", {

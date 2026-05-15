@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
-import { MapPin, Plus, Clock, Check, X, Trash2, ShieldCheck } from "lucide-react";
+import { MapPin, Plus, Clock, Check, X, Trash2, ShieldCheck, Wallet } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTurfs, type Turf } from "@/hooks/useTurfs";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { OwnerTabs } from "@/components/OwnerTabs";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { toast } from "sonner";
@@ -17,6 +18,7 @@ const StatusBadge = ({ s }: { s: Turf["status"] }) => {
 const MyPitches = () => {
   const { user } = useAuth();
   const { turfs, removeTurf } = useTurfs(user?.email);
+  const confirm = useConfirm();
 
   return (
     <main className="min-h-screen bg-background pb-24">
@@ -24,6 +26,9 @@ const MyPitches = () => {
         <div className="max-w-[680px] mx-auto px-5 h-14 flex items-center gap-3">
           <h1 className="font-display font-bold text-xl tracking-tight flex-1">My pitches</h1>
           <ThemeToggle />
+          <Link to="/venue/earnings" className="inline-flex items-center gap-1.5 bg-secondary text-foreground rounded-full px-3.5 py-2 text-xs font-semibold hover:bg-secondary/80">
+            <Wallet className="w-3.5 h-3.5" /> Earnings
+          </Link>
           <Link to="/turf/register" className="inline-flex items-center gap-1.5 bg-foreground text-background rounded-full px-3.5 py-2 text-xs font-semibold">
             <Plus className="w-3.5 h-3.5" /> Add
           </Link>
@@ -75,8 +80,13 @@ const MyPitches = () => {
                   <div className="mt-3 flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">₵{t.hourlyRate}/hr · {t.amenities.length} amenities</span>
                     <button
-                      onClick={() => {
-                        if (confirm(`Remove ${t.name}?`)) {
+                      onClick={async () => {
+                        const ok = await confirm({
+                          description: `Remove ${t.name}?`,
+                          variant: "destructive",
+                          confirmText: "Remove",
+                        });
+                        if (ok) {
                           removeTurf(t.id);
                           toast.success("Pitch removed");
                         }

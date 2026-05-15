@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Trophy, ExternalLink, X, Unlock } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 
 interface MatchRow {
   id: string;
@@ -24,6 +25,7 @@ function logAudit(adminId: string, action: string, targetType: string, targetId:
 
 export default function AdminMatches() {
   const { user } = useAuth();
+  const confirm = useConfirm();
   const [matches, setMatches] = useState<MatchRow[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [dateFrom, setDateFrom] = useState("");
@@ -41,7 +43,13 @@ export default function AdminMatches() {
   useEffect(() => { load(); }, [statusFilter, dateFrom, dateTo]);
 
   const forceCancel = async (m: MatchRow) => {
-    if (!user || !confirm(`Force cancel match ${m.join_code}? All paid players will be refunded.`)) return;
+    if (!user) return;
+    const ok = await confirm({
+      description: `Force cancel match ${m.join_code}? All paid players will be refunded.`,
+      variant: "destructive",
+      confirmText: "Cancel Match",
+    });
+    if (!ok) return;
     const { error } = await supabase.functions.invoke("cancel-match", { body: { matchId: m.id } });
     if (error) { toast.error(error.message); return; }
     await logAudit(user.id, "force_cancel_match", "match", m.id, {});
@@ -50,7 +58,13 @@ export default function AdminMatches() {
   };
 
   const forceRelease = async (m: MatchRow) => {
-    if (!user || !confirm(`Force release escrow for ${m.join_code}?`)) return;
+    if (!user) return;
+    const ok = await confirm({
+      description: `Force release escrow for ${m.join_code}?`,
+      variant: "destructive",
+      confirmText: "Release",
+    });
+    if (!ok) return;
     await supabase.from("matches").update({ escrow_status: "released" }).eq("id", m.id);
     await logAudit(user.id, "force_release_escrow", "match", m.id, {});
     toast.success("Escrow released");

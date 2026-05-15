@@ -1,3 +1,8 @@
+# Environment
+.env
+.env.*
+test_query.js
+
 # Logs
 logs
 *.log

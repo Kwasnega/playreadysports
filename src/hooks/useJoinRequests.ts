@@ -1,9 +1,11 @@
 import { useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
 export function useJoinRequests(matchId: string | undefined) {
+  const confirm = useConfirm();
   const acceptRequest = useCallback(
     async (participantId: string, currentParticipants: { team: string; status: string }[]) => {
       if (!matchId) return false;
@@ -59,7 +61,12 @@ export function useJoinRequests(matchId: string | undefined) {
   const rejectRequest = useCallback(
     async (participantId: string, name: string) => {
       if (!matchId) return false;
-      if (!confirm(`Remove ${name} from this match?`)) return false;
+      const ok = await confirm({
+        description: `Remove ${name} from this match?`,
+        variant: "destructive",
+        confirmText: "Remove",
+      });
+      if (!ok) return false;
 
       const { data: participant, error } = await supabase
         .from("match_participants")
@@ -95,7 +102,7 @@ export function useJoinRequests(matchId: string | undefined) {
       toast(`${name} removed`);
       return true;
     },
-    [matchId]
+    [matchId, confirm]
   );
 
   return { acceptRequest, rejectRequest };

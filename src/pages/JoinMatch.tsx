@@ -2,12 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft, ArrowRight, Search, KeyRound, Clock, MapPin, Users, Repeat,
-  Check, X, ChevronRight, SlidersHorizontal, Sparkles, Star,
+  Check, X, ChevronRight, SlidersHorizontal, Sparkles, Star, Wallet as WalletIcon,
 } from "lucide-react";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/useAuth";
+import { useWallet } from "@/hooks/useWallet";
 import { useBrowseMatches, useBrowseFilters } from "@/hooks/useBrowseMatches";
 import {
   getFormattedTime,
@@ -36,6 +37,7 @@ const UI_MODE_LABEL: Record<string, string> = {
 const JoinMatch = () => {
   const nav = useNavigate();
   const { user, openAuth } = useAuth();
+  const { balance } = useWallet();
 
   // URL-driven filter state
   const { filters, setMode, setSort, setSearch } = useBrowseFilters();
@@ -64,6 +66,12 @@ const JoinMatch = () => {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <h1 className="font-display font-bold text-xl tracking-tight flex-1">Browse matches</h1>
+          {user && (
+            <button onClick={() => nav("/wallet")} className="inline-flex items-center gap-1.5 bg-secondary text-foreground rounded-full px-2.5 py-1.5 text-xs font-semibold hover:bg-secondary/80">
+              <WalletIcon className="w-3.5 h-3.5" />
+              <span>₵{balance.toFixed(2)}</span>
+            </button>
+          )}
           <button
             onClick={() => nav("/code")}
             className="inline-flex items-center gap-1.5 bg-primary/10 text-primary rounded-full px-3 py-1.5 text-xs font-semibold"
@@ -367,66 +375,87 @@ const JoinSheet = ({
             </SheetHeader>
 
             <section className="px-5 pt-5 pb-4">
-              <p className="text-sm text-muted-foreground mb-2">Pick your team</p>
-              <ul className="divide-y divide-border">
-                {/* Hardcoded two-team slots — real counts will come from useMatchTeams hook (Tier 3) */}
-                {match.match_mode !== "gala" && (
-                  <>
-                    <li>
-                      <button
-                        onClick={() => handlePick("reds")}
-                        className="w-full flex items-center justify-between py-4 text-left"
-                      >
-                        <div>
-                          <p className="text-base font-semibold">Reds</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {getActiveCoreCount(match)}/{match.max_core_players ?? match.players_per_side ?? 10}
-                          </p>
-                        </div>
-                        {picked === "reds" ? <Check className="w-5 h-5" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
-                      </button>
-                    </li>
-                    <li>
-                      <button
-                        onClick={() => handlePick("blues")}
-                        className="w-full flex items-center justify-between py-4 text-left"
-                      >
-                        <div>
-                          <p className="text-base font-semibold">Blues</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {getActiveCoreCount(match)}/{match.max_core_players ?? match.players_per_side ?? 10}
-                          </p>
-                        </div>
-                        {picked === "blues" ? <Check className="w-5 h-5" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
-                      </button>
-                    </li>
-                  </>
-                )}
-                {match.match_mode === "gala" && (
-                  <li>
-                    <button
-                      onClick={() => handlePick("__bring__")}
-                      className="w-full flex items-center justify-between py-4 text-left"
-                    >
-                      <div>
-                        <p className="text-base font-semibold">Bring my own team</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">Captain a new squad in this gala</p>
-                      </div>
-                      {picked === "__bring__" ? <Check className="w-5 h-5" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
-                    </button>
-                  </li>
-                )}
-              </ul>
+              {/* Public matches: auto-assign team server-side */}
+              {match.match_type !== "private" && match.match_mode !== "gala" ? (
+                <div className="text-center py-4">
+                  <p className="text-sm text-muted-foreground mb-1">Team will be auto-assigned for balance</p>
+                  <p className="text-xs text-muted-foreground">
+                    {getActiveCoreCount(match)}/{match.max_core_players ?? match.players_per_side ?? 10} spots filled
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground mb-2">Pick your team</p>
+                  <ul className="divide-y divide-border">
+                    {match.match_mode !== "gala" && (
+                      <>
+                        <li>
+                          <button
+                            onClick={() => handlePick("reds")}
+                            className="w-full flex items-center justify-between py-4 text-left"
+                          >
+                            <div>
+                              <p className="text-base font-semibold">Reds</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {getActiveCoreCount(match)}/{match.max_core_players ?? match.players_per_side ?? 10}
+                              </p>
+                            </div>
+                            {picked === "reds" ? <Check className="w-5 h-5" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+                          </button>
+                        </li>
+                        <li>
+                          <button
+                            onClick={() => handlePick("blues")}
+                            className="w-full flex items-center justify-between py-4 text-left"
+                          >
+                            <div>
+                              <p className="text-base font-semibold">Blues</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {getActiveCoreCount(match)}/{match.max_core_players ?? match.players_per_side ?? 10}
+                              </p>
+                            </div>
+                            {picked === "blues" ? <Check className="w-5 h-5" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+                          </button>
+                        </li>
+                      </>
+                    )}
+                    {match.match_mode === "gala" && (
+                      <li>
+                        <button
+                          onClick={() => handlePick("__bring__")}
+                          className="w-full flex items-center justify-between py-4 text-left"
+                        >
+                          <div>
+                            <p className="text-base font-semibold">Bring my own team</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">Captain a new squad in this gala</p>
+                          </div>
+                          {picked === "__bring__" ? <Check className="w-5 h-5" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+                        </button>
+                      </li>
+                    )}
+                  </ul>
+                </>
+              )}
             </section>
 
             <div className="sticky bottom-0 bg-background/95 backdrop-blur-md border-t border-border px-5 py-3">
               <button
-                onClick={handleJoin}
-                disabled={!picked}
+                onClick={() => {
+                  if (match.match_type !== "private" && match.match_mode !== "gala") {
+                    // Public auto-assign: join without team selection
+                    if (!user) { openAuth("signin"); return; }
+                    onJoin("__auto__");
+                  } else {
+                    handleJoin();
+                  }
+                }}
+                disabled={match.match_type === "private" && !picked}
                 className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-full bg-foreground text-background text-sm font-semibold disabled:opacity-40 active:scale-[0.99]"
               >
-                {picked ? `Join as ${picked === "__bring__" ? "captain" : picked}` : "Pick a team to join"}
-                {picked && <ArrowRight className="w-4 h-4" />}
+                {match.match_type !== "private" && match.match_mode !== "gala"
+                  ? "Join match"
+                  : picked ? `Join as ${picked === "__bring__" ? "captain" : picked}` : "Pick a team to join"}
+                <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </>

@@ -52,11 +52,12 @@ export function useProfile(username: string | undefined) {
     if (!username) { setLoading(false); return; }
     setLoading(true);
 
-    // Fetch profile
+    // Fetch profile by username or UUID
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(username);
     const { data: prof, error: profErr } = await supabase
       .from("profiles")
       .select("id, username, full_name, avatar_url, city, position, phone_number, bio, reputation_score, created_at")
-      .eq("username", username)
+      .eq(isUuid ? "id" : "username", username)
       .maybeSingle();
 
     if (profErr || !prof) {

@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
-  Home, User, LogIn, Trophy, Zap, UserPlus, CalendarDays, KeyRound, Sparkles, MapPin, Clock, Wallet, Users,
+  Home, User, LogIn, Trophy, Zap, UserPlus, CalendarDays, KeyRound, Sparkles, MapPin, Clock, Wallet, Users, Activity, Award,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NearYou } from "@/components/NearYou";
@@ -15,6 +15,9 @@ import { useUserLocation } from "@/hooks/useUserLocation";
 import { useHomeStats } from "@/hooks/useHomeStats";
 import { useSmartRecommendations } from "@/hooks/useSmartRecommendations";
 import { useFriendsPlaying } from "@/hooks/useFriendsPlaying";
+import { useFriendActivity } from "@/hooks/useFriendActivity";
+import { useFriends } from "@/hooks/useFriends";
+import { useWallet } from "@/hooks/useWallet";
 import { supabase } from "@/integrations/supabase/client";
 import {
   getFormattedTime,
@@ -29,6 +32,8 @@ import logoDark from "@/assets/playready-logo-dark.jpg";
 
 const Nav = () => {
   const { user, openAuth } = useAuth();
+  const { balance } = useWallet();
+  const { pendingRequests } = useFriends();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -58,6 +63,12 @@ const Nav = () => {
         <div className="flex items-center gap-1">
           <ThemeToggle />
           <NotificationsBell />
+          {user && (
+            <Link to="/wallet" className="ml-1 inline-flex items-center gap-1.5 bg-secondary text-foreground rounded-full px-2.5 py-1.5 text-xs font-semibold hover:bg-secondary/80">
+              <Wallet className="w-3.5 h-3.5" />
+              <span>₵{balance.toFixed(2)}</span>
+            </Link>
+          )}
           {user ? (
             <ProfileSheet
               trigger={
@@ -174,23 +185,36 @@ const QuickActions = () => {
 };
 
 const MobileTabs = () => {
+  const loc = window.location.pathname;
+  const isActive = (path: string) => loc === path;
+  const { pendingRequests } = useFriends();
   return (
     <nav className="fixed bottom-0 inset-x-0 z-30 bg-background/95 backdrop-blur-md border-t border-border">
-      <div className="max-w-[680px] mx-auto grid grid-cols-4 h-16">
+      <div className="max-w-[680px] mx-auto grid grid-cols-5 h-16">
         {[
-          { to: "/", icon: Home, label: "Home", active: true },
-          { to: "/schedule", icon: Trophy, label: "Matches" },
-        ].map(t => (
-          <Link key={t.to} to={t.to} className={`flex flex-col items-center justify-center gap-1 ${t.active ? "text-foreground" : "text-muted-foreground"}`}>
-            <t.icon className="w-5 h-5" strokeWidth={t.active ? 2.4 : 2} />
+          { to: "/", icon: Home, label: "Home" },
+          { to: "/schedule", icon: Trophy, label: "Schedule" },
+          { to: "/leaderboard", icon: Award, label: "Ranks" },
+        ].map((t) => (
+          <Link
+            key={t.to}
+            to={t.to}
+            className={`flex flex-col items-center justify-center gap-1 ${isActive(t.to) ? "text-foreground" : "text-muted-foreground"}`}
+          >
+            <t.icon className="w-5 h-5" strokeWidth={isActive(t.to) ? 2.4 : 2} />
             <span className="text-[10px] font-semibold">{t.label}</span>
           </Link>
         ))}
         <FriendsSheet
           trigger={
-            <button className="flex flex-col items-center justify-center gap-1 text-muted-foreground" aria-label="Open friends">
+            <button className="relative flex flex-col items-center justify-center gap-1 text-muted-foreground" aria-label="Open friends">
               <Users className="w-5 h-5" />
               <span className="text-[10px] font-semibold">Friends</span>
+              {pendingRequests.length > 0 && (
+                <span className="absolute -top-1.5 right-2 min-w-[16px] h-[16px] px-1 rounded-full bg-primary text-primary-foreground text-[8px] font-bold leading-[16px] text-center">
+                  {pendingRequests.length > 9 ? "9+" : pendingRequests.length}
+                </span>
+              )}
             </button>
           }
         />
@@ -212,10 +236,19 @@ function transformMatches(
   matches: HomeMatch[],
   userLat: number,
   userLng: number,
-  userId?: string
+  userId?: string,
+  friendIds?: Set<string>
 ): Parameters<typeof NearYou>[0]["items"] {
   const isJoined = (m: HomeMatch) =>
     userId ? m.participants.some((p) => p.user_id === userId && p.status === "active") : false;
+
+  const getFriendInfo = (m: HomeMatch) => {
+    if (!friendIds) return { friendCount: 0, friendAvatars: [] };
+    const count = m.participants.filter(
+      (p) => friendIds.has(p.user_id) && p.status === "active"
+    ).length;
+    return { friendCount: count, friendAvatars: [] };
+  };
 
   return matches
     .filter((m) => m.venue)
@@ -226,6 +259,7 @@ function transformMatches(
           ? getDistanceKm(userLat, userLng, venue.lat, venue.lng)
           : 0;
       const joined = isJoined(m);
+      const { friendCount, friendAvatars } = getFriendInfo(m);
 
       if (m.match_mode === "gala") {
         return {
@@ -241,6 +275,8 @@ function transformMatches(
           pricePerPlayer: Number(m.entry_fee),
           km,
           joined,
+          friendCount,
+          friendAvatars,
         };
       }
 
@@ -257,6 +293,8 @@ function transformMatches(
         pricePerPlayer: Number(m.entry_fee),
         km,
         joined,
+        friendCount,
+        friendAvatars,
       };
     });
 }
@@ -327,6 +365,59 @@ const RecommendationsRail = () => {
   );
 };
 
+/* Friend activity feed */
+const FriendActivityFeed = () => {
+  const { activities, loading } = useFriendActivity();
+  const navigate = useNavigate();
+  if (loading) return null;
+  if (activities.length === 0) return null;
+
+  return (
+    <section className="px-5 pt-4 pb-2">
+      <div className="max-w-[680px] mx-auto">
+        <div className="flex items-center gap-2 mb-3">
+          <Activity className="w-4 h-4 text-primary" />
+          <h2 className="text-sm font-bold text-foreground">Friend activity</h2>
+        </div>
+        <div className="space-y-2">
+          {activities.slice(0, 5).map((a) => (
+            <button
+              key={a.id}
+              onClick={() => a.join_code && navigate(`/lobby/${a.join_code}`)}
+              className="w-full flex items-center gap-3 text-left p-3 rounded-2xl bg-card border border-border/60 hover:border-primary/40 transition-all"
+              style={{ boxShadow: "var(--shadow-card)" }}
+            >
+              {a.friend_avatar ? (
+                <img src={a.friend_avatar} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold flex-shrink-0">
+                  {(a.friend_name[0] || "?").toUpperCase()}
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] font-semibold truncate">
+                  <span className="text-foreground">{a.friend_name}</span>{" "}
+                  <span className="text-muted-foreground font-normal">
+                    {a.type === "joined" && "joined a match"}
+                    {a.type === "created" && "hosted a match"}
+                    {a.type === "looking" && "is looking for players"}
+                  </span>
+                </p>
+                {a.venue_name && (
+                  <p className="text-[11px] text-muted-foreground truncate">{a.venue_name}</p>
+                )}
+              </div>
+              <span className="text-[10px] text-muted-foreground flex-shrink-0">
+                {new Date(a.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};
+
 /* Friends playing rail */
 const FriendsPlayingRail = () => {
   const { matches, loading } = useFriendsPlaying();
@@ -388,12 +479,14 @@ const Index = () => {
   const { location } = useUserLocation();
   const { stats } = useHomeStats();
   const { user } = useAuth();
+  const { friends } = useFriends();
 
   const userLat = location?.lat ?? 5.6037; // Accra default
   const userLng = location?.lng ?? -0.187;
 
   const liveCount = matches.filter((m) => m.status === "live").length;
-  const feedItems = transformMatches(matches, userLat, userLng, user?.id);
+  const friendIds = useMemo(() => new Set(friends.map((f) => f.id)), [friends]);
+  const feedItems = transformMatches(matches, userLat, userLng, user?.id, friendIds);
 
   return (
     <main className="min-h-screen bg-background pb-20">
@@ -402,6 +495,7 @@ const Index = () => {
       <QuickActions />
       <LiveStatsBar matches={stats.matchesToday} players={stats.playersOnline} />
       <RecommendationsRail />
+      <FriendActivityFeed />
       <FriendsPlayingRail />
       <div id="near-you">
         <NearYou variant="curated" limit={3} items={feedItems} isLoading={matchesLoading} />

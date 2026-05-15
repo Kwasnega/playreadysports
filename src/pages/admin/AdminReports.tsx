@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Flag, Check, UserX, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 
 interface Report {
   id: string;
@@ -24,6 +25,7 @@ function logAudit(adminId: string, action: string, targetType: string, targetId:
 
 export default function AdminReports() {
   const { user } = useAuth();
+  const confirm = useConfirm();
   const [reports, setReports] = useState<Report[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
 
@@ -55,7 +57,13 @@ export default function AdminReports() {
   };
 
   const banUser = async (r: Report) => {
-    if (!user || !confirm(`Ban ${r.reported?.full_name || r.reported?.username || "this user"}?`)) return;
+    if (!user) return;
+    const ok = await confirm({
+      description: `Ban ${r.reported?.full_name || r.reported?.username || "this user"}?`,
+      variant: "destructive",
+      confirmText: "Ban",
+    });
+    if (!ok) return;
     await supabase.from("profiles").update({ is_banned: true, banned_until: null, ban_reason: r.reason }).eq("id", r.reported_user_id);
     await logAudit(user.id, "ban_user_from_report", "profile", r.reported_user_id, { report_id: r.id });
     toast.success("User banned");

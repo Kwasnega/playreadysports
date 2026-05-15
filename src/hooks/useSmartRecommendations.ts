@@ -35,7 +35,7 @@ export function useSmartRecommendations() {
         .select("match_id, matches(venue_id, match_mode, format, match_date)")
         .eq("user_id", user.id)
         .eq("status", "active")
-        .order("created_at", { ascending: false })
+        .order("joined_at", { ascending: false })
         .limit(20);
 
       const venueIds = new Set<string>();

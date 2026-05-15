@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Send, Megaphone, Clock } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 
 function logAudit(adminId: string, action: string, targetType: string, targetId: string, details: any) {
   return supabase.from("audit_log").insert({ admin_id: adminId, action, target_type: targetType, target_id: targetId, details });
@@ -19,6 +20,7 @@ interface Broadcast {
 
 export default function AdminBroadcast() {
   const { user } = useAuth();
+  const confirm = useConfirm();
   const [segment, setSegment] = useState<string>("all");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -52,7 +54,8 @@ export default function AdminBroadcast() {
 
   const send = async () => {
     if (!user || !title || !body) { toast.error("Title and body required"); return; }
-    if (!confirm(`Send to ${count} users?`)) return;
+    const ok = await confirm({ description: `Send to ${count} users?` });
+    if (!ok) return;
 
     let targetUsers: string[] = [];
     if (segment === "all") {

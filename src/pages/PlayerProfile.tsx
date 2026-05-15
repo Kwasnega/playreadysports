@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   ArrowLeft, Star, MapPin, ShieldAlert, Calendar, Trophy,
-  Swords, MessageSquare, User, Flag, UserPlus, UserCheck, UserX, Loader2,
+  Swords, MessageSquare, User, Flag, UserPlus, UserCheck, UserX, Loader2, Send
 } from "lucide-react";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/hooks/useAuth";
@@ -125,7 +125,7 @@ const PlayerProfile = () => {
     });
     // Also fetch the friendship ID for unfriend/cancel
     // @ts-ignore — friendships table not in generated types yet
-    supabase
+    (supabase as any)
       .from("friendships")
       .select("id, requester_id, status")
       .or(`and(requester_id.eq.${user.id},recipient_id.eq.${profile.id}),and(requester_id.eq.${profile.id},recipient_id.eq.${user.id})`)
@@ -197,7 +197,8 @@ const PlayerProfile = () => {
         ) : !profile ? (
           <div className="text-center py-12">
             <User className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-            <p className="text-sm font-semibold">Player not found</p>
+            <p className="text-sm font-semibold">Profile not yet set up</p>
+            <p className="text-[11px] text-muted-foreground mt-1">This player hasn't completed their profile.</p>
           </div>
         ) : (
           <>
@@ -230,7 +231,7 @@ const PlayerProfile = () => {
                   <span className="text-xs font-semibold text-muted-foreground">{profile.reputation_score?.toFixed(1) ?? "5.0"}</span>
                 </div>
                 {!isOwn && (
-                  <div className="flex items-center gap-3 mt-2">
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
                     {friendStatus === "none" && (
                       <button
                         onClick={handleAddFriend}
@@ -267,8 +268,20 @@ const PlayerProfile = () => {
                       </button>
                     )}
                     <button
+                      onClick={() => toast.info("Messaging coming soon")}
+                      className="inline-flex items-center gap-1.5 text-[11px] font-semibold bg-secondary text-muted-foreground hover:bg-secondary/80 rounded-full px-3 py-1.5"
+                    >
+                      <MessageSquare className="w-3 h-3" /> Message
+                    </button>
+                    <button
+                      onClick={() => toast.info("Invite feature coming soon")}
+                      className="inline-flex items-center gap-1.5 text-[11px] font-semibold bg-secondary text-muted-foreground hover:bg-secondary/80 rounded-full px-3 py-1.5"
+                    >
+                      <Send className="w-3 h-3" /> Invite
+                    </button>
+                    <button
                       onClick={() => setReportOpen(true)}
-                      className="text-[11px] text-muted-foreground hover:text-destructive underline inline-flex items-center gap-1"
+                      className="text-[11px] text-muted-foreground hover:text-destructive underline inline-flex items-center gap-1 px-1"
                     >
                       <ShieldAlert className="w-3 h-3" /> Report
                     </button>

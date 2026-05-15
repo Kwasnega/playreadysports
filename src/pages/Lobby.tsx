@@ -1,28 +1,31 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft, Users, Clock, Wallet, Check, Share2, Flag, X, UserCheck,
   Calendar, MapPin, MessageCircle, Trophy, Hourglass, Zap, Crown, Star,
-  CloudSun, Droplets,
+  CloudSun, Droplets, UserPlus, QrCode,
 } from "lucide-react";
 import { LobbyChat } from "@/components/LobbyChat";
 import { ShareMatchCard } from "@/components/matches/ShareMatchCard";
 import { useAuth } from "@/hooks/useAuth";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { useMatchLobby } from "@/hooks/useMatchLobby";
 import { useJoinRequests } from "@/hooks/useJoinRequests";
 import { useMatchReviews } from "@/hooks/useReviews";
 import { useWeather } from "@/hooks/useWeather";
+import { useFriends } from "@/hooks/useFriends";
 import { PaymentModal } from "@/components/payment/PaymentModal";
 import ReportButton from "@/components/ReportButton";
 import { initPaystackPayment, generatePaymentReference } from "@/lib/paystack";
 import { getFormattedTime } from "@/lib/matchHelpers";
+import { useWallet } from "@/hooks/useWallet";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 /* Tier-3 Lobby — wired to Supabase --------------------------------------- */
 
 type SlotState = "paid" | "reserved" | "spare" | "open" | "unpaid";
-type Player = { name: string; avatar: string; state: SlotState };
+type Player = { name: string; avatar: string; state: SlotState; userId?: string; username?: string };
 
 /* ---- Countdown ---- */
 const useCountdown = (targetStr: string | undefined) => {
@@ -43,41 +46,43 @@ const useCountdown = (targetStr: string | undefined) => {
 };
 
 /* Helper: map participants to Player rows with open slots */
-function buildPlayerList(
-  participants: { full_name: string | null; username: string | null; avatar_url: string | null; payment_status: string; slot_type: string; status: string }[],
-  max: number
-): Player[] {
-  const active = participants.filter((p) => p.status === "active" && p.slot_type === "core");
-  const rows: Player[] = active.map((p) => ({
-    name: p.full_name ?? p.username ?? "Player",
-    avatar: p.avatar_url ?? "",
-    state: p.payment_status === "paid" ? "paid" : "unpaid",
-  }));
-  const open = Math.max(0, max - rows.length);
-  for (let i = 0; i < open; i++) rows.push({ name: "Open", avatar: "", state: "open" });
-  return rows;
+function buildPlayerList(raw: LobbyParticipant[]): Player[] {
+  return raw.map((p) => {
+    let s: SlotState = "open";
+    if (p.payment_status === "paid") s = "paid";
+    else if (p.status === "confirmed") s = "reserved";
+    else if (p.status === "pending_payment") s = "unpaid";
+    return {
+      name: p.full_name || p.username || "Player",
+      avatar: p.avatar_url || "",
+      state: s,
+      userId: p.user_id,
+      username: p.username || undefined,
+    };
+  });
 }
 
-function buildSpareList(
-  participants: { full_name: string | null; username: string | null; avatar_url: string | null; status: string; slot_type: string }[]
-): Player[] {
-  return participants
-    .filter((p) => p.status === "active" && p.slot_type === "spare")
-    .map((p) => ({
-      name: p.full_name ?? p.username ?? "Player",
-      avatar: p.avatar_url ?? "",
-      state: "spare" as SlotState,
-    }));
+function buildSpareList(raw: LobbyParticipant[]): Player[] {
+  return raw.map((p) => ({
+    name: p.full_name || p.username || "Player",
+    avatar: p.avatar_url || "",
+    state: (p.payment_status === "paid" ? "spare" : "open") as SlotState,
+    userId: p.user_id,
+    username: p.username || undefined,
+  }));
 }
 
 /* ---- Page ---- */
 const Lobby = () => {
+  const confirm = useConfirm();
   const { code } = useParams();
   const [params] = useSearchParams();
   const matchCode = code ?? "ACC-100";
   const teamFromUrl = params.get("team");
   const navigate = useNavigate();
   const { user, openAuth } = useAuth();
+  const [checkInCode, setCheckInCode] = useState("");
+  const [checkInBusy, setCheckInBusy] = useState(false);
 
   const {
     match,
@@ -124,21 +129,35 @@ const Lobby = () => {
   const corePlayers = buildPlayerList(coreList, maxCore);
   const sparePlayers = buildSpareList(spareList);
 
+  const openProfile = useCallback((idOrUsername: string) => {
+    navigate(`/player/${idOrUsername}`);
+  }, [navigate]);
+
   const copyCode = () => {
     navigator.clipboard.writeText(matchCode);
     toast.success(`Code ${matchCode} copied`);
   };
 
   const endMatch = async () => {
-    const payout = Math.round((match?.entry_fee ?? 0) * corePaidCount * 0.95 * 100) / 100;
-    if (!match || !confirm(`Mark this match as complete? ₵${payout} will be released to you.`)) return;
+    if (!match) return;
+    const ok = await confirm({
+      description:
+        "Mark complete and release escrow? You receive the organizer incentive in your Play wallet; the venue owner gets the rest.",
+    });
+    if (!ok) return;
     setEnding(true);
     try {
-      const { error } = await supabase.functions.invoke("complete-match", {
+      const { data, error } = await supabase.functions.invoke("complete-match", {
         body: { matchId: match.id },
       });
       if (error) throw error;
-      toast.success("Match complete! 🏆");
+      if (data?.error) throw new Error(data.error);
+      const incentive = data?.organizerIncentive ?? 0;
+      toast.success(
+        incentive > 0
+          ? `Match complete! ₵${incentive} incentive added to your Play wallet.`
+          : "Match complete!",
+      );
       navigate("/");
     } catch (err: any) {
       toast.error(err.message || "Failed to end match");
@@ -147,7 +166,13 @@ const Lobby = () => {
   };
 
   const cancelMatch = async () => {
-    if (!match || !confirm("Cancel this match? All paid players will be refunded.")) return;
+    if (!match) return;
+    const ok = await confirm({
+      description: "Cancel this match? All paid players will be refunded to their Play wallets.",
+      variant: "destructive",
+      confirmText: "Cancel Match",
+    });
+    if (!ok) return;
     setEnding(true);
     try {
       const { error } = await supabase.functions.invoke("cancel-match", {
@@ -162,20 +187,25 @@ const Lobby = () => {
     }
   };
 
-  /* ---- Payment handler ---- */
-  const handlePaystackSuccess = async (reference: string) => {
+  const { balance, payForMatch } = useWallet();
+
+  const handleJoinPaid = async () => {
     if (!match?.id) return;
+    if (balance < sharePerPlayer) {
+      toast.error(`Insufficient balance. Please top up ₵${sharePerPlayer - balance} in your Wallet.`);
+      navigate('/wallet');
+      return;
+    }
+    
     setPaying(true);
-    try {
-      const { error } = await supabase.functions.invoke("join-paid-match", {
-        body: { matchId: match.id, team: teamFromUrl ?? "unassigned", paystackReference: reference },
-      });
-      if (error) throw error;
+    const team = userParticipant?.team || teamFromUrl || "unassigned";
+    const res = await payForMatch(match.id, team, "core");
+    
+    if (res.success) {
       toast.success("Payment confirmed! You're in.");
-      setPaymentModalOpen(false);
       window.location.reload();
-    } catch (err: any) {
-      toast.error(err.message || "Payment verification failed");
+    } else {
+      toast.error(res.error || "Payment failed");
       setPaying(false);
     }
   };
@@ -199,7 +229,7 @@ const Lobby = () => {
     if (!match) return null;
     if (isOrganizer) {
       if (allPaid) return { label: "Match confirmed", icon: Check, disabled: true, onClick: () => {}, tone: "success" as const };
-      if (corePaidCount === maxCore - 1) return { label: `Cover last slot · ₵${sharePerPlayer}`, icon: Wallet, disabled: paying, onClick: () => setPaymentModalOpen(true), tone: "primary" as const };
+      if (corePaidCount === maxCore - 1) return { label: `Cover last slot · ₵${sharePerPlayer}`, icon: Wallet, disabled: paying, onClick: handleJoinPaid, tone: "primary" as const };
       return { label: `${corePaidCount}/${maxCore} paid · waiting`, icon: Hourglass, disabled: true, onClick: () => {}, tone: "neutral" as const };
     }
     // Joiner journey
@@ -210,15 +240,18 @@ const Lobby = () => {
         icon: UserCheck,
         disabled: paying,
         tone: "primary" as const,
-        onClick: isPaid ? () => setPaymentModalOpen(true) : handleJoinFree,
+        onClick: isPaid ? handleJoinPaid : handleJoinFree,
       };
     }
     if (userParticipant.status === "pending") {
       return { label: "Request pending", icon: Hourglass, disabled: true, tone: "neutral" as const, onClick: () => {} };
     }
+    if (userParticipant.status === "left") {
+      return { label: "You left this match", icon: X, disabled: true, tone: "neutral" as const, onClick: () => {} };
+    }
     if (userParticipant.payment_status === "unpaid") {
-      return { label: paying ? "Opening checkout…" : `Pay ₵${sharePerPlayer}`, icon: Wallet, disabled: paying, tone: "primary" as const,
-        onClick: () => setPaymentModalOpen(true) };
+      return { label: paying ? "Paying…" : `Pay ₵${sharePerPlayer}`, icon: Wallet, disabled: paying, tone: "primary" as const,
+        onClick: handleJoinPaid };
     }
     if (allPaid) {
       return { label: "Match confirmed · Add to calendar", icon: Calendar, disabled: false, tone: "success" as const,
@@ -244,6 +277,12 @@ const Lobby = () => {
             <h1 className="font-display font-bold text-lg tracking-tight truncate">{venue?.name ?? "Venue"}</h1>
             <p className="text-[11px] text-muted-foreground font-mono truncate">{matchCode} · {match?.format ?? "?"} · {match ? getFormattedTime(match.match_date) : ""}</p>
           </div>
+          {user && (
+            <button onClick={() => navigate("/wallet")} className="inline-flex items-center gap-1.5 bg-secondary text-foreground rounded-full px-2.5 py-1.5 text-xs font-semibold hover:bg-secondary/80">
+              <Wallet className="w-3.5 h-3.5" />
+              <span>₵{balance.toFixed(2)}</span>
+            </button>
+          )}
           <button onClick={() => setShareOpen(true)} className="p-2 rounded-full hover:bg-secondary" aria-label="Share match"><Share2 className="w-4 h-4" /></button>
         </div>
         {/* Tab strip */}
@@ -380,6 +419,64 @@ const Lobby = () => {
               </div>
             </div>
 
+            {/* Venue QR check-in (paid / active players) */}
+            {userParticipant?.status === "active" &&
+              match?.status !== "cancelled" &&
+              match?.status !== "completed" &&
+              (userParticipant.payment_status === "paid" || (match.entry_fee ?? 0) <= 0) && (
+              <div className="rounded-3xl border border-border/60 bg-card p-5 space-y-3" style={{ boxShadow: "var(--shadow-card)" }}>
+                <div className="flex items-center gap-2">
+                  <QrCode className="w-4 h-4 text-primary" />
+                  <h2 className="font-display font-bold text-base tracking-tight">Pitch check-in</h2>
+                </div>
+                {userParticipant.attendance_scanned ? (
+                  <p className="text-sm text-emerald-600 font-medium flex items-center gap-2">
+                    <Check className="w-4 h-4" /> You are checked in at the venue.
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Ask the venue host to show the match QR, then paste the code here (or scan opens this lobby with the code pre-filled later).
+                    </p>
+                    <input
+                      value={checkInCode}
+                      onChange={(e) => setCheckInCode(e.target.value.trim())}
+                      placeholder="Paste check-in code"
+                      className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-mono"
+                      autoCapitalize="off"
+                      autoCorrect="off"
+                      spellCheck={false}
+                    />
+                    <button
+                      type="button"
+                      disabled={checkInBusy || !checkInCode}
+                      onClick={async () => {
+                        if (!checkInCode || !match?.id) return;
+                        setCheckInBusy(true);
+                        try {
+                          const { data, error } = await supabase.functions.invoke("scan-match-qr", {
+                            body: { token: checkInCode },
+                          });
+                          if (error) throw error;
+                          if (data?.error) throw new Error(data.error);
+                          toast.success(data?.message || "Checked in!");
+                          setCheckInCode("");
+                          window.location.reload();
+                        } catch (e: any) {
+                          toast.error(e?.message || "Check-in failed");
+                        } finally {
+                          setCheckInBusy(false);
+                        }
+                      }}
+                      className="w-full bg-primary text-primary-foreground font-semibold rounded-full px-4 py-3 text-sm disabled:opacity-50"
+                    >
+                      {checkInBusy ? "Submitting…" : "Submit check-in"}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+
             {isOrganizer && (
               <div className="space-y-2">
                 <button
@@ -412,7 +509,8 @@ const Lobby = () => {
                     : hoursUntil <= 2 && userParticipant.payment_status === "paid"
                     ? "Your entry fee is non-refundable. Leave anyway?"
                     : "Leave this match?";
-                  if (!confirm(msg)) return;
+                  const ok = await confirm({ description: msg });
+                  if (!ok) return;
                   setEnding(true);
                   try {
                     const { data, error } = await supabase.functions.invoke("leave-match", {
@@ -614,7 +712,17 @@ const Lobby = () => {
                     <span className="text-xs text-muted-foreground">{corePaidCount} paid</span>
                   </div>
                   <ul className="divide-y divide-border">
-                    {corePlayers.map((p, i) => <SlotRow key={i} player={p} share={sharePerPlayer} />)}
+                    {corePlayers.map((p, i) => (
+                      <SlotRow
+                        key={i}
+                        player={p}
+                        share={sharePerPlayer}
+                        onClick={() => {
+                          const target = p.username || p.userId;
+                          if (target) openProfile(target);
+                        }}
+                      />
+                    ))}
                   </ul>
 
                   {/* Cover last slot CTA in Teams tab */}
@@ -622,7 +730,7 @@ const Lobby = () => {
                     <button
                       onClick={() => {
                         if (!user) { openAuth("signin"); return; }
-                        if ((match?.entry_fee ?? 0) > 0) setPaymentModalOpen(true);
+                        if ((match?.entry_fee ?? 0) > 0) handleJoinPaid();
                         else handleJoinFree();
                       }}
                       disabled={paying}
@@ -635,9 +743,19 @@ const Lobby = () => {
 
                 <section>
                   <h2 className="font-display font-bold text-xl tracking-tight mb-3">Spare · {sparePlayers.length}</h2>
-                  <ul className="divide-y divide-border">
-                    {sparePlayers.map((p, i) => <SlotRow key={i} player={p} share={0} />)}
-                  </ul>
+                  <div className="flex flex-wrap gap-2">
+                    {sparePlayers.map((p, i) => (
+                      <SlotRow
+                        key={i}
+                        player={p}
+                        share={0}
+                        onClick={() => {
+                          const target = p.username || p.userId;
+                          if (target) openProfile(target);
+                        }}
+                      />
+                    ))}
+                  </div>
                   <p className="text-[11px] text-muted-foreground mt-3 leading-relaxed">
                     Spare players pay nothing. They're a buffer in case a core player drops.
                   </p>
@@ -748,7 +866,7 @@ const FactRow = ({ icon: Icon, label, value, mono }: { icon: any; label: string;
   </div>
 );
 
-const SlotRow = ({ player, share }: { player: Player; share: number }) => {
+const SlotRow = ({ player, share, onClick }: { player: Player; share: number; onClick?: () => void }) => {
   const badge = {
     paid:     { label: "Paid",     cls: "bg-success/15 text-success" },
     reserved: { label: "Reserved", cls: "bg-primary/15 text-foreground" },
@@ -756,8 +874,13 @@ const SlotRow = ({ player, share }: { player: Player; share: number }) => {
     open:     { label: "Open",     cls: "bg-secondary text-muted-foreground" },
     unpaid:   { label: "Unpaid",   cls: "bg-warning/20 text-foreground" },
   }[player.state];
+  const El = onClick ? "button" : "div";
+  const btnProps = onClick ? { onClick, type: "button" as const } : {};
   return (
-    <li className="flex items-center gap-3 py-3">
+    <El
+      className={`flex items-center gap-3 py-3 ${onClick ? "cursor-pointer hover:bg-secondary/80 transition-colors" : ""}`}
+      {...btnProps}
+    >
       {player.avatar ? (
         <img src={player.avatar} alt={player.name} className="w-9 h-9 rounded-full object-cover" />
       ) : (
@@ -770,7 +893,7 @@ const SlotRow = ({ player, share }: { player: Player; share: number }) => {
       {share > 0 && player.state !== "spare" && player.state !== "open" && (
         <span className="text-[11px] font-mono font-semibold text-muted-foreground tabular-nums w-10 text-right">₵{share}</span>
       )}
-    </li>
+    </El>
   );
 };
 

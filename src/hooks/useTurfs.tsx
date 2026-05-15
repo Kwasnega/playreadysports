@@ -53,7 +53,6 @@ const fromTurf = (t: any): any => ({
 });
 
 export const useTurfs = (ownerEmail?: string) => {
-  const channelRef = useRef<string>("");
   const [turfs, setTurfs] = useState<Turf[]>([]);
 
   useEffect(() => {
@@ -66,12 +65,16 @@ export const useTurfs = (ownerEmail?: string) => {
     };
 
     load();
-    const channelName = "venues:" + (channelRef.current || (channelRef.current = crypto.randomUUID()));
-    const channel = supabase
-      .channel(channelName)
-      .on("postgres_changes", { event: "*", schema: "public", table: "venues" }, () => load())
-      .subscribe();
-    return () => { channel.unsubscribe(); supabase.removeChannel(channel); };
+    const channelName = "venues:all";
+    const channel = supabase.channel(channelName);
+    try {
+      channel
+        .on("postgres_changes", { event: "*", schema: "public", table: "venues" }, () => load())
+        .subscribe();
+    } catch {
+      /* ignore duplicate subscription on strict-mode remount */
+    }
+    return () => { supabase.removeChannel(channel); };
   }, [ownerEmail]);
 
   const addTurf = useCallback(async (t: Omit<Turf, "id" | "createdAt" | "status" | "surface"> & { status?: TurfStatus }) => {

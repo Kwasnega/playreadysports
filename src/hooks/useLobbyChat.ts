@@ -1,5 +1,18 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+
+const ANTI_POACH_PATTERNS = [
+  /\b\d{9,}\b/,                              // phone numbers (9+ digits)
+  /\+\d{1,3}\s?\d{6,}/,                      // international phone
+  /\b\w+@\w+\.\w{2,}\b/,                     // email addresses
+  /https?:\/\/[^\s]+/i,                       // URLs
+  /\b(whatsapp|telegram|signal|ig|insta|snapchat)\b/i, // platform keywords
+  /\b(wa\.me|t\.me|bit\.ly)\b/i,             // short links
+];
+
+function containsPoachingContent(text: string): boolean {
+  return ANTI_POACH_PATTERNS.some((pattern) => pattern.test(text));
+}
 
 export type ChatMessage = {
   id: string;
@@ -102,16 +115,24 @@ export function useLobbyChat(matchId: string | undefined) {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages.length]);
 
-  const sendMessage = async (content: string, userId: string) => {
+  const sendMessage = useCallback(async (content: string, userId: string) => {
     if (!matchId || !content.trim()) return;
+    const trimmed = content.trim().slice(0, 500);
+
+    if (containsPoachingContent(trimmed)) {
+      console.warn("[useLobbyChat] Message blocked by anti-poaching filter");
+      return { blocked: true };
+    }
+
     const { error } = await supabase.from("messages").insert({
       match_id: matchId,
       sender_id: userId,
-      content: content.trim().slice(0, 500),
+      content: trimmed,
       message_type: "text" as any,
     });
     if (error) console.error("sendMessage error:", error);
-  };
+    return { blocked: false };
+  }, [matchId]);
 
   return { messages, loading, sendMessage, scrollRef };
 }

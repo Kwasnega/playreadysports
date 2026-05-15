@@ -78,21 +78,38 @@ export function useFriends() {
 
   useEffect(() => {
     if (!user) return;
-    const channel = supabase
-      .channel("friendships:" + user.id)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "friendships", filter: `requester_id=eq.${user.id}` },
-        () => load()
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "friendships", filter: `recipient_id=eq.${user.id}` },
-        () => load()
-      )
-      .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    const chan1 = supabase.channel(`friendships_req:${user.id}`);
+    const chan2 = supabase.channel(`friendships_rec:${user.id}`);
+
+    try {
+      chan1
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "friendships", filter: `requester_id=eq.${user.id}` },
+          () => load()
+        )
+        .subscribe();
+    } catch {
+      /* ignore duplicate subscription on strict-mode remount */
+    }
+
+    try {
+      chan2
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "friendships", filter: `recipient_id=eq.${user.id}` },
+          () => load()
+        )
+        .subscribe();
+    } catch {
+      /* ignore duplicate subscription on strict-mode remount */
+    }
+
+    return () => {
+      supabase.removeChannel(chan1);
+      supabase.removeChannel(chan2);
+    };
   }, [user, load]);
 
   const sendRequest = async (recipientId: string) => {

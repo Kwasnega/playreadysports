@@ -13,6 +13,7 @@ export type LobbyParticipant = {
   payment_status: string;
   status: string;
   joined_at: string;
+  attendance_scanned?: boolean;
 };
 
 export type LobbyMatch = {
@@ -98,7 +99,7 @@ export function useMatchLobby(joinCode: string) {
       const { data, error: pErr } = await supabase
         .from("match_participants")
         .select(`
-          id, user_id, slot_type, team, payment_status, status, joined_at,
+          id, user_id, slot_type, team, payment_status, status, joined_at, attendance_scanned,
           profile:profiles(username, full_name, avatar_url)
         `)
         .eq("match_id", mid)
@@ -122,6 +123,7 @@ export function useMatchLobby(joinCode: string) {
             payment_status: row.payment_status,
             status: row.status,
             joined_at: row.joined_at,
+            attendance_scanned: !!row.attendance_scanned,
           } as LobbyParticipant;
         });
         setParticipants(normalized);
@@ -154,7 +156,7 @@ export function useMatchLobby(joinCode: string) {
           supabase
             .from("match_participants")
             .select(`
-              id, user_id, slot_type, team, payment_status, status, joined_at,
+              id, user_id, slot_type, team, payment_status, status, joined_at, attendance_scanned,
               profile:profiles(username, full_name, avatar_url)
             `)
             .eq("match_id", matchId)
@@ -173,6 +175,7 @@ export function useMatchLobby(joinCode: string) {
                   payment_status: row.payment_status,
                   status: row.status,
                   joined_at: row.joined_at,
+                  attendance_scanned: !!row.attendance_scanned,
                 } as LobbyParticipant;
               });
               setParticipants(normalized);

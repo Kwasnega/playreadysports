@@ -39,7 +39,7 @@ export function useFriendsPlaying() {
       const friendIds = new Set<string>();
       (friendships ?? []).forEach((f: any) => {
         const fid = f.requester_id === user.id ? f.recipient_id : f.requester_id;
-        friendIds.add(fid);
+        if (fid) friendIds.add(fid);
       });
 
       if (friendIds.size === 0) { setMatches([]); setLoading(false); return; }

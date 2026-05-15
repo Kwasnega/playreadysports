@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
     // Load match
     const { data: match, error: matchErr } = await supabase
       .from("matches")
-      .select("id, join_code, match_date, entry_fee, organizer_id, status")
+      .select("id, join_code, match_date, entry_fee, organizer_id, status, core_paid_count")
       .eq("id", matchId)
       .single();
 
@@ -74,70 +74,49 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Create a service_role client for secure backend operations like wallet refund
+    const supabaseService = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+
     // Check time remaining
     const matchTime = new Date(match.match_date!).getTime();
     const now = Date.now();
     const hoursUntil = (matchTime - now) / (1000 * 60 * 60);
-    const eligibleForRefund = hoursUntil > 2 && participant.payment_status === "paid" && participant.payment_reference;
+    // Remove the requirement for payment_reference since wallet payments don't use it
+    const eligibleForRefund = hoursUntil > 2 && participant.payment_status === "paid";
 
     let refunded = false;
     let refundAmount = 0;
-    let paystackRefunded = false;
 
     if (eligibleForRefund) {
       refundAmount = match.entry_fee ?? 0;
 
-      // Call Paystack refund first — only mark DB on success
-      if (PAYSTACK_SECRET && participant.payment_reference) {
-        try {
-          const refundRes = await fetch("https://api.paystack.co/refund", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${PAYSTACK_SECRET}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              transaction: participant.payment_reference,
-              reason: "Player left match",
-            }),
-          });
-          const refundData = await refundRes.json();
-          if (refundData.status) {
-            paystackRefunded = true;
-          } else {
-            console.error("Paystack refund failed:", participant.payment_reference, refundData.message);
-          }
-        } catch (e) {
-          console.error("Paystack refund network error:", e);
-        }
-      }
+      // Process wallet refund securely via RPC
+      const { error: refundErr } = await supabaseService.rpc("process_wallet_transaction", {
+        p_user_id: user.id,
+        p_amount: refundAmount,
+        p_type: 'refund',
+        p_reference: `refund_${matchId}_${Date.now()}`
+      });
 
-      // Only update DB if Paystack confirmed the refund
-      if (paystackRefunded) {
-        // Mark original entry_fee transaction as refunded
-        await supabase
-          .from("transactions")
-          .update({ status: "refunded" as any })
-          .eq("payment_reference", participant.payment_reference)
-          .eq("type", "entry_fee");
-
-        await supabase.from("transactions").insert({
-          match_id: matchId,
-          user_id: user.id,
-          amount: refundAmount,
-          type: "refund" as any,
-          status: "completed" as any,
-          payment_reference: `refund-${participant.payment_reference}`,
-        });
+      if (refundErr) {
+        console.error("Wallet refund failed:", refundErr);
+      } else {
         refunded = true;
       }
     }
 
     // Update participant status
-    await supabase
+    await supabaseService
       .from("match_participants")
       .update({ status: "left" as any, payment_status: refunded ? "refunded" as any : participant.payment_status })
       .eq("id", participant.id);
+
+    // Free up the core slot if they were a paid core player
+    if (participant.slot_type === "core" && participant.payment_status === "paid") {
+      await supabaseService.from("matches").update({
+        core_paid_count: Math.max(0, (match.core_paid_count ?? 1) - 1)
+      }).eq("id", matchId);
+    }
 
     // Notify organizer
     const leaverName = user.user_metadata?.full_name || user.email?.split("@")[0] || "A player";

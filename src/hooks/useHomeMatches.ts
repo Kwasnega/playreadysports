@@ -98,7 +98,7 @@ export function useHomeMatches() {
     load();
 
     // Realtime subscription for matches
-    const channelName = "home-matches:" + crypto.randomUUID();
+    const channelName = "home-matches:" + Math.random().toString(36).slice(2) + Date.now().toString(36);
     const channel = supabase
       .channel(channelName)
       .on(

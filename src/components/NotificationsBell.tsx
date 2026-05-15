@@ -61,7 +61,7 @@ export const NotificationsBell = () => {
       return;
     }
     // Try to extract join code from message for match notifications
-    if (n.type.startsWith("match_")) {
+    if (n.type && n.type.startsWith("match_")) {
       const codeMatch = n.message.match(/([A-Z]{3}-\d{3})/);
       if (codeMatch) {
         nav(`/lobby/${codeMatch[1]}`);

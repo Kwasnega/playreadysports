@@ -60,6 +60,8 @@ Deno.serve(async (req) => {
       durationMinutes,
       entryFee,
       notes,
+      teamColorA,
+      teamColorB,
     } = body;
 
     if (!venueId || !matchType || !matchMode || !format || !matchDate) {
@@ -167,6 +169,10 @@ Deno.serve(async (req) => {
     const playersPerSide = parseInt(formatStr.split("v")[0] || "6", 10);
     const maxCore = playersPerSide * 2;
 
+    const qrSecret = [...crypto.getRandomValues(new Uint8Array(24))]
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+
     // ------------------------------------------------------------------
     // 7. Insert match
     // ------------------------------------------------------------------
@@ -188,6 +194,9 @@ Deno.serve(async (req) => {
         status: "upcoming" as any,
         escrow_status: "none" as any,
         core_paid_count: 0,
+        qr_code_secret: qrSecret,
+        team_color_a: teamColorA ?? "Red",
+        team_color_b: teamColorB ?? "Blue",
       })
       .select("*")
       .single();
@@ -209,7 +218,7 @@ Deno.serve(async (req) => {
         match_id: match.id,
         user_id: user.id,
         slot_type: "core" as any,
-        team: "reds" as any,
+        team: (teamColorA ?? "reds").toLowerCase() as any,
         status: "active" as any,
         payment_status: (entryFee === 0 ? "paid" : "unpaid") as any,
       });

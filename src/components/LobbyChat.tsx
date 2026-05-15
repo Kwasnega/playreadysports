@@ -4,6 +4,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLobbyChat } from "@/hooks/useLobbyChat";
 import { toast } from "sonner";
 
+const TEAM_HEX: Record<string, string> = {
+  red: "#dc2626", blue: "#2563eb", black: "#1c1917", white: "#a1a1aa",
+  green: "#16a34a", yellow: "#eab308", orange: "#ea580c", purple: "#9333ea",
+  navy: "#1e3a5f", gold: "#ca8a04",
+};
+
 // PRS palette — cyan, ink, peach, cream, mint-ish, lilac. All HSL via tokens.
 const NAME_PALETTE = [
   "text-primary",                      // cyan
@@ -20,7 +26,14 @@ const colorFor = (id: string) => {
   return NAME_PALETTE[h % NAME_PALETTE.length];
 };
 
-export const LobbyChat = ({ matchCode, matchId, isOrganizer = true }: { matchCode: string; matchId?: string; isOrganizer?: boolean }) => {
+export const LobbyChat = ({ matchCode, matchId, isOrganizer = true, teamColorA, teamColorB, playerTeams }: {
+  matchCode: string;
+  matchId?: string;
+  isOrganizer?: boolean;
+  teamColorA?: string;
+  teamColorB?: string;
+  playerTeams?: Record<string, string>;
+}) => {
   const { user } = useAuth();
   const { messages, sendMessage, scrollRef } = useLobbyChat(matchId);
   const [text, setText] = useState("");
@@ -33,12 +46,15 @@ export const LobbyChat = ({ matchCode, matchId, isOrganizer = true }: { matchCod
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, scrollRef]);
 
-  const send = (e: React.FormEvent) => {
+  const send = async (e: React.FormEvent) => {
     e.preventDefault();
     const content = text.trim();
     if (!content || !user) return;
     setText("");
-    sendMessage(content, user.id);
+    const result = await sendMessage(content, user.id);
+    if (result?.blocked) {
+      toast.error("Message blocked: sharing contact info is not allowed in match chat.");
+    }
   };
 
   const pinned = messages.find(m => m.id === pinnedId) ?? null;
@@ -104,7 +120,9 @@ export const LobbyChat = ({ matchCode, matchId, isOrganizer = true }: { matchCod
           >
             {messages.map(m => {
               const mine = m.sender_id === meId;
-              const nameColor = colorFor(m.sender_id);
+              const playerTeam = playerTeams?.[m.sender_id];
+              const teamHex = playerTeam ? TEAM_HEX[playerTeam.toLowerCase()] : undefined;
+              const nameColor = teamHex ? undefined : colorFor(m.sender_id);
               return (
                 <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                   <div
@@ -121,7 +139,10 @@ export const LobbyChat = ({ matchCode, matchId, isOrganizer = true }: { matchCod
                     } ${m.id === pinnedId ? "ring-1 ring-primary" : ""}`}
                   >
                     {!mine && (
-                      <p className={`text-[11px] font-bold mb-0.5 ${nameColor}`}>
+                      <p
+                        className={`text-[11px] font-bold mb-0.5 ${nameColor ?? ""}`}
+                        style={teamHex ? { color: teamHex } : undefined}
+                      >
                         {m.sender_name}
                       </p>
                     )}

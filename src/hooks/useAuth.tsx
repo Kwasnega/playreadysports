@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState, ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 // App-facing user shape — kept stable so existing components keep working.
@@ -32,6 +32,10 @@ const friendly = (err: any): string => {
 type AuthCtx = {
   user: AppUser | null;
   loading: boolean;
+  /** From `profiles` — loaded once per session for verified users. */
+  profileRole: string | null;
+  isAdmin: boolean;
+  isTurfOwner: boolean;
   signUpWithEmail: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>;
   signInWithEmail: (email: string, password: string) => Promise<{ error: string | null }>;
   signInWithGoogle: () => Promise<{ error: string | null }>;
@@ -54,6 +58,8 @@ const Ctx = createContext<AuthCtx>(null as any);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [sbUser, setSbUser] = useState<any>(null);
+  const [profileRole, setProfileRole] = useState<string | null>(null);
+  const [profileIsAdminFlag, setProfileIsAdminFlag] = useState(false);
   const [loading, setLoading] = useState(true);
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
@@ -88,6 +94,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Load profile role / admin flag for route guards and dashboards.
+  useEffect(() => {
+    if (!sbUser?.id || !isVerified(sbUser)) {
+      setProfileRole(null);
+      setProfileIsAdminFlag(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("role, is_admin")
+        .eq("id", sbUser.id)
+        .maybeSingle();
+      if (cancelled) return;
+      const r = (data?.role as string | undefined) ?? null;
+      setProfileRole(r);
+      setProfileIsAdminFlag(!!data?.is_admin);
+    })();
+    return () => { cancelled = true; };
+  }, [sbUser]);
+
   // Poll for verification while the modal is showing.
   useEffect(() => {
     if (!pendingVerifyEmail) return;
@@ -120,14 +148,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setAuthOpen(false);
     pendingActionRef.current = null;
   }, []);
-  const requireAuth = useCallback((action: () => void, mode?: "signin" | "signup") => {
-    if (user) {
+  const requireAuth = (action: () => void, mode?: "signin" | "signup") => {
+    if (exposed) {
       action();
     } else {
       pendingActionRef.current = action;
       openAuth(mode ?? "signin");
     }
-  }, [user, openAuth]);
+  };
 
   const signUpWithEmail = async (email: string, password: string, fullName: string) => {
     try {
@@ -262,16 +290,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signOut = async () => {
     await supabase.auth.signOut();
     setPendingVerifyEmail(null);
+    setProfileRole(null);
+    setProfileIsAdminFlag(false);
   };
 
   // Only expose the user to the rest of the app once verified (or OAuth).
-  const exposed: AppUser | null = sbUser && isVerified(sbUser) ? toAppUser(sbUser) : null;
+  const exposed: AppUser | null = useMemo(() => {
+    return sbUser && isVerified(sbUser) ? toAppUser(sbUser) : null;
+  }, [sbUser]);
+
+  const isAdmin = useMemo(
+    () =>
+      profileIsAdminFlag ||
+      profileRole === "admin" ||
+      profileRole === "super_admin",
+    [profileIsAdminFlag, profileRole],
+  );
+
+  const isTurfOwner = profileRole === "turf_owner";
 
   return (
     <Ctx.Provider
       value={{
         user: exposed,
         loading,
+        profileRole,
+        isAdmin,
+        isTurfOwner,
         signUpWithEmail,
         signInWithEmail,
         signInWithGoogle,

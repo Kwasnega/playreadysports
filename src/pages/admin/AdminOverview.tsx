@@ -91,17 +91,20 @@ export default function AdminOverview() {
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const [{ count: players }, { count: matches }, { data: txns }, { data: chart }, { data: recent }, { data: setting }] = await Promise.all([
+      const [{ count: players }, { count: matches }, { data: txns }, { data: walletTxns }, { data: chart }, { data: recent }, { data: setting }] = await Promise.all([
         supabase.from("profiles").select("*", { count: "exact", head: true }),
         supabase.from("matches").select("*", { count: "exact", head: true }).eq("status", "upcoming"),
         supabase.from("transactions").select("amount").eq("type", "entry_fee").eq("status", "completed"),
-        supabase.rpc("matches_per_day", { days: 14 }),
+        (supabase as any).from("wallet_transactions").select("amount").eq("type", "spend").eq("status", "completed"),
+        (supabase as any).rpc("matches_per_day", { days: 14 }),
         supabase.from("transactions").select("id, amount, type, status, created_at, user:profiles(full_name, username), match:matches(join_code)").order("created_at", { ascending: false }).limit(10),
-        supabase.from("platform_settings").select("value").eq("key", "commission_rate").single(),
+        (supabase as any).from("platform_settings").select("value").eq("key", "commission_rate").single(),
       ]);
       const rate = parseFloat(setting?.value ?? "0.05");
       setCommissionRate(isNaN(rate) ? 0.05 : rate);
-      const revenue = (txns ?? []).reduce((s, t) => s + (Number(t.amount) || 0), 0);
+      const gatewayRevenue = (txns ?? []).reduce((s, t) => s + (Number(t.amount) || 0), 0);
+      const walletRevenue = (walletTxns ?? []).reduce((s, t) => s + (Math.abs(Number(t.amount)) || 0), 0);
+      const revenue = gatewayRevenue + walletRevenue;
       setMetrics({ players: players ?? 0, matches: matches ?? 0, revenue, fees: Math.round(revenue * rate * 100) / 100 });
       setChartData((chart ?? []).map((d: any) => ({ day: d.day.slice(5), count: Number(d.count) })));
       setRecentTxns(recent ?? []);
@@ -111,7 +114,7 @@ export default function AdminOverview() {
 
   const saveCommissionRate = async () => {
     setSavingRate(true);
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("platform_settings")
       .update({ value: commissionRate.toString() })
       .eq("key", "commission_rate");

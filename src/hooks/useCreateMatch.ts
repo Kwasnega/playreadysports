@@ -12,6 +12,8 @@ export type CreateMatchPayload = {
   durationMinutes: number;
   entryFee: number;
   notes?: string;
+  teamColorA?: string;
+  teamColorB?: string;
 };
 
 export function useCreateMatch() {

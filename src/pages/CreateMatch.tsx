@@ -1,16 +1,17 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  ArrowLeft, ArrowRight, Lock, Globe2, Swords, Users, Check, Copy, Share2,
-  ChevronRight, Plus, Minus, MapPin, Star, Search, Wallet, MessageSquare,
+  ArrowLeft, ArrowRight, Lock, Globe2, Swords, Users, Check, Share2,
+  ChevronRight, Plus, Minus, MapPin, Star, Search, Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useVenues } from "@/hooks/useVenues";
 import { useUserLocation } from "@/hooks/useUserLocation";
 import { useCreateMatch } from "@/hooks/useCreateMatch";
 import { useAuth } from "@/hooks/useAuth";
-import { getDistanceKm, getFormattedTime } from "@/lib/matchHelpers";
+import { getDistanceKm, getFormattedTime, extractFormatNumber } from "@/lib/matchHelpers";
 import { format } from "date-fns";
+import { ShareMatchCard, ShareMatchData } from "@/components/matches/ShareMatchCard";
 
 /* Tier-3 Create flow — wired to Supabase via Edge Function ----------------
    1. Setup   — type + mode + format
@@ -24,6 +25,14 @@ type Format = "5v5" | "6v6" | "7v7" | "8v8" | "9v9" | "10v10" | "11v11";
 
 const TWO_TEAM_FORMATS: Format[] = ["5v5", "6v6", "7v7", "8v8", "9v9", "10v10", "11v11"];
 const GALA_FORMATS: Format[] = ["5v5", "7v7"];
+
+const TEAM_COLOR_PRESETS: { a: string; b: string; labelA: string; labelB: string; hexA: string; hexB: string }[] = [
+  { a: "Red", b: "Blue", labelA: "Red", labelB: "Blue", hexA: "#dc2626", hexB: "#2563eb" },
+  { a: "Black", b: "White", labelA: "Black", labelB: "White", hexA: "#1c1917", hexB: "#f5f5f4" },
+  { a: "Green", b: "Yellow", labelA: "Green", labelB: "Yellow", hexA: "#16a34a", hexB: "#eab308" },
+  { a: "Orange", b: "Purple", labelA: "Orange", labelB: "Purple", hexA: "#ea580c", hexB: "#9333ea" },
+  { a: "Navy", b: "Gold", labelA: "Navy", labelB: "Gold", hexA: "#1e3a5f", hexB: "#ca8a04" },
+];
 
 const STEP_LABELS = ["Setup", "Venue", "Details"] as const;
 
@@ -42,6 +51,7 @@ const CreateMatch = () => {
   const [step, setStep] = useState(0);
   const [created, setCreated] = useState(false);
   const [createdCode, setCreatedCode] = useState("");
+  const [shareOpen, setShareOpen] = useState(false);
 
   // Setup
   const [type, setType] = useState<MatchType>("public");
@@ -61,6 +71,7 @@ const CreateMatch = () => {
   const [entryFee, setEntryFee] = useState<number>(0);
   const [notes, setNotes] = useState("");
   const [teamName, setTeamName] = useState("");
+  const [teamColorIdx, setTeamColorIdx] = useState(0);
 
   const selectedVenue = venues.find((v) => v.id === venueId);
 
@@ -77,8 +88,16 @@ const CreateMatch = () => {
           (v.area ?? "").toLowerCase().includes(q)
       );
     }
+    // Sort by distance when user location is available
+    if (location?.lat && location?.lng) {
+      list.sort((a, b) => {
+        const da = a.lat && a.lng ? getDistanceKm(location.lat, location.lng, a.lat, a.lng) : Infinity;
+        const db = b.lat && b.lng ? getDistanceKm(location.lat, location.lng, b.lat, b.lng) : Infinity;
+        return da - db;
+      });
+    }
     return list;
-  }, [venues, venueSearch]);
+  }, [venues, venueSearch, location]);
 
   const canNext = () => {
     if (step === 0) return !!type && !!mode && !!matchFormat;
@@ -112,6 +131,7 @@ const CreateMatch = () => {
     dateObj.setHours(matchHour, matchMinute, 0, 0);
     const matchDateIso = dateObj.toISOString();
 
+    const colorPair = TEAM_COLOR_PRESETS[teamColorIdx];
     const match = await createMatch({
       venueId,
       matchType: type === "public" ? "public" : "private",
@@ -121,6 +141,8 @@ const CreateMatch = () => {
       durationMinutes: duration,
       entryFee: entryFeeEnabled ? entryFee : 0,
       notes: notes || undefined,
+      teamColorA: type === "public" && mode === "two-team" ? colorPair.a : undefined,
+      teamColorB: type === "public" && mode === "two-team" ? colorPair.b : undefined,
     });
 
     if (match?.join_code) {
@@ -129,23 +151,6 @@ const CreateMatch = () => {
     }
   };
 
-  const copyCode = () => {
-    navigator.clipboard.writeText(createdCode);
-    toast.success(`Code ${createdCode} copied`);
-  };
-
-  const shareWhatsApp = () => {
-    const text = encodeURIComponent(
-      `⚽ Join my football match!\nCode: ${createdCode}\nPlayReadySports: ${window.location.origin}/lobby/${createdCode}`
-    );
-    window.open(`https://wa.me/?text=${text}`, "_blank");
-  };
-
-  const shareNative = () => {
-    const message = `Join my match on PlayReady\nCode: ${createdCode}\n${selectedVenue?.name ?? ""}\n${matchFormat}-a-side · ${mode === "gala" ? "Gala" : "Two-team"}`;
-    if (navigator.share) navigator.share({ text: message }).catch(() => {});
-    else { navigator.clipboard.writeText(message); toast.success("Message copied"); }
-  };
 
   return (
     <main className="min-h-screen bg-background pb-28">
@@ -182,6 +187,28 @@ const CreateMatch = () => {
                 }}
               />
             </Group>
+
+            {type === "public" && mode === "two-team" && (
+              <Group title="Team colours" hint="Preset palette for lobby chat">
+                <div className="flex flex-wrap gap-2">
+                  {TEAM_COLOR_PRESETS.map((p, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setTeamColorIdx(i)}
+                      className={`flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold border transition-all ${
+                        teamColorIdx === i
+                          ? "border-foreground bg-secondary ring-2 ring-foreground ring-offset-2 ring-offset-background"
+                          : "border-border bg-secondary/50 hover:bg-secondary"
+                      }`}
+                    >
+                      <span className="w-3.5 h-3.5 rounded-full border border-border/40" style={{ background: p.hexA }} />
+                      <span className="w-3.5 h-3.5 rounded-full border border-border/40" style={{ background: p.hexB }} />
+                      <span>{p.labelA}/{p.labelB}</span>
+                    </button>
+                  ))}
+                </div>
+              </Group>
+            )}
 
             <Group title="Format" hint={mode === "gala" ? "Gala runs 5v5 or 7v7 only." : "Pick a side count."}>
               <div className="flex flex-wrap gap-2">
@@ -263,6 +290,34 @@ const CreateMatch = () => {
                         </div>
                         {active ? <Check className="w-5 h-5 shrink-0" /> : <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />}
                       </button>
+
+                      {/* Venue image expansion */}
+                      {active && v.image_urls && v.image_urls.length > 0 && (
+                        <div className="px-3 pb-4 -mx-3">
+                          <div className="flex gap-2 overflow-x-auto snap-x snap-mandatory scrollbar-hide">
+                            {v.image_urls.map((url, i) => (
+                              <img
+                                key={i}
+                                src={url}
+                                alt={`${v.name} ${i + 1}`}
+                                className="h-32 w-auto rounded-xl object-cover border border-border/60 snap-start shrink-0"
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {active && v.lat && v.lng && (
+                        <div className="px-3 pb-4 -mx-3">
+                          <a
+                            href={`https://www.google.com/maps/search/?api=1&query=${v.lat},${v.lng}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+                          >
+                            <MapPin className="w-3.5 h-3.5" /> Open in Maps
+                          </a>
+                        </div>
+                      )}
                     </li>
                   );
                 })}
@@ -285,8 +340,28 @@ const CreateMatch = () => {
                 value={matchDate}
                 min={format(new Date(), "yyyy-MM-dd")}
                 onChange={(e) => setMatchDate(e.target.value)}
-                className="w-full bg-secondary rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground"
+                className="w-full bg-secondary rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground mb-3"
               />
+              <div className="flex gap-2">
+                {[
+                  { label: "Today", get: () => format(new Date(), "yyyy-MM-dd") },
+                  { label: "Tomorrow", get: () => format(new Date(Date.now() + 86400000), "yyyy-MM-dd") },
+                  { label: "+2 days", get: () => format(new Date(Date.now() + 2 * 86400000), "yyyy-MM-dd") },
+                  { label: "+7 days", get: () => format(new Date(Date.now() + 7 * 86400000), "yyyy-MM-dd") },
+                ].map((btn) => (
+                  <button
+                    key={btn.label}
+                    onClick={() => setMatchDate(btn.get())}
+                    className={`flex-1 rounded-xl py-2 text-[11px] font-bold transition-colors ${
+                      matchDate === btn.get()
+                        ? "bg-foreground text-background"
+                        : "bg-secondary text-muted-foreground hover:bg-secondary/80"
+                    }`}
+                  >
+                    {btn.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Time */}
@@ -368,6 +443,16 @@ const CreateMatch = () => {
                   <p className="text-[11px] text-muted-foreground leading-snug">
                     Fees held securely until match day. Players pay to confirm their spot.
                   </p>
+                  {selectedVenue && (selectedVenue as any).surge_multiplier > 1 && (selectedVenue as any).surge_peak_start_hour != null && matchHour >= (selectedVenue as any).surge_peak_start_hour && matchHour < ((selectedVenue as any).surge_peak_end_hour ?? 23) && (
+                    <p className="text-[11px] text-amber-600 font-semibold mt-1.5">
+                      ⚡ Surge pricing active ({(selectedVenue as any).surge_multiplier}×) for this time slot at {selectedVenue.name}
+                    </p>
+                  )}
+                  {selectedVenue && (selectedVenue as any).early_bird_discount_pct > 0 && (
+                    <p className="text-[11px] text-emerald-600 font-semibold mt-1">
+                      🌅 Early bird discount available ({(selectedVenue as any).early_bird_discount_pct}% off if booked {(selectedVenue as any).early_bird_hours_before}h+ ahead)
+                    </p>
+                  )}
                 </div>
               )}
             </div>
@@ -432,24 +517,42 @@ const CreateMatch = () => {
                 <p className="text-[10px] uppercase tracking-widest opacity-70 font-semibold">Match code</p>
                 <p className="font-display font-bold text-3xl tracking-tight mt-1">{createdCode}</p>
               </div>
-              <div className="grid grid-cols-3 gap-2">
-                <button onClick={copyCode} className="bg-secondary rounded-full py-3 text-sm font-semibold inline-flex items-center justify-center gap-1.5">
-                  <Copy className="w-4 h-4" /> Copy
-                </button>
-                <button onClick={shareNative} className="bg-foreground text-background rounded-full py-3 text-sm font-semibold inline-flex items-center justify-center gap-1.5">
-                  <Share2 className="w-4 h-4" /> Share
-                </button>
-                <button onClick={shareWhatsApp} className="bg-emerald-500 text-white rounded-full py-3 text-sm font-semibold inline-flex items-center justify-center gap-1.5">
-                  <MessageSquare className="w-4 h-4" /> WhatsApp
-                </button>
-              </div>
+              <button
+                onClick={() => setShareOpen(true)}
+                className="w-full bg-foreground text-background rounded-full py-3.5 text-sm font-semibold flex items-center justify-center gap-2 mb-3"
+              >
+                <Share2 className="w-4 h-4" /> Share match
+              </button>
+              <button
+                onClick={() => navigate(`/lobby/${createdCode}`)}
+                className="w-full bg-secondary rounded-full py-3.5 text-sm font-semibold flex items-center justify-center gap-2"
+              >
+                Open lobby <ChevronRight className="w-4 h-4" />
+              </button>
             </div>
-            <button
-              onClick={() => navigate(`/lobby/${createdCode}`)}
-              className="w-full bg-foreground text-background rounded-full py-3.5 text-sm font-semibold flex items-center justify-center gap-2"
-            >
-              Open lobby <ChevronRight className="w-4 h-4" />
-            </button>
+
+            {(() => {
+              const dateObj = new Date(matchDate);
+              dateObj.setHours(matchHour, matchMinute, 0, 0);
+              const perSide = parseInt(extractFormatNumber(matchFormat ?? "5v5"));
+              const shareData: ShareMatchData = {
+                joinCode: createdCode,
+                venueName: selectedVenue?.name ?? "",
+                venueCity: selectedVenue?.city ?? "",
+                matchDate: format(dateObj, "MMM d, h:mm a"),
+                format: matchFormat ?? "",
+                mode: mode === "gala" ? "gala" : "two-team",
+                entryFee: entryFeeEnabled ? entryFee : 0,
+                spotsLeft: mode === "gala" ? perSide * 8 : perSide * 2,
+              };
+              return (
+                <ShareMatchCard
+                  open={shareOpen}
+                  onClose={() => setShareOpen(false)}
+                  data={shareData}
+                />
+              );
+            })()}
           </div>
         )}
       </div>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, MapPin, ToggleLeft, ToggleRight, Upload, ImageIcon, X, Trash2 } from "lucide-react";
+import { Plus, MapPin, ToggleLeft, ToggleRight, Upload, ImageIcon, X, Trash2, Check, XCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 interface Venue {
@@ -15,6 +15,8 @@ interface Venue {
   lng: number | null;
   is_active: boolean;
   image_urls: string[] | null;
+  status: string | null;
+  owner_email: string | null;
 }
 
 function logAudit(adminId: string, action: string, targetType: string, targetId: string, details: any) {
@@ -29,6 +31,37 @@ export default function AdminVenues() {
   const [form, setForm] = useState({ name: "", city: "", area: "", surface: "", address: "" });
   const [uploading, setUploading] = useState(false);
   const [previewImages, setPreviewImages] = useState<string[]>([]);
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [actionBusy, setActionBusy] = useState<string | null>(null);
+
+  const pendingVenues = venues.filter((v) => v.status === "pending");
+  const activeVenues = venues.filter((v) => v.status !== "pending");
+
+  const venueAction = async (venueId: string, action: "approve" | "reject", reason?: string) => {
+    setActionBusy(venueId);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-venue-action`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session?.access_token ?? ""}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ venueId, action, reason }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || "Action failed");
+      toast.success(action === "approve" ? "Venue approved" : "Venue rejected");
+      setRejectingId(null);
+      setRejectReason("");
+      load();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Action failed");
+    } finally {
+      setActionBusy(null);
+    }
+  };
 
   const load = async () => {
     const { data } = await supabase.from("venues").select("*").order("name");
@@ -49,12 +82,25 @@ export default function AdminVenues() {
     if (!user || files.length === 0) return;
     setUploading(true);
     const uploadedUrls: string[] = [];
+    const failed: string[] = [];
     for (const file of Array.from(files)) {
-      const ext = file.name.split('.').pop();
+      if (!file.type.startsWith('image/')) {
+        failed.push(`${file.name} is not an image`);
+        continue;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        failed.push(`${file.name} is too large (max 10MB)`);
+        continue;
+      }
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
       const path = `venues/${venueId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error } = await supabase.storage.from('venue-images').upload(path, file, { upsert: false });
+      const { error } = await supabase.storage.from('venue-images').upload(path, file, {
+        upsert: false,
+        contentType: file.type,
+        cacheControl: '3600',
+      });
       if (error) {
-        console.error('Upload error:', error.message);
+        failed.push(`${file.name}: ${error.message}`);
         continue;
       }
       const { data } = supabase.storage.from('venue-images').getPublicUrl(path);
@@ -62,6 +108,9 @@ export default function AdminVenues() {
     }
     setUploading(false);
 
+    if (failed.length > 0) {
+      toast.error(failed.join('\n'));
+    }
     if (uploadedUrls.length > 0) {
       const current = venues.find(v => v.id === venueId)?.image_urls ?? [];
       const { error } = await supabase.from("venues").update({
@@ -93,6 +142,7 @@ export default function AdminVenues() {
       surface: form.surface || null,
       address: form.address || null,
       is_active: true,
+      status: "verified",
       image_urls: previewImages,
     }).select().single();
     if (error) { toast.error(error.message); return; }
@@ -109,12 +159,70 @@ export default function AdminVenues() {
       <div className="flex items-end justify-between">
         <div>
           <h1 className="text-3xl font-display font-bold text-white tracking-tight">Venues</h1>
-          <p className="text-sm text-slate-400 mt-1">Manage pitches and venues on the platform</p>
+          <p className="text-sm text-slate-400 mt-1">Manage pitches, pending submissions, and verification</p>
         </div>
         <button onClick={() => setModalOpen(true)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-slate-300 text-xs font-semibold hover:bg-white/[0.08] hover:border-white/15 transition-all">
           <Plus className="w-3.5 h-3.5" /> Add venue
         </button>
       </div>
+
+      {pendingVenues.length > 0 && (
+        <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-5 space-y-4">
+          <h2 className="text-sm font-semibold text-amber-300">Pending venue submissions ({pendingVenues.length})</h2>
+          <ul className="space-y-3">
+            {pendingVenues.map((v) => (
+              <li key={v.id} className="flex flex-wrap items-center gap-3 justify-between bg-white/[0.03] rounded-xl p-4 border border-white/[0.06]">
+                <div className="min-w-0">
+                  <p className="text-slate-200 font-medium">{v.name}</p>
+                  <p className="text-xs text-slate-500">{v.city} · {v.owner_email ?? "no owner email"}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={actionBusy === v.id}
+                    onClick={() => venueAction(v.id, "approve")}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-500/15 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/25 disabled:opacity-50"
+                  >
+                    <Check className="w-3.5 h-3.5" /> Approve
+                  </button>
+                  <button
+                    type="button"
+                    disabled={actionBusy === v.id}
+                    onClick={() => setRejectingId(v.id)}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-rose-500/15 text-rose-400 text-xs font-semibold hover:bg-rose-500/25 disabled:opacity-50"
+                  >
+                    <XCircle className="w-3.5 h-3.5" /> Reject
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {rejectingId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setRejectingId(null)}>
+          <div className="bg-[#0F172A] border border-white/10 rounded-2xl p-6 w-full max-w-md space-y-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-white">Reject venue</h3>
+            <textarea
+              placeholder="Reason (optional)"
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              className="w-full min-h-[80px] rounded-xl bg-white/[0.04] border border-white/[0.08] p-3 text-sm text-white placeholder:text-slate-500 outline-none"
+            />
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setRejectingId(null)} className="flex-1 py-2 rounded-xl bg-white/[0.06] text-slate-300 text-sm font-semibold">Cancel</button>
+              <button
+                type="button"
+                onClick={() => venueAction(rejectingId, "reject", rejectReason)}
+                className="flex-1 py-2 rounded-xl bg-rose-600 text-white text-sm font-semibold"
+              >
+                Reject
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.06] rounded-2xl overflow-hidden hover:border-white/[0.12] transition-all">
         <div className="overflow-x-auto">
@@ -125,12 +233,13 @@ export default function AdminVenues() {
                 <th className="text-left px-5 py-3.5 text-xs font-medium text-slate-500 uppercase tracking-wider">City</th>
                 <th className="text-left px-5 py-3.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Surface</th>
                 <th className="text-left px-5 py-3.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Images</th>
+                <th className="text-left px-5 py-3.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
                 <th className="text-left px-5 py-3.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Active</th>
                 <th className="text-right px-5 py-3.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {venues.map((v) => (
+              {activeVenues.map((v) => (
                 <tr key={v.id} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-3">
@@ -166,6 +275,11 @@ export default function AdminVenues() {
                     </div>
                   </td>
                   <td className="px-5 py-3.5">
+                    <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-white/[0.06] text-slate-300 capitalize">
+                      {v.status ?? "—"}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3.5">
                     <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${v.is_active ? "bg-emerald-500/10 text-emerald-400" : "bg-slate-500/10 text-slate-400"}`}>
                       {v.is_active ? "Active" : "Inactive"}
                     </span>
@@ -180,7 +294,7 @@ export default function AdminVenues() {
                   </td>
                 </tr>
               ))}
-              {venues.length === 0 && <tr><td colSpan={6} className="px-5 py-10 text-center text-slate-500 text-sm">No venues</td></tr>}
+              {activeVenues.length === 0 && <tr><td colSpan={7} className="px-5 py-10 text-center text-slate-500 text-sm">No verified venues</td></tr>}
             </tbody>
           </table>
         </div>
@@ -228,16 +342,32 @@ export default function AdminVenues() {
                       if (!e.target.files) return;
                       setUploading(true);
                       const urls: string[] = [];
+                      const failed: string[] = [];
                       for (const file of Array.from(e.target.files)) {
-                        const ext = file.name.split('.').pop();
-                        const path = `venues/temp/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-                        const { error } = await supabase.storage.from('venue-images').upload(path, file, { upsert: false });
-                        if (!error) {
-                          const { data } = supabase.storage.from('venue-images').getPublicUrl(path);
-                          if (data?.publicUrl) urls.push(data.publicUrl);
+                        if (!file.type.startsWith('image/')) {
+                          failed.push(`${file.name} is not an image`);
+                          continue;
                         }
+                        if (file.size > 10 * 1024 * 1024) {
+                          failed.push(`${file.name} is too large (max 10MB)`);
+                          continue;
+                        }
+                        const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+                        const path = `venues/temp/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+                        const { error } = await supabase.storage.from('venue-images').upload(path, file, {
+                          upsert: false,
+                          contentType: file.type,
+                          cacheControl: '3600',
+                        });
+                        if (error) {
+                          failed.push(`${file.name}: ${error.message}`);
+                          continue;
+                        }
+                        const { data } = supabase.storage.from('venue-images').getPublicUrl(path);
+                        if (data?.publicUrl) urls.push(data.publicUrl);
                       }
                       setUploading(false);
+                      if (failed.length > 0) toast.error(failed.join('\n'));
                       setPreviewImages([...previewImages, ...urls]);
                     }}
                   />

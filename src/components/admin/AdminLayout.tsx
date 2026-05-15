@@ -3,7 +3,7 @@ import { Link, useLocation, Outlet } from "react-router-dom";
 import { useAdmin } from "@/hooks/useAdmin";
 import {
   LayoutDashboard, Users, Trophy, MapPin, CreditCard, Flag, Megaphone, ChevronLeft, ChevronRight, LogOut, Shield,
-  Radio,
+  Radio, ArrowDownLeft, BarChart3, CalendarDays, Settings, UserPlus,
 } from "lucide-react";
 
 const links = [
@@ -12,7 +12,11 @@ const links = [
   { to: "/admin/players", icon: Users, label: "Players" },
   { to: "/admin/matches", icon: Trophy, label: "Matches" },
   { to: "/admin/venues", icon: MapPin, label: "Venues" },
-  { to: "/admin/payments", icon: CreditCard, label: "Payments" },
+  { to: "/admin/owners", icon: UserPlus, label: "Create owner" },
+  { to: "/admin/settings", icon: Settings, label: "Settings" },
+  { to: "/admin/revenue", icon: BarChart3, label: "Revenue" },
+  { to: "/admin/withdrawals", icon: ArrowDownLeft, label: "Withdrawals" },
+  { to: "/admin/calendar", icon: CalendarDays, label: "Calendar" },
   { to: "/admin/reports", icon: Flag, label: "Reports" },
   { to: "/admin/broadcast", icon: Megaphone, label: "Broadcast" },
 ];

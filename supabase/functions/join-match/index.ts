@@ -32,9 +32,9 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { matchId, team, slotType = "core" } = body;
-    if (!matchId || !team) {
-      return new Response(JSON.stringify({ error: "Missing matchId or team" }), {
+    const { matchId, team: requestedTeam, slotType = "core" } = body;
+    if (!matchId) {
+      return new Response(JSON.stringify({ error: "Missing matchId" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -72,6 +72,24 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Determine team: auto-assign for public matches, manual for private
+    let assignedTeam = requestedTeam;
+    if (!assignedTeam || match.match_type === "public") {
+      // Auto-balance: count each team
+      const teamA = (match.team_color_a ?? "red").toLowerCase();
+      const teamB = (match.team_color_b ?? "blue").toLowerCase();
+      const { data: teamCounts } = await supabase
+        .from("match_participants")
+        .select("team")
+        .eq("match_id", matchId)
+        .eq("status", "active")
+        .eq("slot_type", "core");
+      const countA = (teamCounts ?? []).filter((p: any) => p.team === teamA).length;
+      const countB = (teamCounts ?? []).filter((p: any) => p.team === teamB).length;
+      assignedTeam = countA <= countB ? teamA : teamB;
+    }
+    if (!assignedTeam) assignedTeam = "reds";
+
     // Insert participant
     const { data: participant, error: pErr } = await supabase
       .from("match_participants")
@@ -79,7 +97,7 @@ Deno.serve(async (req) => {
         match_id: matchId,
         user_id: user.id,
         slot_type: slotType as any,
-        team: team as any,
+        team: assignedTeam as any,
         status: "active" as any,
         payment_status: (match.entry_fee === 0 ? "paid" : "unpaid") as any,
       })

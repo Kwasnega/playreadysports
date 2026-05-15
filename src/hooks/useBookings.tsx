@@ -63,7 +63,7 @@ export const useBookings = (pitchId?: string) => {
     };
 
     load();
-    const channelName = "bookings:" + crypto.randomUUID();
+    const channelName = "bookings:" + Math.random().toString(36).slice(2) + Date.now().toString(36);
     const channel = supabase
       .channel(channelName)
       .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, () => load())

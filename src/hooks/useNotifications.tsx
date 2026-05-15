@@ -32,7 +32,7 @@ const toNotif = (v: any): Notif => {
   const data = v.data ?? {};
   return {
     id: v.id,
-    type: (data.original_type || v.type) as NotifType,
+    type: (data.original_type || v.type || "system") as NotifType,
     title: v.title ?? "",
     message: v.body ?? "",
     createdAt: new Date(v.created_at),
@@ -41,90 +41,144 @@ const toNotif = (v: any): Notif => {
   };
 };
 
+const showToast = (n: Notif) => {
+  const t = n.type;
+  const title = n.title;
+  const body = n.message;
+  if (!title) return;
+  if (t === "match_join" || t === "match_confirmed") {
+    toast.success(title, { description: body, duration: 4000 });
+  } else if (t === "match_cancel" || t === "match_update") {
+    toast(title, {
+      description: body,
+      duration: 4000,
+      style: { background: "#fff7ed", borderColor: "#fdba74", color: "#9a3412" },
+    });
+  } else if (t === "payment_received") {
+    toast(title, { description: body, duration: 4000 });
+  } else if (t === "match_reminder") {
+    toast(title, { description: body, duration: 5000, icon: "⏰" });
+  } else {
+    toast(title, { description: body, duration: 4000 });
+  }
+};
+
 /** Realtime notifications for the signed-in user via Supabase. */
 export const useNotifications = () => {
   const { user } = useAuth();
+  const userId = user?.id ?? null;
   const [items, setItems] = useState<Notif[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const prevItemsRef = useRef<Notif[]>([]);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
-    if (!user) { setItems([]); setLoading(false); return; }
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!userId) {
+      setItems([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
 
     const load = async () => {
       const { data, error } = await supabase
         .from("notifications")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .order("created_at", { ascending: false })
         .limit(PAGE);
-      if (error) { setLoading(false); return; }
-      setItems((data ?? []).map(toNotif));
-      setLoading(false);
+
+      if (error) {
+        console.error("[useNotifications] load error:", error.message);
+        if (mountedRef.current) setLoading(false);
+        return;
+      }
+
+      if (mountedRef.current) {
+        setItems((data ?? []).map(toNotif));
+        setLoading(false);
+      }
     };
 
     load();
 
-    const channelName = "notifications:" + user.id + ":" + crypto.randomUUID();
-    const channel = supabase
-      .channel(channelName)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
-        (payload) => {
-          const n = toNotif(payload.new);
-          setItems((prev) => [n, ...prev].slice(0, PAGE));
-          // Show toast based on type
-          const t = n.type;
-          const title = n.title;
-          const body = n.message;
-          if (t === "match_join" || t === "match_confirmed") {
-            toast.success(title, { description: body, duration: 4000 });
-          } else if (t === "match_cancel" || t === "match_update") {
-            toast(title, {
-              description: body,
-              duration: 4000,
-              style: { background: "#fff7ed", borderColor: "#fdba74", color: "#9a3412" },
+    let channel = supabase.channel(`notifications:${userId}`);
+    const subscribe = () => {
+      channel = supabase.channel(`notifications:${userId}`);
+      channel
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
+          (payload) => {
+            const n = toNotif(payload.new);
+            setItems((prev) => {
+              const exists = prev.some((p) => p.id === n.id);
+              if (exists) return prev;
+              return [n, ...prev].slice(0, PAGE);
             });
-          } else if (t === "payment_received") {
-            toast(title, { description: body, duration: 4000 });
-          } else if (t === "match_reminder") {
-            toast(title, {
-              description: body,
-              duration: 5000,
-              icon: "⏰",
-            });
-          } else {
-            toast(title, { description: body, duration: 4000 });
+            showToast(n);
           }
-        }
-      )
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
-        () => load()
-      )
-      .subscribe();
+        )
+        .on(
+          "postgres_changes",
+          { event: "UPDATE", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
+          () => load()
+        )
+        .subscribe((status, err) => {
+          if (err) {
+            console.error("[useNotifications] subscription error:", err.message);
+          } else if (status === "SUBSCRIBED") {
+            console.log("[useNotifications] subscribed to", `notifications:${userId}`);
+          }
+        });
+    };
+    subscribe();
 
-    return () => { channel.unsubscribe(); supabase.removeChannel(channel); };
-  }, [user]);
+    // Mobile: reconnect when app comes back from background
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        console.log("[useNotifications] page visible, reloading…");
+        load();
+        supabase.removeChannel(channel);
+        subscribe();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
+    const onOnline = () => {
+      console.log("[useNotifications] back online, reloading…");
+      load();
+      supabase.removeChannel(channel);
+      subscribe();
+    };
+    window.addEventListener("online", onOnline);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("online", onOnline);
+      supabase.removeChannel(channel);
+    };
+  }, [userId]);
 
   const unreadCount = items.filter((n) => !n.read).length;
 
   const markRead = async (id: string) => {
-    if (!user) return;
-    await supabase.from("notifications").update({ is_read: true }).eq("id", id).eq("user_id", user.id);
+    if (!userId) return;
+    await supabase.from("notifications").update({ is_read: true }).eq("id", id).eq("user_id", userId);
     setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
   };
 
   const markAllRead = async () => {
-    if (!user) return;
+    if (!userId) return;
     const unread = items.filter((n) => !n.read);
     if (!unread.length) return;
     const ids = unread.map((n) => n.id);
-    await supabase.from("notifications").update({ is_read: true }).in("id", ids).eq("user_id", user.id);
+    await supabase.from("notifications").update({ is_read: true }).in("id", ids).eq("user_id", userId);
     setItems((prev) => prev.map((n) => ({ ...n, read: true })));
   };
 

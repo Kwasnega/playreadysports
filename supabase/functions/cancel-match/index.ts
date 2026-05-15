@@ -5,6 +5,12 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+async function getCancelCutoffMinutes(svc: ReturnType<typeof createClient>): Promise<number> {
+  const { data } = await svc.from("platform_settings").select("value").eq("key", "cancel_cutoff_minutes").maybeSingle();
+  const n = parseInt(data?.value ?? "60", 10);
+  return Number.isFinite(n) && n > 0 ? n : 60;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -20,6 +26,13 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!serviceKey) {
+      return new Response(JSON.stringify({ error: "Server misconfiguration" }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const supabase = createClient(supabaseUrl, supabaseKey, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -39,10 +52,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Verify user is organizer
     const { data: match, error: matchErr } = await supabase
       .from("matches")
-      .select("organizer_id, join_code, entry_fee, core_paid_count, venue:venues(name)")
+      .select("id, organizer_id, join_code, entry_fee, core_paid_count, match_date, status, venue:venues(name)")
       .eq("id", matchId)
       .single();
 
@@ -52,7 +64,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check organizer or admin
+    if (match.status === "completed" || match.status === "cancelled") {
+      return new Response(JSON.stringify({ error: "Match already ended" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { data: profile } = await supabase
       .from("profiles")
       .select("role")
@@ -66,105 +83,158 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Update match status + escrow
-    await supabase.from("matches").update({ status: "cancelled" as any, escrow_status: "refunded" as any }).eq("id", matchId);
+    const supabaseService = createClient(supabaseUrl, serviceKey);
 
-    // Auto-refund all paid participants
-    const PAYSTACK_SECRET = Deno.env.get("PAYSTACK_SECRET_KEY");
-    const { data: paidParticipants } = await supabase
+    const cutoffMinutes = await getCancelCutoffMinutes(supabaseService);
+    const cancelCutoffMs = cutoffMinutes * 60 * 1000;
+    const kickoff = match.match_date ? new Date(match.match_date).getTime() : 0;
+    const msUntilKickoff = kickoff - Date.now();
+    if (!isAdmin && match.organizer_id === user.id && msUntilKickoff < cancelCutoffMs) {
+      return new Response(
+        JSON.stringify({
+          error: `Cannot cancel within ${cutoffMinutes} minutes of kickoff. Contact support if you need an exception.`,
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const { data: paidParticipants } = await supabaseService
       .from("match_participants")
       .select("id, user_id, payment_reference, payment_status")
       .eq("match_id", matchId)
       .eq("payment_status", "paid");
 
-    const refundPromises = (paidParticipants ?? []).map(async (p: any) => {
-      if (!p.payment_reference) return;
+    const { data: rosterBefore } = await supabaseService
+      .from("match_participants")
+      .select("user_id, payment_status")
+      .eq("match_id", matchId)
+      .eq("status", "active");
 
-      let paystackRefunded = false;
+    const venueName = Array.isArray(match.venue) ? match.venue[0]?.name ?? "the venue" : (match.venue as { name?: string })?.name ?? "the venue";
+    const entryFee = Number(match.entry_fee ?? 0);
 
-      // Call Paystack refund first — only mark DB on success
-      if (PAYSTACK_SECRET) {
-        try {
-          const refundRes = await fetch("https://api.paystack.co/refund", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${PAYSTACK_SECRET}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              transaction: p.payment_reference,
-              reason: "Match cancelled by organizer",
-            }),
-          });
-          const refundData = await refundRes.json();
-          if (refundData.status) {
-            paystackRefunded = true;
-          } else {
-            console.error("Paystack refund failed:", p.payment_reference, refundData.message);
-          }
-        } catch (e) {
-          console.error("Paystack refund network error for", p.user_id, e);
-        }
+    await supabaseService
+      .from("matches")
+      .update({ status: "cancelled" as any, escrow_status: "refunded" as any })
+      .eq("id", matchId);
+
+    await supabaseService
+      .from("match_participants")
+      .update({ check_in_flagged_cancel: true as any })
+      .eq("match_id", matchId)
+      .eq("attendance_scanned", true);
+
+    let refundCount = 0;
+    let totalCredited = 0;
+    const refundErrors: string[] = [];
+
+    for (const p of paidParticipants ?? []) {
+      if (entryFee <= 0) {
+        await supabaseService
+          .from("match_participants")
+          .update({ payment_status: "refunded" as any, status: "left" as any })
+          .eq("id", p.id);
+        refundCount++;
+        continue;
       }
 
-      if (!paystackRefunded) return; // Skip DB update if Paystack didn't confirm
+      const ref = `cancel_refund_${matchId}_${p.user_id}_${p.id}`;
+      const { error: rpcErr } = await supabaseService.rpc("process_wallet_transaction", {
+        p_user_id: p.user_id,
+        p_amount: entryFee,
+        p_type: "refund",
+        p_reference: ref,
+      });
 
-      // Mark participant as refunded + left
-      await supabase
+      if (rpcErr) {
+        console.error("Wallet credit failed for user", p.user_id, rpcErr);
+        refundErrors.push(p.user_id);
+        continue;
+      }
+
+      await supabaseService
         .from("match_participants")
         .update({ payment_status: "refunded" as any, status: "left" as any })
         .eq("id", p.id);
 
-      // Mark original entry_fee transaction as refunded
-      await supabase
-        .from("transactions")
-        .update({ status: "refunded" as any })
-        .eq("payment_reference", p.payment_reference)
-        .eq("type", "entry_fee");
+      if (p.payment_reference) {
+        await supabaseService
+          .from("transactions")
+          .update({ status: "refunded" as any })
+          .eq("payment_reference", p.payment_reference)
+          .eq("type", "entry_fee");
 
-      // Insert refund transaction
-      await supabase.from("transactions").insert({
-        match_id: matchId,
-        user_id: p.user_id,
-        amount: match.entry_fee ?? 0,
-        type: "refund" as any,
-        status: "completed" as any,
-        payment_reference: `refund-${p.payment_reference}`,
-      });
-    });
+        await supabaseService.from("transactions").insert({
+          match_id: matchId,
+          user_id: p.user_id,
+          amount: entryFee,
+          type: "refund" as any,
+          status: "completed" as any,
+          payment_reference: `wallet-${ref}`,
+        });
+      }
 
-    await Promise.all(refundPromises);
-
-    // Notify all active participants
-    const { data: participants } = await supabase
-      .from("match_participants")
-      .select("user_id")
-      .eq("match_id", matchId)
-      .eq("status", "active");
-
-    const venueName = Array.isArray(match.venue) ? match.venue[0]?.name ?? "the venue" : match.venue?.name ?? "the venue";
-    const refundAmount = (match.entry_fee ?? 0) * (match.core_paid_count ?? 0);
-
-    const notifs = (participants ?? []).map((p: any) => ({
-      user_id: p.user_id,
-      title: "Match cancelled",
-      body: refundAmount > 0
-        ? `Match ${match.join_code} at ${venueName} was cancelled. ₵${refundAmount} refund incoming.`
-        : `Match ${match.join_code} at ${venueName} was cancelled.`,
-      type: "match_cancel" as any,
-      data: { match_id: matchId, join_code: match.join_code },
-    }));
-
-    if (notifs.length) {
-      await supabase.from("notifications").insert(notifs);
+      refundCount++;
+      totalCredited += entryFee;
     }
 
-    const refundCount = paidParticipants?.length ?? 0;
-    const totalRefunded = (match.entry_fee ?? 0) * refundCount;
+    await supabaseService
+      .from("match_participants")
+      .update({ status: "left" as any })
+      .eq("match_id", matchId)
+      .eq("status", "active")
+      .neq("payment_status", "paid");
 
-    return new Response(JSON.stringify({ success: true, refundCount, totalRefunded }), {
-      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    await supabaseService
+      .from("matches")
+      .update({ core_paid_count: 0 })
+      .eq("id", matchId);
+
+    const notifByUser = new Map<string, { user_id: string; title: string; body: string; type: string; data: Record<string, unknown> }>();
+
+    for (const p of paidParticipants ?? []) {
+      const failed = refundErrors.includes(p.user_id);
+      const credited = entryFee > 0 && !failed;
+      const body = credited
+        ? `Match ${match.join_code} at ${venueName} was cancelled. ₵${entryFee} was added to your Play wallet.`
+        : failed
+        ? `Match ${match.join_code} at ${venueName} was cancelled. Wallet credit failed — please contact support with code ${match.join_code}.`
+        : `Match ${match.join_code} at ${venueName} was cancelled.`;
+      notifByUser.set(p.user_id, {
+        user_id: p.user_id,
+        title: "Match cancelled",
+        body,
+        type: "match_cancel",
+        data: { match_id: matchId, join_code: match.join_code },
+      });
+    }
+
+    for (const row of rosterBefore ?? []) {
+      if (notifByUser.has(row.user_id)) continue;
+      notifByUser.set(row.user_id, {
+        user_id: row.user_id,
+        title: "Match cancelled",
+        body: `Match ${match.join_code} at ${venueName} was cancelled.`,
+        type: "match_cancel",
+        data: { match_id: matchId, join_code: match.join_code },
+      });
+    }
+
+    const notifs = [...notifByUser.values()];
+    if (notifs.length) {
+      await supabaseService.from("notifications").insert(notifs as any);
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        refundCount,
+        totalCredited,
+        walletRefunds: true,
+        refundErrors: refundErrors.length ? refundErrors : undefined,
+      }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   } catch (err: any) {
     console.error("Edge function error:", err);
     return new Response(JSON.stringify({ error: err.message ?? "Internal error" }), {

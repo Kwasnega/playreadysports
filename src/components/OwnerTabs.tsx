@@ -3,7 +3,7 @@ import { Building2, CalendarDays, MapPin, User } from "lucide-react";
 import { ProfileSheet } from "@/components/ProfileSheet";
 
 const tabs = [
-  { to: "/turf", icon: Building2, label: "Dashboard", match: (p: string) => p === "/turf" },
+  { to: "/venue/dashboard", icon: Building2, label: "Dashboard", match: (p: string) => p === "/venue/dashboard" || p === "/venue/earnings" },
   { to: "/schedule", icon: CalendarDays, label: "Schedule", match: (p: string) => p.startsWith("/schedule") },
   { to: "/turf/pitches", icon: MapPin, label: "Pitches", match: (p: string) => p.startsWith("/turf/pitches") || p.startsWith("/turf/register") },
 ];

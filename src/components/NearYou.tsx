@@ -14,6 +14,8 @@ type GalaOpening = {
   pricePerPlayer: number;
   km: number;
   joined?: boolean;
+  friendCount?: number;
+  friendAvatars?: string[];
 };
 
 type TwoTeamOpening = {
@@ -29,6 +31,8 @@ type TwoTeamOpening = {
   pricePerPlayer: number;
   km: number;
   joined?: boolean;
+  friendCount?: number;
+  friendAvatars?: string[];
 };
 
 type LiveScore = {
@@ -247,6 +251,34 @@ const JoinCTA = ({ label = "Join", onClick }: { label?: string; onClick?: (e: Re
   </button>
 );
 
+const FriendAvatarStack = ({ count, avatars }: { count?: number; avatars?: string[] }) => {
+  if (!count || count === 0) return null;
+  return (
+    <div className="flex items-center gap-1">
+      <div className="flex -space-x-1.5">
+        {(avatars ?? []).slice(0, 3).map((a, i) =>
+          a.startsWith("http") ? (
+            <img
+              key={i}
+              src={a}
+              alt=""
+              className="w-5 h-5 rounded-full object-cover border border-background"
+            />
+          ) : (
+            <div
+              key={i}
+              className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-[8px] font-bold border border-background"
+            >
+              {a?.toUpperCase() || "?"}
+            </div>
+          )
+        )}
+      </div>
+      <span className="text-[10px] font-semibold text-primary">{count} friend{count > 1 ? "s" : ""}</span>
+    </div>
+  );
+};
+
 const JoinedCTA = () => (
   <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full pl-3 pr-3 h-10 text-sm font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
     <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
@@ -274,11 +306,14 @@ const GalaRow = ({ s }: { s: GalaOpening }) => {
           <p className="text-sm text-muted-foreground truncate mt-0.5">
             {s.area} · {s.km.toFixed(1)} km · ₵{s.pricePerPlayer}
           </p>
-          <div className="flex flex-wrap gap-1.5 mt-2">
+          <div className="flex flex-wrap gap-1.5 mt-2 items-center">
             <Chip><Repeat className="w-3 h-3" /> Gala {s.format}v{s.format}</Chip>
             <Chip tone={slotsLeft <= 1 ? "warn" : "default"}>
               {slotsLeft} team{slotsLeft === 1 ? "" : "s"} needed
             </Chip>
+            {s.friendCount ? (
+              <FriendAvatarStack count={s.friendCount} avatars={s.friendAvatars} />
+            ) : null}
           </div>
         </div>
         {s.joined ? <JoinedCTA /> : <JoinCTA onClick={onJoin} />}
@@ -305,11 +340,14 @@ const TwoTeamRow = ({ s }: { s: TwoTeamOpening }) => {
           <p className="text-sm text-muted-foreground truncate mt-0.5">
             {s.area} · {s.km.toFixed(1)} km · ₵{s.pricePerPlayer}
           </p>
-          <div className="flex flex-wrap gap-1.5 mt-2">
+          <div className="flex flex-wrap gap-1.5 mt-2 items-center">
             <Chip><UsersIcon className="w-3 h-3" /> {s.format}</Chip>
             <Chip tone={left <= 2 ? "warn" : "default"}>
               {left} spot{left === 1 ? "" : "s"} left
             </Chip>
+            {s.friendCount ? (
+              <FriendAvatarStack count={s.friendCount} avatars={s.friendAvatars} />
+            ) : null}
           </div>
         </div>
         {s.joined ? <JoinedCTA /> : <JoinCTA onClick={onJoin} />}
