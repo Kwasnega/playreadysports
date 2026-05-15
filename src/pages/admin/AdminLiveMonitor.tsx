@@ -247,29 +247,25 @@ export default function AdminLiveMonitor() {
   const load = useCallback(async () => {
     setLoading(true);
 
-    const [{ data: matchesRaw }, { data: statsData }, { data: logs }] = await Promise.all([
-      supabase
-        .from("matches")
-        .select(`
-          id, join_code, title, match_date, status, match_mode, format, entry_fee,
-          max_core_players, core_paid_count, escrow_status, payments_frozen, duration_minutes,
-          venue:venues(name, city, lat, lng),
-          organizer:profiles(id, full_name, username),
-          participants:match_participants(
-            id, user_id, status, payment_status, slot_type, team, joined_at, attendance_scanned,
-            profiles(full_name, username)
-          )
-        `)
-        .in("status", ["upcoming", "live"])
-        .order("match_date", { ascending: true }),
-      supabase.rpc("live_dashboard_stats"),
-      supabase.from("auto_intervention_logs").select("*").order("created_at", { ascending: false }).limit(20),
-    ]);
+    const { data: matchesRaw } = await supabase
+      .from("matches")
+      .select(`
+        id, join_code, title, match_date, status, match_mode, format, entry_fee,
+        max_core_players, core_paid_count, escrow_status, duration_minutes,
+        venue:venues(name, city, lat, lng),
+        participants:match_participants(
+          id, user_id, status, payment_status, slot_type, team, joined_at, attendance_scanned,
+          profiles(full_name, username)
+        )
+      `)
+      .in("status", ["upcoming", "live"] as any)
+      .order("match_date", { ascending: true });
 
     const normalized = (matchesRaw ?? []).map((m: any) => ({
       ...m,
+      payments_frozen: false,
       venue: Array.isArray(m.venue) ? m.venue[0] ?? null : m.venue ?? null,
-      organizer: Array.isArray(m.organizer) ? m.organizer[0] ?? null : m.organizer ?? null,
+      organizer: null,
       participants: (m.participants ?? []).map((p: any) => ({
         ...p,
         profiles: Array.isArray(p.profiles) ? p.profiles[0] ?? null : p.profiles ?? null,
@@ -277,8 +273,13 @@ export default function AdminLiveMonitor() {
     })) as LiveMatch[];
 
     setMatches(normalized);
-    setStats(statsData as DashboardStats ?? { live_matches: 0, players_on_pitch: 0, total_escrow: 0, active_users: 0 });
-    setInterventions((logs ?? []) as InterventionLog[]);
+
+    // Compute stats client-side from matches
+    const liveMatches = normalized.filter((m) => m.status === "live");
+    const playersOnPitch = liveMatches.reduce((sum, m) => sum + m.participants.filter((p: any) => p.status === "active").length, 0);
+    const totalEscrow = normalized.reduce((sum, m) => sum + (Number(m.entry_fee ?? 0) * Number(m.core_paid_count ?? 0)), 0);
+    setStats({ live_matches: liveMatches.length, players_on_pitch: playersOnPitch, total_escrow: totalEscrow, active_users: 0 });
+    setInterventions([]);
     setLastRefresh(new Date());
 
     // Compute critical alerts client-side
@@ -337,7 +338,7 @@ export default function AdminLiveMonitor() {
     // High report rate in last hour
     const { data: recentReports } = await supabase
       .from("reports")
-      .select("match_id, count")
+      .select("match_id")
       .gte("created_at", new Date(now - 60 * 60 * 1000).toISOString())
       .not("match_id", "is", null);
 

@@ -108,6 +108,7 @@ export const AuthModal = () => {
   return (
     <Dialog open={authOpen} onOpenChange={handleOpenChange}>
       <DialogContent
+        aria-describedby={undefined}
         className="max-w-[440px] p-0 overflow-hidden rounded-3xl border-0 bg-background animate-in fade-in-0 zoom-in-95 duration-200"
         onPointerDownOutside={(e) => { if (view === "verify") e.preventDefault(); }}
         onEscapeKeyDown={(e) => { if (view === "verify") e.preventDefault(); }}
