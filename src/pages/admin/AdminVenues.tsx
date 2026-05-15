@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Plus, MapPin, ToggleLeft, ToggleRight, Upload, ImageIcon, X, Trash2, Check, XCircle } from "lucide-react";
@@ -25,6 +26,7 @@ function logAudit(adminId: string, action: string, targetType: string, targetId:
 
 export default function AdminVenues() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [venues, setVenues] = useState<Venue[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editVenue, setEditVenue] = useState<Venue | null>(null);
@@ -240,7 +242,7 @@ export default function AdminVenues() {
             </thead>
             <tbody>
               {activeVenues.map((v) => (
-                <tr key={v.id} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">
+                <tr key={v.id} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors cursor-pointer" onClick={() => navigate(`/admin/venues/${v.id}`)}>
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-3">
                       {v.image_urls && v.image_urls.length > 0 ? (
@@ -285,10 +287,10 @@ export default function AdminVenues() {
                     </span>
                   </td>
                   <td className="px-5 py-3.5 text-right">
-                    <button onClick={() => setEditVenue(v)} className="p-2 rounded-lg hover:bg-white/[0.06] transition-colors mr-1" title="Manage images">
+                    <button onClick={(e) => { e.stopPropagation(); setEditVenue(v); }} className="p-2 rounded-lg hover:bg-white/[0.06] transition-colors mr-1" title="Manage images">
                       <ImageIcon className="w-4 h-4 text-slate-400" />
                     </button>
-                    <button onClick={() => toggleActive(v)} className="p-2 rounded-lg hover:bg-white/[0.06] transition-colors" title="Toggle active">
+                    <button onClick={(e) => { e.stopPropagation(); toggleActive(v); }} className="p-2 rounded-lg hover:bg-white/[0.06] transition-colors" title="Toggle active">
                       {v.is_active ? <ToggleRight className="w-4 h-4 text-emerald-400" /> : <ToggleLeft className="w-4 h-4 text-slate-500" />}
                     </button>
                   </td>

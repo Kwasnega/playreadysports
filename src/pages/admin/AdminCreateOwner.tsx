@@ -1,13 +1,22 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { UserPlus, Copy, Check } from "lucide-react";
+import { UserPlus, Copy, Check, Building2, Mail, Phone, Calendar } from "lucide-react";
 
 interface VenueOption {
   id: string;
   name: string;
   city: string | null;
   status: string | null;
+}
+
+interface OwnerRow {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  phone_number: string | null;
+  created_at: string;
+  venues: { name: string; city: string | null }[] | null;
 }
 
 export default function AdminCreateOwner() {
@@ -20,6 +29,19 @@ export default function AdminCreateOwner() {
   const [busy, setBusy] = useState(false);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [owners, setOwners] = useState<OwnerRow[]>([]);
+  const [loadingOwners, setLoadingOwners] = useState(true);
+
+  const loadOwners = async () => {
+    setLoadingOwners(true);
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, full_name, email, phone_number, created_at, venues:venues(name, city)")
+      .eq("role", "turf_owner")
+      .order("created_at", { ascending: false });
+    setOwners((data ?? []) as OwnerRow[]);
+    setLoadingOwners(false);
+  };
 
   useEffect(() => {
     supabase
@@ -27,6 +49,7 @@ export default function AdminCreateOwner() {
       .select("id, name, city, status")
       .order("name")
       .then(({ data }) => setVenues((data ?? []) as VenueOption[]));
+    loadOwners();
   }, []);
 
   const submit = async () => {
@@ -156,6 +179,82 @@ export default function AdminCreateOwner() {
           </div>
         </div>
       )}
+
+      {/* Owner registry */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-display font-bold text-white tracking-tight">Turf owners</h2>
+          <span className="text-xs text-slate-500">{owners.length} total</span>
+        </div>
+
+        {loadingOwners ? (
+          <div className="space-y-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-white/[0.03] rounded-xl p-4 border border-white/[0.06] animate-pulse">
+                <div className="h-4 bg-white/5 rounded w-48 mb-2" />
+                <div className="h-3 bg-white/5 rounded w-32" />
+              </div>
+            ))}
+          </div>
+        ) : owners.length === 0 ? (
+          <p className="text-sm text-slate-500">No turf owners yet.</p>
+        ) : (
+          <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-white/[0.06]">
+                    <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Owner</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Venue(s)</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Created</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {owners.map((o) => {
+                    const venueList = Array.isArray(o.venues) ? o.venues : [];
+                    return (
+                      <tr key={o.id} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">
+                        <td className="px-4 py-3">
+                          <p className="text-slate-200 font-medium">{o.full_name || "—"}</p>
+                          <div className="flex items-center gap-3 mt-1">
+                            <span className="flex items-center gap-1 text-[11px] text-slate-500">
+                              <Mail className="w-3 h-3" /> {o.email || "—"}
+                            </span>
+                            {o.phone_number && (
+                              <span className="flex items-center gap-1 text-[11px] text-slate-500">
+                                <Phone className="w-3 h-3" /> {o.phone_number}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          {venueList.length > 0 ? (
+                            <div className="space-y-1">
+                              {venueList.map((v, i) => (
+                                <span key={i} className="flex items-center gap-1 text-xs text-slate-400">
+                                  <Building2 className="w-3 h-3 text-emerald-400" /> {v.name} {v.city ? `· ${v.city}` : ""}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-slate-600">No venue linked</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className="flex items-center gap-1 text-[11px] text-slate-500">
+                            <Calendar className="w-3 h-3" />
+                            {new Date(o.created_at).toLocaleDateString()}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

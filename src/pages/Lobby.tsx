@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft, Users, Clock, Wallet, Check, Share2, Flag, X, UserCheck,
   Calendar, MapPin, MessageCircle, Trophy, Hourglass, Zap, Crown, Star,
-  CloudSun, Droplets, UserPlus, QrCode,
+  CloudSun, Droplets, UserPlus, QrCode, Camera,
 } from "lucide-react";
 import { LobbyChat } from "@/components/LobbyChat";
 import { ShareMatchCard } from "@/components/matches/ShareMatchCard";
@@ -83,6 +83,16 @@ const Lobby = () => {
   const { user, openAuth } = useAuth();
   const [checkInCode, setCheckInCode] = useState("");
   const [checkInBusy, setCheckInBusy] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const scanIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => () => {
+    if (scanIntervalRef.current) clearInterval(scanIntervalRef.current);
+    if (videoRef.current?.srcObject) {
+      (videoRef.current.srcObject as MediaStream).getTracks().forEach((t) => t.stop());
+    }
+  }, []);
 
   const {
     match,
@@ -276,6 +286,73 @@ const Lobby = () => {
       : `${h}h ${String(m).padStart(2, "0")}m`;
   const countdownSub = isLive ? "Match in progress" : `${String(s).padStart(2, "0")}s`;
 
+  /* ─── Check-in time gate (~1 hour before match) ─── */
+  const matchTimeMs = match ? new Date(match.match_date).getTime() : 0;
+  const nowMs = Date.now();
+  const hoursUntilMatch = matchTimeMs ? (matchTimeMs - nowMs) / (1000 * 60 * 60) : Infinity;
+  const showCheckIn = hoursUntilMatch <= 1.5 && hoursUntilMatch >= -2; // show 1.5h before until 2h after
+
+  /* ─── QR Scanner helpers ─── */
+  const startScan = async () => {
+    if (!videoRef.current) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      videoRef.current.srcObject = stream;
+      await videoRef.current.play();
+      setScanning(true);
+
+      const detect = async () => {
+        if (!videoRef.current || !scanning) return;
+        const hasDetector = "BarcodeDetector" in window;
+        if (hasDetector) {
+          try {
+            const detector = new (window as any).BarcodeDetector({ formats: ["qr_code"] });
+            const results = await detector.detect(videoRef.current);
+            if (results.length > 0) {
+              const raw = results[0].rawValue;
+              stopScan();
+              await submitCheckIn(raw);
+              return;
+            }
+          } catch {}
+        }
+      };
+      scanIntervalRef.current = setInterval(detect, 600);
+    } catch {
+      toast.error("Camera access denied or unavailable.");
+    }
+  };
+
+  const stopScan = () => {
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current);
+      scanIntervalRef.current = null;
+    }
+    if (videoRef.current?.srcObject) {
+      (videoRef.current.srcObject as MediaStream).getTracks().forEach((t) => t.stop());
+      videoRef.current.srcObject = null;
+    }
+    setScanning(false);
+  };
+
+  const submitCheckIn = async (token: string) => {
+    if (!token || !match?.id) return;
+    setCheckInBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("scan-match-qr", {
+        body: { token },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(data?.message || "Checked in!");
+      window.location.reload();
+    } catch (e: any) {
+      toast.error(e?.message || "Check-in failed");
+    } finally {
+      setCheckInBusy(false);
+    }
+  };
+
   return (
     <main className="min-h-screen bg-background pb-28">
       <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md">
@@ -427,8 +504,9 @@ const Lobby = () => {
               </div>
             </div>
 
-            {/* Venue QR check-in (paid / active players) */}
-            {userParticipant?.status === "active" &&
+            {/* Venue QR check-in (paid / active players) — time-gated ~1hr before */}
+            {showCheckIn &&
+              userParticipant?.status === "active" &&
               match?.status !== "cancelled" &&
               match?.status !== "completed" &&
               (userParticipant.payment_status === "paid" || (match.entry_fee ?? 0) <= 0) && (
@@ -441,45 +519,58 @@ const Lobby = () => {
                   <p className="text-sm text-emerald-600 font-medium flex items-center gap-2">
                     <Check className="w-4 h-4" /> You are checked in at the venue.
                   </p>
+                ) : scanning ? (
+                  <div className="space-y-3">
+                    <div className="relative aspect-square rounded-2xl overflow-hidden border border-border bg-black">
+                      <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
+                      <div className="absolute inset-0 border-2 border-dashed border-white/30 rounded-2xl m-8" />
+                    </div>
+                    <p className="text-xs text-muted-foreground text-center">Point camera at the venue QR code</p>
+                    <button
+                      type="button"
+                      onClick={stopScan}
+                      className="w-full py-2.5 rounded-full bg-secondary text-sm font-semibold"
+                    >
+                      Cancel scan
+                    </button>
+                  </div>
                 ) : (
                   <>
                     <p className="text-xs text-muted-foreground leading-relaxed">
-                      Ask the venue host to show the match QR, then paste the code here (or scan opens this lobby with the code pre-filled later).
+                      Tap the camera button to scan the venue QR code and check in.
                     </p>
-                    <input
-                      value={checkInCode}
-                      onChange={(e) => setCheckInCode(e.target.value.trim())}
-                      placeholder="Paste check-in code"
-                      className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-mono"
-                      autoCapitalize="off"
-                      autoCorrect="off"
-                      spellCheck={false}
-                    />
                     <button
                       type="button"
-                      disabled={checkInBusy || !checkInCode}
-                      onClick={async () => {
-                        if (!checkInCode || !match?.id) return;
-                        setCheckInBusy(true);
-                        try {
-                          const { data, error } = await supabase.functions.invoke("scan-match-qr", {
-                            body: { token: checkInCode },
-                          });
-                          if (error) throw error;
-                          if (data?.error) throw new Error(data.error);
-                          toast.success(data?.message || "Checked in!");
-                          setCheckInCode("");
-                          window.location.reload();
-                        } catch (e: any) {
-                          toast.error(e?.message || "Check-in failed");
-                        } finally {
-                          setCheckInBusy(false);
-                        }
-                      }}
-                      className="w-full bg-primary text-primary-foreground font-semibold rounded-full px-4 py-3 text-sm disabled:opacity-50"
+                      onClick={startScan}
+                      disabled={checkInBusy}
+                      className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground font-semibold rounded-full px-4 py-3 text-sm disabled:opacity-50"
                     >
-                      {checkInBusy ? "Submitting…" : "Submit check-in"}
+                      <Camera className="w-4 h-4" />
+                      {checkInBusy ? "Checking in…" : "Scan QR code"}
                     </button>
+                    {/* Fallback manual input */}
+                    <div className="pt-2 border-t border-border/40">
+                      <p className="text-[10px] text-muted-foreground mb-2">Or paste code manually</p>
+                      <div className="flex gap-2">
+                        <input
+                          value={checkInCode}
+                          onChange={(e) => setCheckInCode(e.target.value.trim())}
+                          placeholder="Paste check-in code"
+                          className="flex-1 rounded-xl border border-border bg-background px-3 py-2 text-xs font-mono"
+                          autoCapitalize="off"
+                          autoCorrect="off"
+                          spellCheck={false}
+                        />
+                        <button
+                          type="button"
+                          disabled={checkInBusy || !checkInCode}
+                          onClick={() => submitCheckIn(checkInCode)}
+                          className="px-4 py-2 rounded-xl bg-secondary text-xs font-semibold disabled:opacity-40"
+                        >
+                          Go
+                        </button>
+                      </div>
+                    </div>
                   </>
                 )}
               </div>

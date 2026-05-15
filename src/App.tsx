@@ -29,6 +29,7 @@ import AdminBroadcast from "@/pages/admin/AdminBroadcast";
 import AdminWithdrawals from "@/pages/admin/AdminWithdrawals";
 import AdminSettings from "@/pages/admin/AdminSettings";
 import AdminCreateOwner from "@/pages/admin/AdminCreateOwner";
+import AdminVenueDetail from "@/pages/admin/AdminVenueDetail";
 import { useTheme } from "@/components/ThemeToggle";
 import { AuthProvider } from "@/hooks/useAuth";
 import { AuthModal } from "@/components/AuthModal";
@@ -85,8 +86,8 @@ const App = () => {
                 <Route path="/player/:username" element={<PlayerProfile />} />
                 <Route path="/profile/edit" element={<EditProfile />} />
                 <Route path="/wallet" element={<WalletPage />} />
-                <Route path="/venue/earnings" element={<ProtectedRoute roles={["turf_owner"]}><VenueOwnerDashboard /></ProtectedRoute>} />
-                <Route path="/venue/dashboard" element={<ProtectedRoute roles={["turf_owner"]}><VenueOwnerDashboard /></ProtectedRoute>} />
+                <Route path="/venue/earnings" element={<VenueOwnerDashboard />} />
+                <Route path="/venue/dashboard" element={<VenueOwnerDashboard />} />
                 <Route path="/turf/owner" element={<Navigate to="/venue/dashboard" replace />} />
                 <Route path="/leaderboard" element={<Leaderboard />} />
                 {/* Admin dashboard */}
@@ -96,6 +97,7 @@ const App = () => {
                   <Route path="players" element={<AdminPlayers />} />
                   <Route path="matches" element={<AdminMatches />} />
                   <Route path="venues" element={<AdminVenues />} />
+                  <Route path="venues/:id" element={<AdminVenueDetail />} />
                   <Route path="revenue" element={<AdminRevenue />} />
                   <Route path="calendar" element={<AdminCalendar />} />
                   <Route path="reports" element={<AdminReports />} />
