@@ -6,16 +6,26 @@ ALTER TABLE public.matches ADD COLUMN IF NOT EXISTS reminder_sent_flags jsonb DE
 -- 2. Add waitlist_position to match_participants (null = not on waitlist)
 ALTER TABLE public.match_participants ADD COLUMN IF NOT EXISTS waitlist_position int;
 
--- 3. Add 'waitlist' to participant status if not already in the enum
--- The existing enum is match_participant_status with values: active, left, kicked, banned
+-- 3. Add 'waitlist' to participant status enum
+-- The enum may be named participant_status or match_participant_status depending on migration history
 DO $$
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_enum e
-    JOIN pg_type t ON e.enumtypid = t.oid
-    WHERE t.typname = 'match_participant_status' AND e.enumlabel = 'waitlist'
-  ) THEN
-    ALTER TYPE public.match_participant_status ADD VALUE IF NOT EXISTS 'waitlist';
+  -- Try participant_status first (most common on live DBs)
+  IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'participant_status') THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_enum e JOIN pg_type t ON e.enumtypid = t.oid
+      WHERE t.typname = 'participant_status' AND e.enumlabel = 'waitlist'
+    ) THEN
+      ALTER TYPE public.participant_status ADD VALUE 'waitlist';
+    END IF;
+  -- Fallback: try match_participant_status
+  ELSIF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'match_participant_status') THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_enum e JOIN pg_type t ON e.enumtypid = t.oid
+      WHERE t.typname = 'match_participant_status' AND e.enumlabel = 'waitlist'
+    ) THEN
+      ALTER TYPE public.match_participant_status ADD VALUE 'waitlist';
+    END IF;
   END IF;
 END $$;
 
