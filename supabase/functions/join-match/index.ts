@@ -52,30 +52,91 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (match.status !== "upcoming") {
+    if (match.status !== "upcoming" && match.status !== "live") {
       return new Response(JSON.stringify({ error: "Match is not open for joining" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Check if user is already a participant
+    // Check if user is already a participant (active or waitlisted)
     const { data: existing } = await supabase
       .from("match_participants")
-      .select("id")
+      .select("id, status")
       .eq("match_id", matchId)
       .eq("user_id", user.id)
+      .in("status", ["active", "waitlist"] as any)
       .maybeSingle();
 
     if (existing) {
-      return new Response(JSON.stringify({ error: "Already joined this match" }), {
+      const msg = existing.status === "waitlist" ? "Already on the waitlist" : "Already joined this match";
+      return new Response(JSON.stringify({ error: msg }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    const maxCore = match.max_core_players ?? match.players_per_side ?? 10;
+
+    // Count current active core players
+    const { count: activeCount } = await supabase
+      .from("match_participants")
+      .select("*", { count: "exact", head: true })
+      .eq("match_id", matchId)
+      .eq("status", "active")
+      .eq("slot_type", "core");
+
+    const isFull = (activeCount ?? 0) >= maxCore;
+
+    // If full → add to waitlist
+    if (isFull) {
+      // Get next waitlist position
+      const { data: lastWaitlist } = await supabase
+        .from("match_participants")
+        .select("waitlist_position")
+        .eq("match_id", matchId)
+        .eq("status", "waitlist" as any)
+        .order("waitlist_position", { ascending: false })
+        .limit(1);
+
+      const nextPos = ((lastWaitlist?.[0] as any)?.waitlist_position ?? 0) + 1;
+
+      const { data: waitlistEntry, error: wErr } = await supabase
+        .from("match_participants")
+        .insert({
+          match_id: matchId,
+          user_id: user.id,
+          slot_type: "core" as any,
+          team: "unassigned" as any,
+          status: "waitlist" as any,
+          payment_status: "unpaid" as any,
+          waitlist_position: nextPos,
+        })
+        .select("id, waitlist_position")
+        .single();
+
+      if (wErr) {
+        return new Response(JSON.stringify({ error: wErr.message }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      await supabase.from("notifications").insert({
+        user_id: user.id,
+        title: "Added to waitlist",
+        body: `Match ${match.join_code} is full. You're #${nextPos} on the waitlist — we'll notify you if a spot opens.`,
+        type: "match_update" as any,
+        data: { match_id: matchId, join_code: match.join_code, waitlist_position: nextPos },
+      });
+
+      return new Response(
+        JSON.stringify({ waitlisted: true, position: nextPos, participant: waitlistEntry }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // Not full → normal join
     // Determine team: auto-assign for public matches, manual for private
     let assignedTeam = requestedTeam;
     if (!assignedTeam || match.match_type === "public") {
-      // Auto-balance: count each team
       const teamA = (match.team_color_a ?? "red").toLowerCase();
       const teamB = (match.team_color_b ?? "blue").toLowerCase();
       const { data: teamCounts } = await supabase
@@ -113,7 +174,6 @@ Deno.serve(async (req) => {
     // Notify organizer
     const joinerName = match.organizer?.full_name || match.organizer?.username || "Someone";
     const paidCount = (match.core_paid_count ?? 0) + 1;
-    const maxCore = match.max_core_players ?? match.players_per_side ?? 10;
 
     await supabase.from("notifications").insert({
       user_id: match.organizer_id,
@@ -123,19 +183,17 @@ Deno.serve(async (req) => {
       data: { match_id: matchId, join_code: match.join_code },
     });
 
-    // Check if match is now full
-    const { count: activeCount } = await supabase
+    // Re-count to check if now full
+    const { count: newActiveCount } = await supabase
       .from("match_participants")
       .select("*", { count: "exact", head: true })
       .eq("match_id", matchId)
       .eq("status", "active")
       .eq("slot_type", "core");
 
-    if ((activeCount ?? 0) >= maxCore) {
-      // Update match to live
+    if ((newActiveCount ?? 0) >= maxCore) {
       await supabase.from("matches").update({ status: "live" as any }).eq("id", matchId);
 
-      // Notify all participants that match is full
       const { data: participants } = await supabase
         .from("match_participants")
         .select("user_id")
@@ -144,7 +202,7 @@ Deno.serve(async (req) => {
 
       const notifs = (participants ?? []).map((p: any) => ({
         user_id: p.user_id,
-        title: "Match is full! 🎉",
+        title: "Match is full!",
         body: `Match ${match.join_code} is full — it's on!`,
         type: "match_confirmed" as any,
         data: { match_id: matchId, join_code: match.join_code },

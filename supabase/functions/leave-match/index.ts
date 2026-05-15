@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
 
     // Notify organizer
     const leaverName = user.user_metadata?.full_name || user.email?.split("@")[0] || "A player";
-    await supabase.from("notifications").insert({
+    await supabaseService.from("notifications").insert({
       user_id: match.organizer_id,
       title: "Player left match",
       body: `${leaverName} left ${match.join_code}${refunded ? " · ₵" + refundAmount + " refunded" : ""}`,
@@ -128,10 +128,64 @@ Deno.serve(async (req) => {
       data: { match_id: matchId, join_code: match.join_code },
     });
 
+    // Auto-promote next waitlisted player
+    let promoted = false;
+    if (participant.slot_type === "core") {
+      const { data: nextWaiter } = await supabaseService
+        .from("match_participants")
+        .select("id, user_id, waitlist_position")
+        .eq("match_id", matchId)
+        .eq("status", "waitlist")
+        .order("waitlist_position", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (nextWaiter) {
+        // Auto-assign team (balance)
+        const { data: fullMatch } = await supabaseService
+          .from("matches")
+          .select("team_color_a, team_color_b")
+          .eq("id", matchId)
+          .single();
+        const teamA = (fullMatch?.team_color_a ?? "red").toLowerCase();
+        const teamB = (fullMatch?.team_color_b ?? "blue").toLowerCase();
+        const { data: teamCounts } = await supabaseService
+          .from("match_participants")
+          .select("team")
+          .eq("match_id", matchId)
+          .eq("status", "active")
+          .eq("slot_type", "core");
+        const countA = (teamCounts ?? []).filter((p: any) => p.team === teamA).length;
+        const countB = (teamCounts ?? []).filter((p: any) => p.team === teamB).length;
+        const assignedTeam = countA <= countB ? teamA : teamB;
+
+        await supabaseService
+          .from("match_participants")
+          .update({
+            status: "active" as any,
+            team: assignedTeam as any,
+            waitlist_position: null,
+            payment_status: (match.entry_fee === 0 ? "paid" : "unpaid") as any,
+          })
+          .eq("id", nextWaiter.id);
+
+        await supabaseService.from("notifications").insert({
+          user_id: nextWaiter.user_id,
+          title: "You're in! A spot opened up",
+          body: `A spot opened in match ${match.join_code}. You've been promoted from the waitlist!${match.entry_fee > 0 ? " Please pay your entry fee to confirm." : ""}`,
+          type: "match_update" as any,
+          data: { match_id: matchId, join_code: match.join_code, promoted_from_waitlist: true },
+        });
+
+        promoted = true;
+      }
+    }
+
     return new Response(JSON.stringify({
       success: true,
       refunded,
       refundAmount,
+      promoted,
       message: refunded
         ? `Left match · ₵${refundAmount} refunded`
         : hoursUntil <= 2 && participant.payment_status === "paid"

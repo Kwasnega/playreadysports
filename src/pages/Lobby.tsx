@@ -213,11 +213,15 @@ const Lobby = () => {
   const handleJoinFree = async () => {
     if (!match?.id) return;
     try {
-      const { error } = await supabase.functions.invoke("join-free-match", {
+      const { data, error } = await supabase.functions.invoke("join-free-match", {
         body: { matchId: match.id, team: teamFromUrl ?? "unassigned" },
       });
       if (error) throw error;
-      toast.success("Joined!");
+      if (data?.waitlisted) {
+        toast.info(`Match is full — you're #${data.position} on the waitlist`);
+      } else {
+        toast.success("Joined!");
+      }
       window.location.reload();
     } catch (err: any) {
       toast.error(err.message || "Failed to join");
@@ -242,6 +246,10 @@ const Lobby = () => {
         tone: "primary" as const,
         onClick: isPaid ? handleJoinPaid : handleJoinFree,
       };
+    }
+    if (userParticipant.status === "waitlist") {
+      const pos = (userParticipant as any).waitlist_position ?? "?";
+      return { label: `Waitlist #${pos}`, icon: Hourglass, disabled: true, tone: "neutral" as const, onClick: () => {} };
     }
     if (userParticipant.status === "pending") {
       return { label: "Request pending", icon: Hourglass, disabled: true, tone: "neutral" as const, onClick: () => {} };
