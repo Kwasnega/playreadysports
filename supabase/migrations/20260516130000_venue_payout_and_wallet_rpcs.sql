@@ -15,6 +15,7 @@ ALTER TABLE public.profiles
 
 -- ─── 2. credit_venue_owner_balance ───────────────────────────────────────────
 -- Called by the complete-match edge function with service role.
+DROP FUNCTION IF EXISTS public.credit_venue_owner_balance(uuid, numeric, text);
 CREATE OR REPLACE FUNCTION public.credit_venue_owner_balance(
   p_user_id  uuid,
   p_amount   numeric,
@@ -47,6 +48,7 @@ GRANT EXECUTE ON FUNCTION public.credit_venue_owner_balance(uuid, numeric, text)
 
 -- ─── 3. process_wallet_transaction ───────────────────────────────────────────
 -- Generic wallet credit / debit used by complete-match for organizer bonus.
+DROP FUNCTION IF EXISTS public.process_wallet_transaction(uuid, numeric, text, text);
 CREATE OR REPLACE FUNCTION public.process_wallet_transaction(
   p_user_id  uuid,
   p_amount   numeric,   -- positive = credit, negative = debit
@@ -136,6 +138,7 @@ CREATE POLICY venue_payout_requests_admin_all ON public.venue_payout_requests
 
 -- ─── 5. request_venue_withdrawal RPC ─────────────────────────────────────────
 -- Turf owner calls this to request a payout from their venue_owner_balance.
+DROP FUNCTION IF EXISTS public.request_venue_withdrawal(numeric, text, text, uuid, text);
 CREATE OR REPLACE FUNCTION public.request_venue_withdrawal(
   p_amount       numeric,
   p_phone_number text,
@@ -200,6 +203,7 @@ GRANT EXECUTE ON FUNCTION public.request_venue_withdrawal(numeric, text, text, u
 
 -- ─── 6. finalize_venue_withdrawal RPC ────────────────────────────────────────
 -- Admin approves or rejects a venue payout request.
+DROP FUNCTION IF EXISTS public.finalize_venue_withdrawal(uuid, boolean, text);
 CREATE OR REPLACE FUNCTION public.finalize_venue_withdrawal(
   p_request_id uuid,
   p_approve    boolean,
