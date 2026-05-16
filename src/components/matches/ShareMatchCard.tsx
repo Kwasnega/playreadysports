@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback } from "react";
 import html2canvas from "html2canvas";
-import { X, Copy, Share2, MessageCircle, Download } from "lucide-react";
+import { X, Copy, Share2, MessageCircle, Download, Check } from "lucide-react";
 import { toast } from "sonner";
 
 /* ------------------------------------------------------------
@@ -226,13 +226,15 @@ export function ShareMatchCard({
           width: "100%",
           background: "#1e293b",
           borderRadius: "16px",
-          padding: "12px 20px 10px",
+          padding: "12px 16px 10px",
           textAlign: "center",
           margin: "0 0 14px",
           border: "1.5px dashed #475569",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
+          boxSizing: "border-box",
+          overflow: "hidden",
         }}>
           <p style={{
             fontSize: "10px",
@@ -246,13 +248,17 @@ export function ShareMatchCard({
             Join code
           </p>
           <p style={{
-            fontSize: "30px",
+            fontSize: "26px",
             fontWeight: 800,
             fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-            letterSpacing: "0.06em",
+            letterSpacing: "0.04em",
             color: "#f8fafc",
             margin: 0,
-            lineHeight: 1,
+            lineHeight: 1.1,
+            maxWidth: "100%",
+            overflowWrap: "break-word",
+            wordWrap: "break-word",
+            textAlign: "center",
           }}>
             {data.joinCode}
           </p>
@@ -284,8 +290,11 @@ export function ShareMatchCard({
       </div>
 
       {/* Modal overlay */}
-      <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
-        <div className="bg-card rounded-3xl p-6 w-full max-w-sm space-y-5 shadow-2xl">
+      <div
+        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+        onClick={onClose}
+      >
+        <div className="bg-card rounded-3xl p-6 w-full max-w-sm space-y-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
           {/* Header */}
           <div className="flex items-center justify-between">
             <h2 className="font-display font-bold text-lg">Share match</h2>

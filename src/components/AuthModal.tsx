@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/useAuth";
-import { Loader2, MailCheck } from "lucide-react";
+import { Loader2, MailCheck, Eye, EyeOff } from "lucide-react";
 
 const GoogleIcon = () => (
   <svg viewBox="0 0 24 24" className="w-5 h-5" aria-hidden>
@@ -29,6 +29,8 @@ export const AuthModal = () => {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [verifyMsg, setVerifyMsg] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
 
   useEffect(() => {
     if (authOpen) {
@@ -40,6 +42,13 @@ export const AuthModal = () => {
       setVerifyMsg(null);
     }
   }, [authOpen, authMode, pendingVerifyEmail]);
+
+  // Countdown for rate-limit cooldown
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const id = setInterval(() => setCooldown((c) => c - 1), 1000);
+    return () => clearInterval(id);
+  }, [cooldown]);
 
   // Whenever a pending verification appears (from signup or unverified signin),
   // make sure the modal is open and on the verify view.
@@ -61,12 +70,18 @@ export const AuthModal = () => {
     if (view === "signin") {
       const r = await signInWithEmail(email, password);
       setBusy(false);
-      if (r.error) setError(r.error);
+      if (r.error) {
+        setError(r.error);
+        if (r.error.includes("Too many attempts")) setCooldown(60);
+      }
     } else if (view === "signup") {
       if (!agree) { setBusy(false); setError("You must agree to the Terms and Conditions."); return; }
       const r = await signUpWithEmail(email, password, fullName);
       setBusy(false);
-      if (r.error) setError(r.error);
+      if (r.error) {
+        setError(r.error);
+        if (r.error.includes("Too many attempts")) setCooldown(60);
+      }
     } else if (view === "forgot") {
       const r = await requestPasswordReset(email);
       setBusy(false);
@@ -213,12 +228,26 @@ export const AuthModal = () => {
                   className="w-full h-12 px-4 rounded-2xl bg-secondary placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20"
                 />
                 {(view === "signin" || view === "signup") && (
-                  <input
-                    type="password" placeholder="Password (min 6 chars)" value={password} required minLength={6}
-                    onChange={e => setPassword(e.target.value)}
-                    autoComplete={view === "signin" ? "current-password" : "new-password"}
-                    className="w-full h-12 px-4 rounded-2xl bg-secondary placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Password (min 6 chars)"
+                      value={password}
+                      required
+                      minLength={6}
+                      onChange={e => setPassword(e.target.value)}
+                      autoComplete={view === "signin" ? "current-password" : "new-password"}
+                      className="w-full h-12 px-4 pr-11 rounded-2xl bg-secondary placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-md text-muted-foreground hover:text-foreground"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 )}
 
                 {view === "signin" && (
@@ -250,11 +279,11 @@ export const AuthModal = () => {
 
                 <button
                   type="submit"
-                  disabled={busy || (view === "signup" && !agree)}
+                  disabled={busy || cooldown > 0 || (view === "signup" && !agree)}
                   className="w-full h-12 rounded-2xl bg-foreground text-background font-display font-bold tracking-tight inline-flex items-center justify-center gap-2 disabled:opacity-40"
                 >
                   {busy && <Loader2 className="w-4 h-4 animate-spin" />}
-                  {view === "signin" ? "Sign in" : view === "signup" ? "Create account" : "Send reset link"}
+                  {cooldown > 0 ? `Wait ${cooldown}s…` : view === "signin" ? "Sign in" : view === "signup" ? "Create account" : "Send reset link"}
                 </button>
               </form>
 

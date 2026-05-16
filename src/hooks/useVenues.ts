@@ -13,6 +13,10 @@ export type Venue = {
   lng: number | null;
   price_per_hour: number | null;
   capacity: number | null;
+  contact_phone: string | null;
+  amenities: string[] | null;
+  description: string | null;
+  opening_hours: string | null;
   is_active: boolean;
   image_urls: string[] | null;
 };
@@ -29,6 +33,7 @@ export function useVenues(userLat?: number, userLng?: number) {
         .from("venues")
         .select("*")
         .eq("is_active", true)
+        .eq("status", "verified")
         .order("name");
 
       if (cancelled) return;

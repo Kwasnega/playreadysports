@@ -60,7 +60,8 @@ export const useLeaderboard = (timeframe: Timeframe = "all", city?: string | nul
         .select(
           "id, username, full_name, avatar_url, reputation_score, total_matches_played, total_wins, city"
         )
-        .gt("reputation_score", 0);
+        .gt("reputation_score", 0)
+        .or("role.is.null,role.neq.turf_owner");
 
       if (city) q = q.eq("city", city);
       if (cutoff) q = q.gte("created_at", cutoff);

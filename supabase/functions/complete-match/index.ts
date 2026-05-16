@@ -91,8 +91,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (match.status !== "live") {
-      return new Response(JSON.stringify({ error: "Match must be live before marking complete" }), {
+    if (match.status !== "live" && match.status !== "upcoming") {
+      return new Response(JSON.stringify({ error: "Match must be upcoming or live before marking complete" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

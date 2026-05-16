@@ -79,6 +79,15 @@ const Lobby = () => {
   const [params] = useSearchParams();
   const matchCode = code ?? "ACC-100";
   const teamFromUrl = params.get("team");
+  // Resolve __auto__ to the team with fewer core players
+  const resolvedTeam = useMemo(() => {
+    if (teamFromUrl && teamFromUrl !== "__auto__") return teamFromUrl;
+    const teamA = (match?.team_color_a ?? "Red").toLowerCase();
+    const teamB = (match?.team_color_b ?? "Blue").toLowerCase();
+    const countA = coreList.filter((p) => p.team === teamA).length;
+    const countB = coreList.filter((p) => p.team === teamB).length;
+    return countA <= countB ? teamA : teamB;
+  }, [teamFromUrl, match?.team_color_a, match?.team_color_b, coreList]);
   const navigate = useNavigate();
   const { user, openAuth } = useAuth();
   const [checkInCode, setCheckInCode] = useState("");
@@ -108,6 +117,7 @@ const Lobby = () => {
     isOrganizer,
     userParticipant,
     loading,
+    refresh,
   } = useMatchLobby(matchCode);
 
   const { acceptRequest, rejectRequest } = useJoinRequests(match?.id);
@@ -206,14 +216,14 @@ const Lobby = () => {
       navigate('/wallet');
       return;
     }
-    
+
     setPaying(true);
-    const team = userParticipant?.team || teamFromUrl || "unassigned";
+    const team = userParticipant?.team || resolvedTeam || "unassigned";
     const res = await payForMatch(match.id, team, "core");
     
     if (res.success) {
       toast.success("Payment confirmed! You're in.");
-      window.location.reload();
+      await refresh();
     } else {
       toast.error(res.error || "Payment failed");
       setPaying(false);
@@ -224,7 +234,7 @@ const Lobby = () => {
     if (!match?.id) return;
     try {
       const { data, error } = await supabase.functions.invoke("join-free-match", {
-        body: { matchId: match.id, team: teamFromUrl ?? "unassigned" },
+        body: { matchId: match.id, team: resolvedTeam || "unassigned" },
       });
       if (error) throw error;
       if (data?.waitlisted) {
@@ -232,7 +242,7 @@ const Lobby = () => {
       } else {
         toast.success("Joined!");
       }
-      window.location.reload();
+      await refresh();
     } catch (err: any) {
       toast.error(err.message || "Failed to join");
     }
@@ -345,7 +355,7 @@ const Lobby = () => {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       toast.success(data?.message || "Checked in!");
-      window.location.reload();
+      await refresh();
     } catch (e: any) {
       toast.error(e?.message || "Check-in failed");
     } finally {
@@ -372,15 +382,15 @@ const Lobby = () => {
         </div>
         {/* Tab strip */}
         <div className="max-w-[680px] mx-auto px-5 pb-2">
-          <div className="grid grid-cols-3 gap-2">
+          <div className={`grid gap-2 ${userParticipant ? "grid-cols-3" : "grid-cols-2"}`}>
             {([
               { id: "match" as const, label: "Match" },
               { id: "teams" as const, label: `Teams · ${corePaidCount}/${maxCore}` },
-              { id: "chat" as const,  label: "Chat" },
+              ...(userParticipant ? [{ id: "chat" as const, label: "Chat" }] : []),
             ] as const).map(t => (
               <button
                 key={t.id}
-                onClick={() => setTab(t.id)}
+                onClick={() => setTab(t.id as any)}
                 data-active={tab === t.id}
                 className="pill-tab text-xs"
               >
@@ -395,7 +405,7 @@ const Lobby = () => {
             ))}
           </div>
           {/* Chat preview pulls players in when Chat tab is not active */}
-          {tab !== "chat" && chatUnread > 0 && chatPreview && (
+          {userParticipant && tab !== "chat" && chatUnread > 0 && chatPreview && (
             <button
               onClick={() => setTab("chat")}
               className="mt-2 w-full text-left flex items-center gap-2 rounded-2xl bg-secondary/70 px-3 py-2 text-xs text-muted-foreground hover:bg-secondary transition-colors"
@@ -407,6 +417,29 @@ const Lobby = () => {
           )}
         </div>
       </header>
+
+      {/* Match over overlay */}
+      {match && (match.status === "completed" || match.status === "cancelled") && (
+        <div className="max-w-[680px] mx-auto px-5 pt-8 pb-4 text-center">
+          <div className="rounded-3xl border border-border/60 bg-card p-8 space-y-3">
+            <p className="text-4xl">{match.status === "completed" ? "🏁" : "🚫"}</p>
+            <h2 className="font-display font-bold text-xl">
+              {match.status === "completed" ? "Match Finished" : "Match Cancelled"}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {match.status === "completed"
+                ? "Thanks for playing! Reviews are open below."
+                : "This match has been cancelled. Any fees paid will be refunded."}
+            </p>
+            <Link
+              to="/"
+              className="inline-block mt-2 bg-foreground text-background rounded-full px-5 py-2.5 text-sm font-semibold"
+            >
+              Back to Home
+            </Link>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-[680px] mx-auto px-5 py-5 space-y-5">
         {/* ============ MATCH TAB ============ */}
@@ -642,6 +675,66 @@ const Lobby = () => {
               </div>
             )}
 
+            {/* Winning team picker — organizer only, two-team mode */}
+            {match?.status === "completed" && isOrganizer && matchMode !== "gala" && (
+              <div className="bg-card rounded-3xl p-5 border border-border/60 space-y-3" style={{ boxShadow: "var(--shadow-card)" }}>
+                <div className="flex items-center gap-2">
+                  <Flag className="w-4 h-4 text-amber-500" />
+                  <h2 className="font-display font-bold text-base tracking-tight">
+                    {match.winning_team ? "Result recorded" : "Record result"}
+                  </h2>
+                </div>
+                {match.winning_team ? (
+                  <p className="text-sm text-muted-foreground">
+                    Winner: <span className="font-bold text-foreground capitalize">{match.winning_team} team</span>
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-xs text-muted-foreground">Which team won?</p>
+                    <div className="flex gap-2">
+                      {[match.team_color_a, match.team_color_b].filter(Boolean).map((color) => (
+                        <button
+                          key={color}
+                          disabled={ending}
+                          onClick={async () => {
+                            if (!match.id || !color) return;
+                            setEnding(true);
+                            const { error } = await supabase
+                              .from("matches")
+                              .update({ winning_team: color } as any)
+                              .eq("id", match.id);
+                            if (error) toast.error("Failed to record result");
+                            else { toast.success(`${color} team wins!`); await refresh(); }
+                            setEnding(false);
+                          }}
+                          className="flex-1 py-3 rounded-full font-semibold text-sm border border-border hover:bg-secondary/80 capitalize"
+                        >
+                          {color} team
+                        </button>
+                      ))}
+                      <button
+                        disabled={ending}
+                        onClick={async () => {
+                          if (!match.id) return;
+                          setEnding(true);
+                          const { error } = await supabase
+                            .from("matches")
+                            .update({ winning_team: "draw" } as any)
+                            .eq("id", match.id);
+                          if (error) toast.error("Failed to record result");
+                          else { toast.success("Draw recorded"); await refresh(); }
+                          setEnding(false);
+                        }}
+                        className="flex-1 py-3 rounded-full font-semibold text-sm border border-border hover:bg-secondary/80"
+                      >
+                        Draw
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
             {/* Post-match reviews */}
             {match?.status === "completed" && userParticipant && (
               <div className="bg-card rounded-3xl p-5 border border-border/60 space-y-4" style={{ boxShadow: "var(--shadow-card)" }}>
@@ -742,19 +835,87 @@ const Lobby = () => {
         {tab === "teams" && (
           <>
             {matchMode === "gala" ? (
-              /* ---- GALA VIEW — keep demo for queue/scores, use real match data for header ---- */
+              /* ---- GALA VIEW — real roster grouped by team ---- */
               <>
-                <section className="bg-card rounded-3xl p-5 border border-border/60" style={{ boxShadow: "var(--shadow-card)" }}>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Trophy className="w-4 h-4 text-amber-500" />
-                    <h2 className="font-display font-bold text-lg tracking-tight">On the pitch</h2>
-                    <span className="text-[11px] font-mono text-muted-foreground ml-auto">Winner stays</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground text-center py-4">Gala scores live here (Tier 3)</p>
-                </section>
-                <div className="rounded-2xl bg-secondary/50 px-4 py-3 text-xs text-muted-foreground text-center">
-                  🔄 <strong className="text-foreground">Winner stays on.</strong> Loser rotates to the back of the queue. Next team steps up.
+                <div className="flex items-center justify-between">
+                  <h2 className="font-display font-bold text-xl tracking-tight">Teams · {coreCount}/{maxCore}</h2>
+                  <span className="text-xs text-muted-foreground">{corePaidCount} paid</span>
                 </div>
+                <div className="rounded-2xl bg-secondary/50 px-4 py-3 text-xs text-muted-foreground text-center">
+                  🔄 <strong className="text-foreground">Winner stays on.</strong> Loser rotates to back of queue.
+                </div>
+                {(() => {
+                  const teamMap = new Map<string, typeof coreList>();
+                  for (const p of coreList) {
+                    const key = p.team || "Unassigned";
+                    if (!teamMap.has(key)) teamMap.set(key, []);
+                    teamMap.get(key)!.push(p);
+                  }
+                  const teams = Array.from(teamMap.entries());
+                  if (teams.length === 0) {
+                    return (
+                      <div className="bg-card rounded-2xl p-5 text-center text-sm text-muted-foreground border border-border/60">
+                        No players have joined yet.
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="space-y-3">
+                      {teams.map(([teamName, players]) => (
+                        <div key={teamName} className="bg-card rounded-2xl border border-border/60 overflow-hidden">
+                          <div className="px-4 py-2.5 bg-secondary/60 flex items-center justify-between">
+                            <span className="text-sm font-bold capitalize">{teamName}</span>
+                            <span className="text-[11px] text-muted-foreground">{players.length} player{players.length !== 1 ? "s" : ""}</span>
+                          </div>
+                          <ul className="divide-y divide-border/50">
+                            {players.map((p) => (
+                              <li key={p.id}>
+                                <button
+                                  onClick={() => { const t = p.username || p.user_id; if (t) openProfile(t); }}
+                                  className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-secondary/50 transition-colors"
+                                >
+                                  {p.avatar_url ? (
+                                    <img src={p.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
+                                  ) : (
+                                    <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-[10px] font-bold shrink-0">
+                                      {(p.full_name || p.username || "?").split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+                                    </div>
+                                  )}
+                                  <span className="text-sm font-semibold flex-1 truncate">{p.full_name || p.username || "Player"}</span>
+                                  {p.payment_status === "paid" && <Check className="w-3.5 h-3.5 text-success shrink-0" />}
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+                {spareList.length > 0 && (
+                  <section>
+                    <h2 className="font-display font-bold text-base tracking-tight mb-2">Spare · {spareList.length}</h2>
+                    <div className="space-y-1">
+                      {spareList.map((p) => (
+                        <button
+                          key={p.id}
+                          onClick={() => { const t = p.username || p.user_id; if (t) openProfile(t); }}
+                          className="w-full flex items-center gap-3 px-3 py-2 bg-card rounded-xl border border-border/60 text-left hover:bg-secondary/50 transition-colors"
+                        >
+                          {p.avatar_url ? (
+                            <img src={p.avatar_url} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
+                          ) : (
+                            <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-[10px] font-bold shrink-0">
+                              {(p.full_name || p.username || "?").split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+                            </div>
+                          )}
+                          <span className="text-xs font-semibold flex-1 truncate">{p.full_name || p.username || "Player"}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-2">Spare players step in if a core player drops.</p>
+                  </section>
+                )}
               </>
             ) : (
               /* ---- TWO-TEAM VIEW ---- */
@@ -805,67 +966,143 @@ const Lobby = () => {
                   </section>
                 )}
 
-                <section>
-                  <div className="flex items-end justify-between mb-3">
-                    <h2 className="font-display font-bold text-xl tracking-tight">Core · {coreCount}</h2>
-                    <span className="text-xs text-muted-foreground">{corePaidCount} paid</span>
-                  </div>
-                  <ul className="divide-y divide-border">
-                    {corePlayers.map((p, i) => (
-                      <SlotRow
-                        key={i}
-                        player={p}
-                        share={sharePerPlayer}
-                        onClick={() => {
-                          const target = p.username || p.userId;
-                          if (target) openProfile(target);
-                        }}
-                      />
-                    ))}
-                  </ul>
+                {/* Team A vs Team B split */}
+                {(() => {
+                  const TEAM_HEX: Record<string, string> = {
+                    red: "#dc2626", blue: "#2563eb", black: "#1c1917", white: "#a1a1aa",
+                    green: "#16a34a", yellow: "#eab308", orange: "#ea580c", purple: "#9333ea",
+                    navy: "#1e3a5f", gold: "#ca8a04",
+                  };
+                  const colorA = (match?.team_color_a ?? "Red");
+                  const colorB = (match?.team_color_b ?? "Blue");
+                  const keyA = colorA.toLowerCase();
+                  const keyB = colorB.toLowerCase();
+                  const teamAList = coreList.filter((p) => p.team === keyA);
+                  const teamBList = coreList.filter((p) => p.team === keyB);
+                  const sideSize = match?.players_per_side ?? Math.ceil(maxCore / 2);
+                  const teamAPlayers = buildPlayerList(teamAList);
+                  const teamBPlayers = buildPlayerList(teamBList);
 
-                  {/* Cover last slot CTA in Teams tab */}
-                  {corePaidCount === maxCore - 1 && (!userParticipant || userParticipant.status !== "active") && match?.status === "upcoming" && (
-                    <button
-                      onClick={() => {
-                        if (!user) { openAuth("signin"); return; }
-                        if ((match?.entry_fee ?? 0) > 0) handleJoinPaid();
-                        else handleJoinFree();
-                      }}
-                      disabled={paying}
-                      className="w-full mt-3 bg-emerald-500 text-white font-semibold rounded-full px-4 py-3.5 text-sm flex items-center justify-center gap-2 disabled:opacity-60 shadow-[0_0_20px_rgba(16,185,129,0.4)] animate-cta-pulse"
-                    >
-                      <Wallet className="w-4 h-4" /> Cover last slot · ₵{sharePerPlayer}
-                    </button>
-                  )}
-                </section>
+                  return (
+                    <section className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h2 className="font-display font-bold text-xl tracking-tight">Teams · {coreCount}/{maxCore}</h2>
+                        <span className="text-xs text-muted-foreground">{corePaidCount} paid</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        {/* Team A */}
+                        <div className="bg-card rounded-2xl border border-border/60 overflow-hidden">
+                          <div className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-white text-center" style={{ backgroundColor: TEAM_HEX[keyA] ?? "#dc2626" }}>
+                            {colorA}
+                          </div>
+                          <ul className="divide-y divide-border/50">
+                            {teamAPlayers.map((p, i) => (
+                              <li key={i}>
+                                <button
+                                  onClick={() => { const t = p.username || p.userId; if (t) openProfile(t); }}
+                                  className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-secondary/50 transition-colors"
+                                >
+                                  {p.avatar ? (
+                                    <img src={p.avatar} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
+                                  ) : (
+                                    <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-[10px] font-bold shrink-0">
+                                      {p.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+                                    </div>
+                                  )}
+                                  <span className="text-xs font-semibold truncate flex-1">{p.name}</span>
+                                  {p.state === "paid" && <Check className="w-3 h-3 text-success shrink-0" />}
+                                </button>
+                              </li>
+                            ))}
+                            {Array.from({ length: Math.max(0, sideSize - teamAPlayers.length) }).map((_, i) => (
+                              <li key={`open-a-${i}`} className="px-3 py-2 flex items-center gap-2">
+                                <div className="w-7 h-7 rounded-full border-2 border-dashed border-border shrink-0" />
+                                <span className="text-xs text-muted-foreground">Open</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
 
-                <section>
-                  <h2 className="font-display font-bold text-xl tracking-tight mb-3">Spare · {sparePlayers.length}</h2>
-                  <div className="flex flex-wrap gap-2">
-                    {sparePlayers.map((p, i) => (
-                      <SlotRow
-                        key={i}
-                        player={p}
-                        share={0}
-                        onClick={() => {
-                          const target = p.username || p.userId;
-                          if (target) openProfile(target);
-                        }}
-                      />
-                    ))}
-                  </div>
-                  <p className="text-[11px] text-muted-foreground mt-3 leading-relaxed">
-                    Spare players pay nothing. They're a buffer in case a core player drops.
-                  </p>
-                </section>
+                        {/* Team B */}
+                        <div className="bg-card rounded-2xl border border-border/60 overflow-hidden">
+                          <div className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-white text-center" style={{ backgroundColor: TEAM_HEX[keyB] ?? "#2563eb" }}>
+                            {colorB}
+                          </div>
+                          <ul className="divide-y divide-border/50">
+                            {teamBPlayers.map((p, i) => (
+                              <li key={i}>
+                                <button
+                                  onClick={() => { const t = p.username || p.userId; if (t) openProfile(t); }}
+                                  className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-secondary/50 transition-colors"
+                                >
+                                  {p.avatar ? (
+                                    <img src={p.avatar} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
+                                  ) : (
+                                    <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-[10px] font-bold shrink-0">
+                                      {p.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+                                    </div>
+                                  )}
+                                  <span className="text-xs font-semibold truncate flex-1">{p.name}</span>
+                                  {p.state === "paid" && <Check className="w-3 h-3 text-success shrink-0" />}
+                                </button>
+                              </li>
+                            ))}
+                            {Array.from({ length: Math.max(0, sideSize - teamBPlayers.length) }).map((_, i) => (
+                              <li key={`open-b-${i}`} className="px-3 py-2 flex items-center gap-2">
+                                <div className="w-7 h-7 rounded-full border-2 border-dashed border-border shrink-0" />
+                                <span className="text-xs text-muted-foreground">Open</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+
+                      {/* Cover last slot CTA in Teams tab */}
+                      {corePaidCount === maxCore - 1 && (!userParticipant || userParticipant.status !== "active") && match?.status === "upcoming" && (
+                        <button
+                          onClick={() => {
+                            if (!user) { openAuth("signin"); return; }
+                            if ((match?.entry_fee ?? 0) > 0) handleJoinPaid();
+                            else handleJoinFree();
+                          }}
+                          disabled={paying}
+                          className="w-full bg-emerald-500 text-white font-semibold rounded-full px-4 py-3.5 text-sm flex items-center justify-center gap-2 disabled:opacity-60 shadow-[0_0_20px_rgba(16,185,129,0.4)] animate-cta-pulse"
+                        >
+                          <Wallet className="w-4 h-4" /> Cover last slot · ₵{sharePerPlayer}
+                        </button>
+                      )}
+                    </section>
+                  );
+                })()}
+
+                {sparePlayers.length > 0 && (
+                  <section>
+                    <h2 className="font-display font-bold text-base tracking-tight mb-2">Spare · {sparePlayers.length}</h2>
+                    <div className="flex flex-wrap gap-2">
+                      {sparePlayers.map((p, i) => (
+                        <SlotRow
+                          key={i}
+                          player={p}
+                          share={0}
+                          onClick={() => {
+                            const target = p.username || p.userId;
+                            if (target) openProfile(target);
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
+                      Spare players pay nothing. They're a buffer in case a core player drops.
+                    </p>
+                  </section>
+                )}
               </>
             )}
           </>
         )}
 
         {/* ============ CHAT TAB ============ */}
-        {tab === "chat" && match && (
+        {tab === "chat" && match && userParticipant && (
           <LobbyChat matchCode={matchCode} matchId={match.id} isOrganizer={isOrganizer} />
         )}
       </div>
@@ -931,7 +1168,7 @@ const Lobby = () => {
                 matchId: match.id,
                 userId: user.id,
                 joinCode: match.join_code,
-                team: userParticipant?.team || teamFromUrl || "unassigned",
+                team: userParticipant?.team || resolvedTeam || "unassigned",
                 entryFee: sharePerPlayer,
                 onSuccess: handlePaystackSuccess,
                 onClose: () => setPaying(false),

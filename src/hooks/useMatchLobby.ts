@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -33,6 +33,9 @@ export type LobbyMatch = {
   core_paid_count: number;
   notes: string | null;
   organizer_id: string;
+  team_color_a: string | null;
+  team_color_b: string | null;
+  winning_team: string | null;
   venue: {
     id: string;
     name: string;
@@ -59,6 +62,46 @@ export function useMatchLobby(joinCode: string) {
   const [error, setError] = useState<string | null>(null);
 
   const matchId = match?.id;
+
+  const loadParticipants = useCallback(async (mid: string) => {
+    const { data, error: pErr } = await supabase
+      .from("match_participants")
+      .select(`
+        id, user_id, slot_type, team, payment_status, status, joined_at, attendance_scanned,
+        profile:profiles(username, full_name, avatar_url)
+      `)
+      .eq("match_id", mid)
+      .order("joined_at", { ascending: true });
+
+    if (pErr) {
+      console.error("loadParticipants error:", pErr);
+    } else {
+      const normalized = (data ?? []).map((row: any) => {
+        const prof = Array.isArray(row.profile) ? row.profile[0] ?? {} : row.profile ?? {};
+        return {
+          id: row.id,
+          user_id: row.user_id,
+          username: prof.username ?? null,
+          full_name: prof.full_name ?? null,
+          avatar_url: prof.avatar_url ?? null,
+          slot_type: row.slot_type,
+          team: row.team,
+          payment_status: row.payment_status,
+          status: row.status,
+          joined_at: row.joined_at,
+          attendance_scanned: !!row.attendance_scanned,
+        } as LobbyParticipant;
+      });
+      setParticipants(normalized);
+    }
+  }, []);
+
+  const refresh = useCallback(async () => {
+    if (!matchId) return;
+    setLoading(true);
+    await loadParticipants(matchId);
+    setLoading(false);
+  }, [matchId, loadParticipants]);
 
   useEffect(() => {
     let cancelled = false;
@@ -88,53 +131,20 @@ export function useMatchLobby(joinCode: string) {
         ...data,
         venue: Array.isArray(data.venue) ? data.venue[0] ?? null : data.venue ?? null,
         organizer: Array.isArray(data.organizer) ? data.organizer[0] ?? null : data.organizer ?? null,
-      } as LobbyMatch;
+        team_color_a: (data as any).team_color_a ?? null,
+        team_color_b: (data as any).team_color_b ?? null,
+        winning_team: (data as any).winning_team ?? null,
+      } as unknown as LobbyMatch;
       setMatch(m);
 
       // Load participants
       await loadParticipants(m.id);
-    };
-
-    const loadParticipants = async (mid: string) => {
-      const { data, error: pErr } = await supabase
-        .from("match_participants")
-        .select(`
-          id, user_id, slot_type, team, payment_status, status, joined_at, attendance_scanned,
-          profile:profiles(username, full_name, avatar_url)
-        `)
-        .eq("match_id", mid)
-        .order("joined_at", { ascending: true });
-
-      if (cancelled) return;
-
-      if (pErr) {
-        console.error("loadParticipants error:", pErr);
-      } else {
-        const normalized = (data ?? []).map((row: any) => {
-          const prof = Array.isArray(row.profile) ? row.profile[0] ?? {} : row.profile ?? {};
-          return {
-            id: row.id,
-            user_id: row.user_id,
-            username: prof.username ?? null,
-            full_name: prof.full_name ?? null,
-            avatar_url: prof.avatar_url ?? null,
-            slot_type: row.slot_type,
-            team: row.team,
-            payment_status: row.payment_status,
-            status: row.status,
-            joined_at: row.joined_at,
-            attendance_scanned: !!row.attendance_scanned,
-          } as LobbyParticipant;
-        });
-        setParticipants(normalized);
-      }
-      setLoading(false);
+      if (!cancelled) setLoading(false);
     };
 
     load();
-
     return () => { cancelled = true; };
-  }, [joinCode]);
+  }, [joinCode, loadParticipants]);
 
   // Realtime subscription for participants
   useEffect(() => {
@@ -236,5 +246,6 @@ export function useMatchLobby(joinCode: string) {
     userParticipant,
     loading,
     error,
+    refresh,
   };
 }

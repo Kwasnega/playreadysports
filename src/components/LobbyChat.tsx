@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Send, MessageCircle, Pin, X } from "lucide-react";
+import { Send, MessageCircle, Pin, X, Share2, UserPlus } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLobbyChat } from "@/hooks/useLobbyChat";
 import { toast } from "sonner";
@@ -40,7 +40,23 @@ export const LobbyChat = ({ matchCode, matchId, isOrganizer = true, teamColorA, 
   const [open, setOpen] = useState(true);
   const [pinnedId, setPinnedId] = useState<string | null>(null);
   const [actionFor, setActionFor] = useState<string | null>(null);
+  const [showInvite, setShowInvite] = useState(false);
   const pressTimer = useRef<number | null>(null);
+
+  const lobbyUrl = `${window.location.origin}/lobby/${matchCode}`;
+
+  const sendInvite = async () => {
+    if (!user) return;
+    const content = `Join this match! Code: ${matchCode} — ${lobbyUrl}`;
+    await sendMessage(content, user.id);
+    setShowInvite(false);
+    toast.success("Invite sent to chat");
+  };
+
+  const copyInvite = () => {
+    navigator.clipboard.writeText(lobbyUrl);
+    toast.success("Lobby link copied");
+  };
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -80,17 +96,40 @@ export const LobbyChat = ({ matchCode, matchId, isOrganizer = true, teamColorA, 
       className="rounded-3xl overflow-hidden border border-border"
       style={{ boxShadow: "var(--shadow-card)" }}
     >
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-5 py-4 bg-card"
-      >
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between px-5 py-4 bg-card">
+        <button onClick={() => setOpen(o => !o)} className="flex items-center gap-2 flex-1 text-left">
           <MessageCircle className="w-4 h-4 text-primary" />
           <span className="font-display font-bold text-base tracking-tight">Match chat</span>
           <span className="text-[10px] text-muted-foreground">· dissolved when match ends</span>
+        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setShowInvite(v => !v)}
+            className="p-2 rounded-full hover:bg-secondary"
+            aria-label="Invite to match"
+          >
+            <UserPlus className="w-4 h-4" />
+          </button>
+          <span className="text-xs text-muted-foreground font-semibold">{messages.length}</span>
         </div>
-        <span className="text-xs text-muted-foreground font-semibold">{messages.length}</span>
-      </button>
+      </div>
+      {showInvite && (
+        <div className="px-4 pb-3 pt-1 bg-card border-b border-border/60 space-y-2">
+          <p className="text-[11px] font-semibold text-muted-foreground">Invite others to this match</p>
+          <div className="flex gap-2">
+            <code className="flex-1 text-[11px] bg-secondary rounded-xl px-3 py-2 truncate">{lobbyUrl}</code>
+            <button onClick={copyInvite} className="shrink-0 text-[11px] font-semibold bg-secondary rounded-xl px-3 py-2 flex items-center gap-1 hover:bg-secondary/80">
+              <Share2 className="w-3.5 h-3.5" /> Copy
+            </button>
+          </div>
+          <button
+            onClick={sendInvite}
+            className="w-full text-[11px] font-semibold bg-primary/10 text-primary rounded-xl py-2 flex items-center justify-center gap-1.5"
+          >
+            <MessageCircle className="w-3.5 h-3.5" /> Post invite link to chat
+          </button>
+        </div>
+      )}
 
       {open && (
         <>

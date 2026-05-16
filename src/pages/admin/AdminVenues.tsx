@@ -173,12 +173,17 @@ export default function AdminVenues() {
           <h2 className="text-sm font-semibold text-amber-300">Pending venue submissions ({pendingVenues.length})</h2>
           <ul className="space-y-3">
             {pendingVenues.map((v) => (
-              <li key={v.id} className="flex flex-wrap items-center gap-3 justify-between bg-white/[0.03] rounded-xl p-4 border border-white/[0.06]">
-                <div className="min-w-0">
+              <li key={v.id} className="bg-white/[0.03] rounded-xl border border-white/[0.06]">
+                <button
+                  type="button"
+                  onClick={() => navigate(`/admin/venues/${v.id}`)}
+                  className="w-full text-left px-4 pt-4 pb-2 hover:bg-white/[0.03] rounded-t-xl transition-colors"
+                >
                   <p className="text-slate-200 font-medium">{v.name}</p>
                   <p className="text-xs text-slate-500">{v.city} · {v.owner_email ?? "no owner email"}</p>
-                </div>
-                <div className="flex items-center gap-2">
+                  <p className="text-[11px] text-amber-400 mt-1">Tap to review all details →</p>
+                </button>
+                <div className="flex items-center gap-2 px-4 pb-4 pt-2 border-t border-white/[0.04]">
                   <button
                     type="button"
                     disabled={actionBusy === v.id}

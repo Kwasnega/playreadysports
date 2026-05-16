@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   ArrowLeft, MapPin, ImageIcon, Calendar, Users, Trophy, Wallet,
-  Mail, Phone, Clock, CheckCircle, XCircle, TrendingUp,
+  Mail, Phone, Clock, CheckCircle, XCircle, TrendingUp, ShieldCheck, ShieldOff, Ban,
 } from "lucide-react";
 
 interface VenueDetail {
@@ -16,6 +16,12 @@ interface VenueDetail {
   surface: string | null;
   lat: number | null;
   lng: number | null;
+  price_per_hour: number | null;
+  capacity: number | null;
+  contact_phone: string | null;
+  amenities: string[] | null;
+  description: string | null;
+  opening_hours: string | null;
   is_active: boolean;
   image_urls: string[] | null;
   status: string | null;
@@ -55,6 +61,27 @@ export default function AdminVenueDetail() {
   const [upcoming, setUpcoming] = useState<MatchRow[]>([]);
   const [completed, setCompleted] = useState<MatchRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actioning, setActioning] = useState(false);
+
+  const updateVenueStatus = async (status: string, isActive: boolean) => {
+    if (!id || !venue) return;
+    setActioning(true);
+    const { error } = await supabase
+      .from("venues")
+      .update({ status, is_active: isActive })
+      .eq("id", id);
+    if (error) {
+      toast.error("Failed to update venue: " + error.message);
+    } else {
+      toast.success(
+        status === "verified" ? "Venue approved and activated" :
+        status === "rejected" ? "Venue rejected" :
+        "Venue deactivated"
+      );
+      await load();
+    }
+    setActioning(false);
+  };
 
   const load = async () => {
     if (!id) return;
@@ -66,15 +93,15 @@ export default function AdminVenueDetail() {
       navigate("/admin/venues");
       return;
     }
-    setVenue(v as VenueDetail);
+    setVenue((v as unknown) as VenueDetail);
 
     if (v.owner_id) {
       const { data: op } = await supabase
         .from("profiles")
-        .select("full_name, email, phone_number")
+        .select("full_name, phone_number")
         .eq("id", v.owner_id)
         .maybeSingle();
-      setOwner(op as OwnerProfile | null);
+      setOwner((op ? { ...op, email: v.owner_email ?? null } : null) as OwnerProfile | null);
     }
 
     const now = new Date().toISOString();
@@ -141,7 +168,7 @@ export default function AdminVenueDetail() {
                 ? "bg-emerald-500/10 text-emerald-400"
                 : venue.status === "pending"
                 ? "bg-amber-500/10 text-amber-400"
-                : "bg-slate-500/10 text-slate-400"
+                : "bg-red-500/10 text-red-400"
             }`}>
               {venue.status ?? "—"}
             </span>
@@ -152,6 +179,50 @@ export default function AdminVenueDetail() {
             </span>
           </div>
         </div>
+      </div>
+
+      {/* Action buttons */}
+      <div className="flex flex-wrap gap-2">
+        {venue.status !== "verified" && (
+          <button
+            onClick={() => updateVenueStatus("verified", true)}
+            disabled={actioning}
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-sm font-semibold hover:bg-emerald-500/20 disabled:opacity-50 transition-colors"
+          >
+            <ShieldCheck className="w-4 h-4" />
+            {actioning ? "Updating…" : "Approve venue"}
+          </button>
+        )}
+        {venue.status !== "rejected" && (
+          <button
+            onClick={() => updateVenueStatus("rejected", false)}
+            disabled={actioning}
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 text-sm font-semibold hover:bg-red-500/20 disabled:opacity-50 transition-colors"
+          >
+            <XCircle className="w-4 h-4" />
+            {actioning ? "Updating…" : "Reject"}
+          </button>
+        )}
+        {venue.status === "verified" && venue.is_active && (
+          <button
+            onClick={() => updateVenueStatus("verified", false)}
+            disabled={actioning}
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-500/10 text-slate-400 border border-slate-500/20 text-sm font-semibold hover:bg-slate-500/20 disabled:opacity-50 transition-colors"
+          >
+            <Ban className="w-4 h-4" />
+            {actioning ? "Updating…" : "Deactivate"}
+          </button>
+        )}
+        {venue.status === "verified" && !venue.is_active && (
+          <button
+            onClick={() => updateVenueStatus("verified", true)}
+            disabled={actioning}
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-sm font-semibold hover:bg-emerald-500/20 disabled:opacity-50 transition-colors"
+          >
+            <ShieldOff className="w-4 h-4" />
+            {actioning ? "Updating…" : "Reactivate"}
+          </button>
+        )}
       </div>
 
       {/* Image gallery */}
@@ -187,6 +258,22 @@ export default function AdminVenueDetail() {
               <span className="text-slate-300">{venue.surface || "—"}</span>
             </div>
             <div className="flex justify-between">
+              <span className="text-slate-500">Price / hour</span>
+              <span className="text-slate-300">{venue.price_per_hour != null ? `₵${venue.price_per_hour.toFixed(0)}` : "—"}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Capacity</span>
+              <span className="text-slate-300">{venue.capacity ?? "—"} players</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Contact phone</span>
+              <span className="text-slate-300">{venue.contact_phone || "—"}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Opening hours</span>
+              <span className="text-slate-300">{venue.opening_hours || "—"}</span>
+            </div>
+            <div className="flex justify-between">
               <span className="text-slate-500">Coordinates</span>
               <span className="text-slate-300 font-mono text-xs">
                 {venue.lat != null && venue.lng != null ? `${venue.lat.toFixed(5)}, ${venue.lng.toFixed(5)}` : "—"}
@@ -196,6 +283,22 @@ export default function AdminVenueDetail() {
               <span className="text-slate-500">Created</span>
               <span className="text-slate-300">{new Date(venue.created_at).toLocaleDateString()}</span>
             </div>
+            {venue.amenities && venue.amenities.length > 0 && (
+              <div className="pt-1">
+                <span className="text-slate-500 block mb-1">Amenities</span>
+                <div className="flex flex-wrap gap-1">
+                  {venue.amenities.map((a) => (
+                    <span key={a} className="text-[11px] bg-white/[0.06] text-slate-300 px-2 py-0.5 rounded-full">{a}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {venue.description && (
+              <div className="pt-1">
+                <span className="text-slate-500 block mb-1">Description</span>
+                <p className="text-slate-300 text-xs leading-relaxed">{venue.description}</p>
+              </div>
+            )}
           </div>
         </div>
 

@@ -1,0 +1,162 @@
+import { createClient } from "jsr:@supabase/supabase-js@2";
+
+/**
+ * auto-cancel-matches
+ * Invoked by a Supabase cron schedule every minute.
+ * Cancels upcoming matches that are underfilled within the cutoff window
+ * (default 20 min before kickoff if paid count < min threshold).
+ */
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const svc = createClient(supabaseUrl, serviceKey);
+
+    // Pull platform config
+    const { data: settings } = await svc
+      .from("platform_settings")
+      .select("key, value")
+      .in("key", ["auto_cancel_window_minutes", "auto_cancel_min_paid_pct"]);
+
+    const settingsMap: Record<string, string> = {};
+    (settings ?? []).forEach((r: any) => { settingsMap[r.key] = r.value; });
+
+    const windowMinutes = parseInt(settingsMap["auto_cancel_window_minutes"] ?? "20", 10);
+    const minPaidPct = parseFloat(settingsMap["auto_cancel_min_paid_pct"] ?? "0.5");
+
+    const now = new Date();
+    const windowEnd = new Date(now.getTime() + windowMinutes * 60 * 1000);
+    // Look ahead 1 extra minute to catch boundary
+    const windowStart = new Date(now.getTime() + (windowMinutes - 1) * 60 * 1000);
+
+    // Find upcoming matches kicking off inside the window
+    const { data: candidates } = await svc
+      .from("matches")
+      .select("id, join_code, match_date, organizer_id, entry_fee, max_core_players, core_paid_count, venue:venues(name, id)")
+      .eq("status", "upcoming")
+      .gte("match_date", windowStart.toISOString())
+      .lte("match_date", windowEnd.toISOString());
+
+    if (!candidates || candidates.length === 0) {
+      return new Response(JSON.stringify({ cancelled: 0, checked: 0 }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    let cancelledCount = 0;
+
+    for (const match of candidates) {
+      const maxCore = Number(match.max_core_players) || 10;
+      const paidCount = Number(match.core_paid_count) || 0;
+      const entryFee = Number(match.entry_fee) || 0;
+
+      // Only auto-cancel paid matches (free matches can proceed regardless)
+      if (entryFee <= 0) continue;
+
+      const fillRatio = paidCount / maxCore;
+      if (fillRatio >= minPaidPct) continue; // Adequately filled — skip
+
+      const venueName =
+        Array.isArray(match.venue)
+          ? match.venue[0]?.name ?? "the venue"
+          : (match.venue as any)?.name ?? "the venue";
+
+      // Mark cancelled and refund
+      await svc
+        .from("matches")
+        .update({ status: "cancelled" as any, escrow_status: "refunded" as any })
+        .eq("id", match.id);
+
+      // Get paid participants
+      const { data: paidParts } = await svc
+        .from("match_participants")
+        .select("id, user_id, payment_reference")
+        .eq("match_id", match.id)
+        .eq("payment_status", "paid");
+
+      const refundErrors: string[] = [];
+
+      for (const p of paidParts ?? []) {
+        if (entryFee > 0) {
+          const ref = `auto_cancel_refund_${match.id}_${p.user_id}`;
+          const { error: rpcErr } = await svc.rpc("process_wallet_transaction", {
+            p_user_id: p.user_id,
+            p_amount: entryFee,
+            p_type: "refund",
+            p_reference: ref,
+          });
+          if (rpcErr) {
+            refundErrors.push(p.user_id);
+            console.error("Refund failed for", p.user_id, rpcErr);
+          } else {
+            await svc
+              .from("match_participants")
+              .update({ payment_status: "refunded" as any, status: "left" as any })
+              .eq("id", p.id);
+          }
+        } else {
+          await svc
+            .from("match_participants")
+            .update({ status: "left" as any })
+            .eq("id", p.id);
+        }
+      }
+
+      // Mark remaining active participants as left
+      await svc
+        .from("match_participants")
+        .update({ status: "left" as any })
+        .eq("match_id", match.id)
+        .eq("status", "active");
+
+      await svc.from("matches").update({ core_paid_count: 0 }).eq("id", match.id);
+
+      // Notify all active roster + organizer
+      const { data: roster } = await svc
+        .from("match_participants")
+        .select("user_id")
+        .eq("match_id", match.id);
+
+      const userIds = new Set<string>([match.organizer_id, ...((roster ?? []).map((r: any) => r.user_id))]);
+      const notifications = Array.from(userIds).map((uid) => {
+        const isOrganizer = uid === match.organizer_id;
+        return {
+          user_id: uid,
+          title: "Match auto-cancelled",
+          body: isOrganizer
+            ? `Your match ${match.join_code} at ${venueName} was auto-cancelled — not enough players confirmed. All fees have been refunded.`
+            : `Match ${match.join_code} at ${venueName} was cancelled (not enough players). Your entry fee has been refunded to your wallet.`,
+          type: "match_cancel",
+          data: { match_id: match.id, join_code: match.join_code, auto: true },
+        };
+      });
+
+      if (notifications.length) {
+        await svc.from("notifications").insert(notifications as any);
+      }
+
+      cancelledCount++;
+    }
+
+    return new Response(
+      JSON.stringify({ cancelled: cancelledCount, checked: candidates.length }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (err: any) {
+    console.error("auto-cancel-matches error:", err);
+    return new Response(JSON.stringify({ error: err.message ?? "Internal error" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});

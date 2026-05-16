@@ -114,13 +114,29 @@ export function useFriends() {
 
   const sendRequest = async (recipientId: string) => {
     if (!user) return { error: "Not signed in" };
+    // Check if friendship already exists
+    // @ts-ignore
+    const { data: existing } = await supabase
+      .from("friendships")
+      .select("id, status")
+      .or(`and(requester_id.eq.${user.id},recipient_id.eq.${recipientId}),and(requester_id.eq.${recipientId},recipient_id.eq.${user.id})`)
+      .maybeSingle();
+    if (existing) {
+      if (existing.status === "accepted") return { error: "You are already friends with this player." };
+      if (existing.status === "pending") return { error: "Friend request already sent." };
+    }
     // @ts-ignore
     const { error } = await supabase.from("friendships").insert({
       requester_id: user.id,
       recipient_id: recipientId,
       status: "pending",
     });
-    if (error) return { error: error.message };
+    if (error) {
+      if (error.message?.includes("duplicate") || error.code === "23505") {
+        return { error: "You are already friends with this player." };
+      }
+      return { error: error.message };
+    }
     // Send notification to recipient
     await supabase.from("notifications").insert({
       user_id: recipientId,

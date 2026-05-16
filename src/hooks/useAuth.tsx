@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 // App-facing user shape — kept stable so existing components keep working.
 type AppUser = {
@@ -17,11 +18,14 @@ const toAppUser = (u: any): AppUser => ({
 // Map Supabase / OAuth errors to friendly messages.
 const friendly = (err: any): string => {
   const msg = (err?.message ?? err?.code ?? "").toLowerCase();
+  const status = err?.status ?? 0;
+  if (status === 429 || msg.includes("too-many-requests") || msg.includes("rate limit") || msg.includes("over_email_send_rate_limit")) {
+    return "Too many attempts. Please wait a minute and try again.";
+  }
   if (msg.includes("invalid-email")) return "Enter a valid email address.";
   if (msg.includes("email-already-in-use") || msg.includes("already registered")) return "An account with that email already exists.";
   if (msg.includes("weak-password") || msg.includes("password")) return "Password must be at least 6 characters.";
   if (msg.includes("user-not-found") || msg.includes("wrong-password") || msg.includes("invalid-credential") || msg.includes("invalid login")) return "Incorrect email or password.";
-  if (msg.includes("too-many-requests")) return "Too many attempts. Try again later.";
   if (msg.includes("network")) return "Network error. Check your connection.";
   if (msg.includes("popup-closed")) return "Sign-in cancelled.";
   if (msg.includes("popup-blocked")) return "Popup blocked by your browser.";
@@ -79,16 +83,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       else setPendingVerifyEmail(null);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       const u = session?.user ?? null;
       setSbUser(u);
       setLoading(false);
       if (u && !isVerified(u)) setPendingVerifyEmail(u.email);
       else setPendingVerifyEmail(null);
-      if (event === 'SIGNED_IN' && pendingActionRef.current) {
-        const pending = pendingActionRef.current;
-        pendingActionRef.current = null;
-        setTimeout(pending, 100);
+      if (event === 'SIGNED_IN' && u) {
+        // Turf-owner guard for OAuth
+        const { data: prof } = await supabase.from("profiles").select("role").eq("id", u.id).maybeSingle();
+        const role = (prof as any)?.role;
+        if (role === "turf_owner") {
+          await supabase.auth.signOut();
+          toast.error("Turf owners must sign in through the venue dashboard.");
+          return;
+        }
+        if (pendingActionRef.current) {
+          const pending = pendingActionRef.current;
+          pendingActionRef.current = null;
+          setTimeout(pending, 100);
+        }
       }
     });
     return () => subscription.unsubscribe();
@@ -109,9 +123,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .eq("id", sbUser.id)
         .maybeSingle();
       if (cancelled) return;
-      const r = (data?.role as string | undefined) ?? null;
+      const prof = data as any;
+      const r = (prof?.role as string | undefined) ?? null;
       setProfileRole(r);
-      setProfileIsAdminFlag(!!data?.is_admin);
+      setProfileIsAdminFlag(!!prof?.is_admin);
     })();
     return () => { cancelled = true; };
   }, [sbUser]);
@@ -203,7 +218,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return { error: friendly(error) };
       }
       const u = data.user;
-      if (u && !isVerified(u)) {
+      if (!u) return { error: "Login failed." };
+      // Check role — turf owners must use the venue dashboard
+      const { data: prof } = await supabase.from("profiles").select("role").eq("id", u.id).maybeSingle();
+      const role = (prof as any)?.role;
+      if (role === "turf_owner") {
+        await supabase.auth.signOut();
+        return { error: "Turf owners must sign in through the venue dashboard." };
+      }
+      if (!isVerified(u)) {
         setSbUser(u);
         setAuthOpen(false);
         setPendingVerifyEmail(u.email);

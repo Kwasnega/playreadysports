@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getFormattedTime } from "@/lib/matchHelpers";
+import VenueOwnerCalendar from "@/components/venues/VenueOwnerCalendar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   Dialog,
@@ -178,7 +179,22 @@ export default function VenueOwnerDashboard() {
 
   /* ─── Add venue modal ─── */
   const [addVenueOpen, setAddVenueOpen] = useState(false);
-  const [venueForm, setVenueForm] = useState({ name: "", city: "", area: "", address: "", surface: "" });
+  const [venueForm, setVenueForm] = useState({
+    name: "",
+    city: "",
+    area: "",
+    address: "",
+    surface: "",
+    description: "",
+    contact_phone: "",
+    price_per_hour: "",
+    capacity: "",
+    lat: "",
+    lng: "",
+    opening_hours: "",
+    selectedAmenities: [] as string[],
+    customAmenities: "",
+  });
   const [venueImages, setVenueImages] = useState<string[]>([]);
   const [venueUploading, setVenueUploading] = useState(false);
   const [addingVenue, setAddingVenue] = useState(false);
@@ -286,6 +302,8 @@ export default function VenueOwnerDashboard() {
 
   useEffect(() => {
     load();
+    const id = setInterval(load, 30000);
+    return () => clearInterval(id);
   }, [load]);
 
   const totalGross = earnings.reduce((s, v) => s + v.totalGross, 0);
@@ -420,6 +438,11 @@ export default function VenueOwnerDashboard() {
       toast.error("Name and city are required");
       return;
     }
+    const customArr = venueForm.customAmenities
+      .split(",")
+      .map((a) => a.trim())
+      .filter(Boolean);
+    const amenitiesArr = [...venueForm.selectedAmenities, ...customArr];
     setAddingVenue(true);
     const { data, error } = await supabase.from("venues").insert({
       name: venueForm.name.trim(),
@@ -427,6 +450,14 @@ export default function VenueOwnerDashboard() {
       area: venueForm.area.trim() || null,
       address: venueForm.address.trim() || null,
       surface: venueForm.surface.trim() || null,
+      description: venueForm.description.trim() || null,
+      contact_phone: venueForm.contact_phone.trim() || null,
+      price_per_hour: venueForm.price_per_hour ? parseFloat(venueForm.price_per_hour) : null,
+      capacity: venueForm.capacity ? parseInt(venueForm.capacity, 10) : null,
+      lat: venueForm.lat ? parseFloat(venueForm.lat) : null,
+      lng: venueForm.lng ? parseFloat(venueForm.lng) : null,
+      opening_hours: venueForm.opening_hours.trim() || null,
+      amenities: amenitiesArr.length ? amenitiesArr : null,
       is_active: true,
       status: "pending",
       image_urls: venueImages,
@@ -440,10 +471,21 @@ export default function VenueOwnerDashboard() {
     }
     toast.success("Venue submitted for admin verification");
     setAddVenueOpen(false);
-    setVenueForm({ name: "", city: "", area: "", address: "", surface: "" });
+    setVenueForm({
+      name: "", city: "", area: "", address: "", surface: "",
+      description: "", contact_phone: "", price_per_hour: "", capacity: "",
+      lat: "", lng: "", opening_hours: "", selectedAmenities: [], customAmenities: "",
+    });
     setVenueImages([]);
     load();
   };
+
+  const venueIds = useMemo(() => venues.map((v) => v.id), [venues]);
+  const venueMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    venues.forEach((v) => { map[v.id] = v.name; });
+    return map;
+  }, [venues]);
 
   /* ─── Auth gates ─── */
   if (authLoading) {
@@ -554,61 +596,12 @@ export default function VenueOwnerDashboard() {
           </div>
         </div>
 
-        <section className="bg-card rounded-2xl border border-border/60 p-5">
-          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-            <h2 className="font-display font-bold text-base flex items-center gap-2">
-              <Calendar className="w-4 h-4" /> Matches
-            </h2>
-            <div className="flex items-center gap-2">
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="rounded-lg border border-border bg-background px-2 py-1.5 text-xs font-semibold outline-none focus:ring-1 focus:ring-foreground/20"
-              />
-              <span className="text-xs text-muted-foreground">{todayMatches.length} scheduled</span>
-            </div>
-          </div>
-          {loading ? (
-            <div className="h-20 animate-pulse bg-secondary rounded-xl" />
-          ) : todayMatches.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No matches at your venues today.</p>
-          ) : (
-            <ul className="space-y-2">
-              {todayMatches.map((m) => (
-                <li
-                  key={m.id}
-                  className="flex items-center gap-3 rounded-xl border border-border/50 px-3 py-2.5"
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate">{m.join_code}</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {getFormattedTime(m.match_date)} · {m.format} · {m.status} · {m.core_paid_count} paid
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0 mr-1">
-                    <p className="text-xs font-bold text-emerald-600">₵{((m.entry_fee || 0) * (m.core_paid_count || 0)).toFixed(0)}</p>
-                    <p className="text-[10px] text-muted-foreground">escrow</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => openRoster(m)}
-                    className="shrink-0 text-xs font-semibold text-primary flex items-center gap-1"
-                  >
-                    <Users className="w-3.5 h-3.5" /> Roster
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => openQr(m)}
-                    className="shrink-0 text-xs font-semibold flex items-center gap-1 bg-secondary rounded-full px-3 py-1.5"
-                  >
-                    <QrCode className="w-3.5 h-3.5" /> QR
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        <VenueOwnerCalendar
+          venueIds={venueIds}
+          venueMap={venueMap}
+          onOpenRoster={(m) => openRoster(m as TodayMatch)}
+          onOpenQr={(m) => openQr(m as TodayMatch)}
+        />
 
         <section className="bg-card rounded-2xl border border-border/60 p-5">
           <h2 className="font-display font-bold text-base mb-1 flex items-center gap-2">
@@ -638,6 +631,42 @@ export default function VenueOwnerDashboard() {
             <p className="text-[11px] text-muted-foreground">
               Peak window uses the hour of day in each player&apos;s browser when they schedule — good enough for a first pass.
             </p>
+
+            {/* Venue quick details */}
+            <div className="grid grid-cols-2 gap-2 text-[11px]">
+              {v.price_per_hour != null && (
+                <div className="bg-secondary/50 rounded-lg px-2.5 py-1.5">
+                  <span className="text-muted-foreground block">Price / hour</span>
+                  <span className="font-semibold">₵{v.price_per_hour.toFixed(0)}</span>
+                </div>
+              )}
+              {v.capacity != null && (
+                <div className="bg-secondary/50 rounded-lg px-2.5 py-1.5">
+                  <span className="text-muted-foreground block">Capacity</span>
+                  <span className="font-semibold">{v.capacity} players</span>
+                </div>
+              )}
+              {v.opening_hours && (
+                <div className="bg-secondary/50 rounded-lg px-2.5 py-1.5">
+                  <span className="text-muted-foreground block">Opening hours</span>
+                  <span className="font-semibold">{v.opening_hours}</span>
+                </div>
+              )}
+              {v.contact_phone && (
+                <div className="bg-secondary/50 rounded-lg px-2.5 py-1.5">
+                  <span className="text-muted-foreground block">Contact</span>
+                  <span className="font-semibold">{v.contact_phone}</span>
+                </div>
+              )}
+            </div>
+            {v.amenities && v.amenities.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {v.amenities.map((a) => (
+                  <span key={a} className="text-[10px] font-semibold bg-secondary rounded-full px-2 py-0.5 text-muted-foreground">{a}</span>
+                ))}
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-3">
               <label className="text-[11px] font-semibold text-muted-foreground col-span-2">Surge · start hour (0–23)</label>
               <input
@@ -940,6 +969,102 @@ export default function VenueOwnerDashboard() {
               onChange={(e) => setVenueForm((f) => ({ ...f, surface: e.target.value }))}
               className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-foreground/20"
             />
+            <textarea
+              placeholder="Description of the venue"
+              rows={3}
+              value={venueForm.description}
+              onChange={(e) => setVenueForm((f) => ({ ...f, description: e.target.value }))}
+              className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-foreground/20 resize-none"
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <input
+                type="tel"
+                placeholder="Contact phone"
+                value={venueForm.contact_phone}
+                onChange={(e) => setVenueForm((f) => ({ ...f, contact_phone: e.target.value }))}
+                className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-foreground/20"
+              />
+              <input
+                type="text"
+                placeholder="Opening hours (e.g. Mon–Fri 6am–10pm)"
+                value={venueForm.opening_hours}
+                onChange={(e) => setVenueForm((f) => ({ ...f, opening_hours: e.target.value }))}
+                className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-foreground/20"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <input
+                type="number"
+                placeholder="Price / hour (₵)"
+                value={venueForm.price_per_hour}
+                onChange={(e) => setVenueForm((f) => ({ ...f, price_per_hour: e.target.value }))}
+                className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-foreground/20"
+              />
+              <input
+                type="number"
+                placeholder="Capacity (players)"
+                value={venueForm.capacity}
+                onChange={(e) => setVenueForm((f) => ({ ...f, capacity: e.target.value }))}
+                className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-foreground/20"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <input
+                type="number"
+                step="any"
+                placeholder="Latitude"
+                value={venueForm.lat}
+                onChange={(e) => setVenueForm((f) => ({ ...f, lat: e.target.value }))}
+                className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-foreground/20"
+              />
+              <input
+                type="number"
+                step="any"
+                placeholder="Longitude"
+                value={venueForm.lng}
+                onChange={(e) => setVenueForm((f) => ({ ...f, lng: e.target.value }))}
+                className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-foreground/20"
+              />
+            </div>
+            {/* Amenities */}
+            <div>
+              <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Amenities</label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  "Parking", "Lights", "Changing room",
+                  "Water station", "Seating", "Security",
+                  "First aid", "Restrooms", "WiFi",
+                  "Snack bar", "Covered area", "Quality surface",
+                ].map((a) => (
+                  <label key={a} className={`flex items-center gap-1.5 text-xs font-medium rounded-xl border px-2.5 py-2 cursor-pointer transition-colors ${
+                    venueForm.selectedAmenities.includes(a)
+                      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600"
+                      : "border-border bg-secondary/40 text-muted-foreground hover:bg-secondary"
+                  }`}>
+                    <input
+                      type="checkbox"
+                      className="w-3.5 h-3.5 accent-emerald-500"
+                      checked={venueForm.selectedAmenities.includes(a)}
+                      onChange={(e) => {
+                        setVenueForm((f) => ({
+                          ...f,
+                          selectedAmenities: e.target.checked
+                            ? [...f.selectedAmenities, a]
+                            : f.selectedAmenities.filter((x) => x !== a),
+                        }));
+                      }}
+                    />
+                    {a}
+                  </label>
+                ))}
+              </div>
+              <input
+                placeholder="Custom amenities (comma separated)"
+                value={venueForm.customAmenities}
+                onChange={(e) => setVenueForm((f) => ({ ...f, customAmenities: e.target.value }))}
+                className="w-full mt-2 rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-foreground/20"
+              />
+            </div>
 
             {/* Photos */}
             <div>

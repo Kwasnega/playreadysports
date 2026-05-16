@@ -292,30 +292,76 @@ const CreateMatch = () => {
                       </button>
 
                       {/* Venue image expansion */}
-                      {active && v.image_urls && v.image_urls.length > 0 && (
-                        <div className="px-3 pb-4 -mx-3">
-                          <div className="flex gap-2 overflow-x-auto snap-x snap-mandatory scrollbar-hide">
-                            {v.image_urls.map((url, i) => (
-                              <img
-                                key={i}
-                                src={url}
-                                alt={`${v.name} ${i + 1}`}
-                                className="h-32 w-auto rounded-xl object-cover border border-border/60 snap-start shrink-0"
-                              />
-                            ))}
+                      {/* Expanded venue details when selected */}
+                      {active && (
+                        <div className="px-3 pb-4 -mx-3 space-y-3">
+                          {/* Image gallery */}
+                          {v.image_urls && v.image_urls.length > 0 && (
+                            <div className="flex gap-2 overflow-x-auto snap-x snap-mandatory scrollbar-hide">
+                              {v.image_urls.map((url, i) => (
+                                <img
+                                  key={i}
+                                  src={url}
+                                  alt={`${v.name} ${i + 1}`}
+                                  className="h-32 w-auto rounded-xl object-cover border border-border/60 snap-start shrink-0"
+                                />
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Description */}
+                          {v.description && (
+                            <p className="text-xs text-muted-foreground leading-relaxed">{v.description}</p>
+                          )}
+
+                          {/* Details grid */}
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            {v.price_per_hour != null && (
+                              <div className="bg-secondary/50 rounded-lg px-2.5 py-1.5">
+                                <span className="text-muted-foreground block">Price / hour</span>
+                                <span className="font-semibold">₵{v.price_per_hour.toFixed(0)}</span>
+                              </div>
+                            )}
+                            {v.capacity != null && (
+                              <div className="bg-secondary/50 rounded-lg px-2.5 py-1.5">
+                                <span className="text-muted-foreground block">Capacity</span>
+                                <span className="font-semibold">{v.capacity} players</span>
+                              </div>
+                            )}
+                            {v.opening_hours && (
+                              <div className="bg-secondary/50 rounded-lg px-2.5 py-1.5">
+                                <span className="text-muted-foreground block">Opening hours</span>
+                                <span className="font-semibold">{v.opening_hours}</span>
+                              </div>
+                            )}
+                            {v.contact_phone && (
+                              <div className="bg-secondary/50 rounded-lg px-2.5 py-1.5">
+                                <span className="text-muted-foreground block">Contact</span>
+                                <span className="font-semibold">{v.contact_phone}</span>
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      )}
-                      {active && v.lat && v.lng && (
-                        <div className="px-3 pb-4 -mx-3">
-                          <a
-                            href={`https://www.google.com/maps/search/?api=1&query=${v.lat},${v.lng}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
-                          >
-                            <MapPin className="w-3.5 h-3.5" /> Open in Maps
-                          </a>
+
+                          {/* Amenities */}
+                          {v.amenities && v.amenities.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {v.amenities.map((a) => (
+                                <span key={a} className="text-[10px] font-semibold bg-secondary rounded-full px-2 py-0.5 text-muted-foreground">{a}</span>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Map link */}
+                          {v.lat && v.lng && (
+                            <a
+                              href={`https://www.google.com/maps/search/?api=1&query=${v.lat},${v.lng}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+                            >
+                              <MapPin className="w-3.5 h-3.5" /> Open in Maps
+                            </a>
+                          )}
                         </div>
                       )}
                     </li>
@@ -433,8 +479,13 @@ const CreateMatch = () => {
                     <input
                       type="number"
                       min={0}
-                      value={entryFee}
-                      onChange={(e) => setEntryFee(Math.max(0, Number(e.target.value)))}
+                      value={entryFee || ""}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "") { setEntryFee(0); return; }
+                        const num = Number(val);
+                        setEntryFee(isNaN(num) ? 0 : Math.max(0, num));
+                      }}
                       className="flex-1 bg-secondary rounded-2xl px-4 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground"
                       placeholder="0"
                     />
@@ -443,6 +494,32 @@ const CreateMatch = () => {
                   <p className="text-[11px] text-muted-foreground leading-snug">
                     Fees held securely until match day. Players pay to confirm their spot.
                   </p>
+                  {selectedVenue && (selectedVenue as any).price_per_hour > 0 && (() => {
+                    const pricePerHr = Number((selectedVenue as any).price_per_hour) || 0;
+                    const hrs = duration / 60;
+                    const totalCost = pricePerHr * hrs;
+                    const sideSize = matchFormat ? parseInt(matchFormat.split("v")[0], 10) || 0 : 0;
+                    const playerCount = mode === "gala" ? sideSize * 8 : sideSize * 2;
+                    const suggested = playerCount > 0 ? Math.ceil(totalCost / playerCount) : 0;
+                    return (
+                      <div className="rounded-2xl bg-secondary/60 p-3 space-y-1">
+                        <p className="text-[11px] font-semibold text-muted-foreground">Venue cost reference</p>
+                        <p className="text-[11px] text-foreground">
+                          ₵{pricePerHr}/hr × {hrs}hr = <span className="font-bold">₵{totalCost.toFixed(0)}</span> total for {playerCount} players
+                        </p>
+                        <p className="text-[11px] text-foreground">
+                          Suggested per player: <span className="font-bold text-primary">₵{suggested}</span>
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setEntryFee(suggested)}
+                          className="text-[10px] font-semibold bg-primary/10 text-primary rounded-full px-3 py-1 mt-1"
+                        >
+                          Use ₵{suggested}
+                        </button>
+                      </div>
+                    );
+                  })()}
                   {selectedVenue && (selectedVenue as any).surge_multiplier > 1 && (selectedVenue as any).surge_peak_start_hour != null && matchHour >= (selectedVenue as any).surge_peak_start_hour && matchHour < ((selectedVenue as any).surge_peak_end_hour ?? 23) && (
                     <p className="text-[11px] text-amber-600 font-semibold mt-1.5">
                       ⚡ Surge pricing active ({(selectedVenue as any).surge_multiplier}×) for this time slot at {selectedVenue.name}

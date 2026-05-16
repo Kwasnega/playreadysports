@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLeaderboard, type Timeframe } from "@/hooks/useLeaderboard";
+import { toast } from "sonner";
 
 function initials(name: string | null) {
   if (!name) return "?";
@@ -45,13 +46,8 @@ export default function Leaderboard() {
     : "Check out the PlayReady leaderboard — find the best football players near you!";
 
   const handleShare = () => {
-    const url = window.location.href;
-    const text = `${shareText} ${url}`;
-    if (navigator.share) {
-      navigator.share({ title: "PlayReady Leaderboard", text, url });
-    } else {
-      navigator.clipboard.writeText(text);
-    }
+    navigator.clipboard.writeText(window.location.href);
+    toast.success("Link copied");
     setShareOpen(false);
   };
 
@@ -228,44 +224,73 @@ export default function Leaderboard() {
         )}
       </div>
 
-      {/* Share Modal */}
+      {/* Share Modal — branded rank card */}
       {shareOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-4" onClick={() => setShareOpen(false)}>
-          <div className="bg-card rounded-3xl p-6 w-full max-w-sm space-y-4" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShareOpen(false)}>
+          <div className="bg-card rounded-3xl p-6 w-full max-w-sm space-y-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
-              <h2 className="font-display font-bold text-lg">Share</h2>
+              <h2 className="font-display font-bold text-lg">Share your rank</h2>
               <button onClick={() => setShareOpen(false)} className="p-1 rounded-full hover:bg-secondary">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="bg-gradient-to-br from-primary/20 to-primary/5 rounded-2xl p-5 text-center border border-primary/20">
+
+            {/* Branded rank card */}
+            <div
+              className="rounded-2xl p-5 text-center relative overflow-hidden"
+              style={{
+                background: "linear-gradient(135deg, hsl(var(--primary) / 0.25), hsl(var(--primary) / 0.05) 60%, hsl(var(--background)))",
+                border: "1px solid hsl(var(--primary) / 0.25)",
+              }}
+            >
+              {/* PRS wordmark */}
+              <p className="text-[10px] font-bold tracking-[0.25em] uppercase text-muted-foreground mb-3">PlayReady Sports</p>
+
+              {/* Avatar */}
               {userEntry?.avatar_url ? (
-                <img src={userEntry.avatar_url} alt="" className="w-16 h-16 rounded-full object-cover mx-auto border-2 border-primary/30" />
+                <img src={userEntry.avatar_url} alt="" className="w-16 h-16 rounded-full object-cover mx-auto border-2 border-primary/40" />
               ) : (
-                <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center text-xl font-bold mx-auto">
+                <div className="w-16 h-16 rounded-full bg-primary/20 border-2 border-primary/30 flex items-center justify-center text-xl font-bold mx-auto">
                   {initials(userEntry?.full_name || userEntry?.username)}
                 </div>
               )}
-              <p className="font-display font-bold text-2xl mt-3">#{userRank ?? "—"}</p>
-              <p className="text-sm text-muted-foreground">
-                {userEntry?.full_name || userEntry?.username || "You"}
+
+              <p className="font-display font-bold text-3xl mt-2 text-primary">#{userRank ?? "—"}</p>
+              <p className="font-semibold text-sm mt-0.5">
+                {userEntry?.full_name || userEntry?.username || "Player"}
               </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {userEntry?.reputation_score.toFixed(1)} reputation points
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                {userEntry?.reputation_score?.toFixed(1) ?? "—"} rep pts
+                {city ? ` · ${city}` : ""}
+                {timeframe !== "all" ? ` · ${TIMEFRAMES.find(t => t.key === timeframe)?.label}` : ""}
               </p>
+
+              <div className="mt-3 flex justify-center gap-4 text-[11px] text-muted-foreground">
+                <span><span className="font-bold text-foreground">{userEntry?.total_matches_played ?? 0}</span> matches</span>
+                <span><span className="font-bold text-foreground">{userEntry?.total_wins ?? 0}</span> wins</span>
+              </div>
+
+              {/* Watermark */}
+              <p className="text-[9px] text-muted-foreground/50 mt-3 tracking-wide">playreadysports.com</p>
             </div>
-            <button
-              onClick={handleShare}
-              className="w-full bg-foreground text-background rounded-full py-3 text-sm font-semibold"
-            >
-              Share on WhatsApp
-            </button>
-            <button
-              onClick={() => setShareOpen(false)}
-              className="w-full bg-secondary text-foreground rounded-full py-3 text-sm font-semibold"
-            >
-              Cancel
-            </button>
+
+            <div className="space-y-2">
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent(`${shareText} ${window.location.href}`)}`}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => setShareOpen(false)}
+                className="w-full h-12 rounded-full bg-[#25D366] text-white text-sm font-bold flex items-center justify-center gap-2"
+              >
+                <Share2 className="w-4 h-4" /> Share on WhatsApp
+              </a>
+              <button
+                onClick={handleShare}
+                className="w-full h-12 rounded-full bg-secondary text-foreground text-sm font-semibold flex items-center justify-center gap-2"
+              >
+                Copy link
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -350,41 +375,35 @@ function ListRow({
   const winRate = player.total_matches_played > 0
     ? Math.round((player.total_wins / player.total_matches_played) * 100)
     : 0;
+  const profilePath = `/player/${player.username || player.id}`;
 
   return (
     <div className={`${isMe ? "bg-primary/5" : ""}`}>
-      <button
-        onClick={onToggle}
-        className={`w-full flex items-center gap-3 px-5 py-3 transition-colors hover:bg-secondary/50 text-left`}
-      >
+      <div className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-secondary/50">
         <span className="w-6 text-center text-sm font-bold text-muted-foreground shrink-0">{rank}</span>
-        {player.avatar_url ? (
-          <img src={player.avatar_url} alt="" className="w-9 h-9 rounded-full object-cover border border-border/60 shrink-0" />
-        ) : (
-          <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center text-xs font-bold shrink-0">
-            {initials(player.full_name || player.username)}
+        <Link to={profilePath} className="flex items-center gap-3 flex-1 min-w-0">
+          {player.avatar_url ? (
+            <img src={player.avatar_url} alt="" className="w-9 h-9 rounded-full object-cover border border-border/60 shrink-0" />
+          ) : (
+            <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center text-xs font-bold shrink-0">
+              {initials(player.full_name || player.username)}
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold truncate">{player.full_name || player.username || "Player"}</p>
+            {player.city && <p className="text-[10px] text-muted-foreground">{player.city}</p>}
           </div>
-        )}
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold truncate">{player.full_name || player.username || "Player"}</p>
-          {player.city && <p className="text-[10px] text-muted-foreground">{player.city}</p>}
-        </div>
-        <span className="text-sm font-bold">{player.reputation_score.toFixed(1)}</span>
-        {expanded ? <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" /> : <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />}
-      </button>
+          <span className="text-sm font-bold">{player.reputation_score.toFixed(1)}</span>
+        </Link>
+        <button onClick={onToggle} className="p-1 rounded-full hover:bg-secondary/80">
+          {expanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+        </button>
+      </div>
       {expanded && (
         <div className="px-5 pb-4 grid grid-cols-3 gap-3">
           <StatPill label="Matches" value={String(player.total_matches_played ?? 0)} />
           <StatPill label="Wins" value={String(player.total_wins ?? 0)} />
           <StatPill label="Win Rate" value={`${winRate}%`} />
-          <div className="col-span-3 mt-1">
-            <Link
-              to={`/player/${player.username || player.id}`}
-              className="block w-full text-center bg-secondary rounded-xl py-2 text-xs font-semibold hover:bg-secondary/80"
-            >
-              View Profile
-            </Link>
-          </div>
         </div>
       )}
     </div>

@@ -57,13 +57,19 @@ const RouteFade = ({ children }: { children: ReactNode }) => {
 
 const App = () => {
   useTheme();
-  const [splashDone, setSplashDone] = useState(false);
+  const [splashDone, setSplashDone] = useState(() => {
+    try { return sessionStorage.getItem("prs_splash_seen") === "1"; } catch { return false; }
+  });
+  const handleSplashDone = () => {
+    try { sessionStorage.setItem("prs_splash_seen", "1"); } catch {}
+    setSplashDone(true);
+  };
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
+        {!splashDone && <SplashScreen onDone={handleSplashDone} />}
         <BrowserRouter>
           <AuthProvider>
             <AuthModal />

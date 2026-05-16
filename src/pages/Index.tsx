@@ -484,7 +484,12 @@ const Index = () => {
   const userLat = location?.lat ?? 5.6037; // Accra default
   const userLng = location?.lng ?? -0.187;
 
-  const liveCount = matches.filter((m) => m.status === "live").length;
+  const liveCount = matches.filter((m) => {
+    if (m.status !== "live") return false;
+    const venue = m.venue;
+    if (!venue?.lat || !venue?.lng) return false;
+    return getDistanceKm(userLat, userLng, venue.lat, venue.lng) <= 20;
+  }).length;
   const friendIds = useMemo(() => new Set(friends.map((f) => f.id)), [friends]);
   const feedItems = transformMatches(matches, userLat, userLng, user?.id, friendIds);
 
@@ -495,7 +500,6 @@ const Index = () => {
       <QuickActions />
       <LiveStatsBar matches={stats.matchesToday} players={stats.playersOnline} />
       <RecommendationsRail />
-      <FriendActivityFeed />
       <FriendsPlayingRail />
       <div id="near-you">
         <NearYou variant="curated" limit={3} items={feedItems} isLoading={matchesLoading} />
