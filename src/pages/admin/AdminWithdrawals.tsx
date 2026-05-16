@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   Check, X, Loader2, ArrowDownLeft, Smartphone, Clock,
-  AlertTriangle, Search, RefreshCw,
+  AlertTriangle, Search, RefreshCw, Building2,
 } from "lucide-react";
 
 interface Withdrawal {
@@ -22,12 +22,84 @@ interface Withdrawal {
   };
 }
 
+interface VenuePayout {
+  id: string;
+  owner_id: string;
+  venue_id: string | null;
+  amount: number;
+  status: string;
+  phone_number: string | null;
+  provider: string | null;
+  notes: string | null;
+  admin_note: string | null;
+  created_at: string;
+  owner?: { full_name: string | null; username: string | null };
+  venue?: { name: string | null } | null;
+}
+
 export default function AdminWithdrawals() {
+  const [tab, setTab] = useState<"player" | "venue">("venue");
+
+  // Player withdrawals
   const [items, setItems] = useState<Withdrawal[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<Record<string, boolean>>({});
   const [filter, setFilter] = useState<"all" | "pending" | "completed" | "failed">("pending");
   const [search, setSearch] = useState("");
+
+  // Venue payouts
+  const [venuePayouts, setVenuePayouts] = useState<VenuePayout[]>([]);
+  const [venueLoading, setVenueLoading] = useState(true);
+  const [venueProcessing, setVenueProcessing] = useState<Record<string, boolean>>({});
+  const [venueFilter, setVenueFilter] = useState<"pending" | "all">("pending");
+
+  const loadVenuePayouts = async () => {
+    setVenueLoading(true);
+    try {
+      let q = (supabase as any)
+        .from("venue_payout_requests")
+        .select("*, venue:venues(name)")
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (venueFilter === "pending") q = q.eq("status", "pending");
+      const { data, error } = await q;
+      if (error) throw error;
+      const rows = (data ?? []) as VenuePayout[];
+      const ownerIds = [...new Set(rows.map((r) => r.owner_id))];
+      let ownerMap: Record<string, { full_name: string | null; username: string | null }> = {};
+      if (ownerIds.length) {
+        const { data: profiles } = await (supabase as any)
+          .from("profiles")
+          .select("id, full_name, username")
+          .in("id", ownerIds);
+        (profiles ?? []).forEach((p: any) => { ownerMap[p.id] = p; });
+      }
+      setVenuePayouts(rows.map((r) => ({ ...r, owner: ownerMap[r.owner_id] ?? null })));
+    } catch (err: any) {
+      toast.error(err.message || "Failed to load venue payouts");
+    } finally {
+      setVenueLoading(false);
+    }
+  };
+
+  const handleVenuePayout = async (req: VenuePayout, approve: boolean) => {
+    setVenueProcessing((p) => ({ ...p, [req.id]: true }));
+    try {
+      const { data, error } = await (supabase as any).rpc("finalize_venue_withdrawal", {
+        p_request_id: req.id,
+        p_approve: approve,
+        p_admin_note: approve ? "Approved by admin" : "Rejected by admin",
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Failed");
+      toast.success(approve ? `₵${req.amount.toFixed(2)} approved — pay via ${req.provider?.toUpperCase() ?? "MoMo"} to ${req.phone_number}` : "Request rejected and refunded");
+      await loadVenuePayouts();
+    } catch (err: any) {
+      toast.error(err.message || "Action failed");
+    } finally {
+      setVenueProcessing((p) => ({ ...p, [req.id]: false }));
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -49,14 +121,14 @@ export default function AdminWithdrawals() {
       const userIds = [...new Set(txs.map((t) => t.user_id))];
 
       // Fetch user profiles separately since no direct FK exists
-      let usersMap: Record<string, { full_name: string | null; username: string | null }> = {};
+      let usersMap: Record<string, { full_name: string | null; username: string | null; email: string | null }> = {};
       if (userIds.length > 0) {
         const { data: profiles } = await (supabase as any)
           .from("profiles")
-          .select("id, full_name, username")
+          .select("id, full_name, username, email")
           .in("id", userIds);
         (profiles ?? []).forEach((p: any) => {
-          usersMap[p.id] = { full_name: p.full_name, username: p.username };
+          usersMap[p.id] = { full_name: p.full_name, username: p.username, email: p.email ?? null };
         });
       }
 
@@ -73,9 +145,8 @@ export default function AdminWithdrawals() {
     }
   };
 
-  useEffect(() => {
-    load();
-  }, [filter]);
+  useEffect(() => { load(); }, [filter]);
+  useEffect(() => { if (tab === "venue") loadVenuePayouts(); }, [venueFilter, tab]);
 
   const handleApprove = async (tx: Withdrawal) => {
     setProcessing((p) => ({ ...p, [tx.id]: true }));
@@ -134,6 +205,8 @@ export default function AdminWithdrawals() {
   const totalPending = items.filter((t) => t.status === "pending").length;
   const totalAmount = items.filter((t) => t.status === "pending").reduce((s, t) => s + Math.abs(t.amount), 0);
 
+  const pendingVenueCount = venuePayouts.filter((r) => r.status === "pending").length;
+
   return (
     <div>
       <header className="flex items-center justify-between mb-6">
@@ -157,6 +230,116 @@ export default function AdminWithdrawals() {
         </button>
       </header>
 
+      {/* Tab switcher */}
+      <div className="flex gap-2 mb-6">
+        <button
+          onClick={() => setTab("venue")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+            tab === "venue"
+              ? "bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20"
+              : "bg-white/[0.04] text-slate-400 hover:text-white"
+          }`}
+        >
+          <Building2 className="w-4 h-4" /> Venue payouts
+          {pendingVenueCount > 0 && (
+            <span className="ml-1 bg-amber-500 text-black text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+              {pendingVenueCount}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setTab("player")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+            tab === "player"
+              ? "bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20"
+              : "bg-white/[0.04] text-slate-400 hover:text-white"
+          }`}
+        >
+          <Smartphone className="w-4 h-4" /> Player withdrawals
+        </button>
+      </div>
+
+      {/* ── Venue payouts tab ── */}
+      {tab === "venue" && (
+        <div>
+          <div className="flex gap-2 mb-4">
+            {(["pending", "all"] as const).map((f) => (
+              <button key={f} onClick={() => setVenueFilter(f)}
+                className={`px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
+                  venueFilter === f
+                    ? "bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20"
+                    : "bg-white/[0.04] text-slate-400 hover:text-white"
+                }`}
+              >{f}</button>
+            ))}
+            <button onClick={loadVenuePayouts} disabled={venueLoading} className="ml-auto flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-white/[0.04] text-slate-400 hover:text-white disabled:opacity-50">
+              <RefreshCw className={`w-3.5 h-3.5 ${venueLoading ? "animate-spin" : ""}`} /> Refresh
+            </button>
+          </div>
+          <div className="bg-[#0B1120] border border-white/[0.06] rounded-2xl overflow-hidden">
+            {venueLoading ? (
+              <div className="p-10 flex flex-col items-center gap-3">
+                <Loader2 className="w-6 h-6 text-emerald-400 animate-spin" />
+                <p className="text-slate-400 text-sm">Loading…</p>
+              </div>
+            ) : venuePayouts.length === 0 ? (
+              <div className="p-10 text-center">
+                <Building2 className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+                <p className="text-slate-400 text-sm">No venue payout requests.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-white/[0.04]">
+                {venuePayouts.map((req) => (
+                  <div key={req.id} className="px-5 py-4 flex flex-wrap items-start gap-4">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white font-semibold">{req.owner?.full_name || req.owner?.username || "—"}</p>
+                      <p className="text-slate-400 text-xs mt-0.5">
+                        {req.venue?.name || "Unnamed venue"} · {req.provider?.toUpperCase() ?? "MoMo"} {req.phone_number}
+                      </p>
+                      <p className="text-slate-500 text-[11px] mt-0.5">{new Date(req.created_at).toLocaleString()}</p>
+                      {req.notes && <p className="text-slate-500 text-[11px] italic mt-0.5">{req.notes}</p>}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-white font-bold text-lg">₵{req.amount.toFixed(2)}</p>
+                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                        req.status === "pending" ? "bg-amber-500/10 text-amber-400"
+                        : req.status === "approved" ? "bg-emerald-500/10 text-emerald-400"
+                        : "bg-red-500/10 text-red-400"
+                      }`}>{req.status}</span>
+                    </div>
+                    {req.status === "pending" && (
+                      <div className="w-full flex items-center gap-2 pt-1">
+                        <button
+                          onClick={() => handleVenuePayout(req, true)}
+                          disabled={venueProcessing[req.id]}
+                          className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 text-xs font-bold disabled:opacity-50"
+                        >
+                          {venueProcessing[req.id] ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                          Approve & mark paid
+                        </button>
+                        <button
+                          onClick={() => handleVenuePayout(req, false)}
+                          disabled={venueProcessing[req.id]}
+                          className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 text-xs font-bold disabled:opacity-50"
+                        >
+                          {venueProcessing[req.id] ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <X className="w-3.5 h-3.5" />}
+                          Reject & refund
+                        </button>
+                        <p className="text-[11px] text-slate-500 ml-auto hidden sm:block">
+                          Pay manually via {req.provider?.toUpperCase()} to {req.phone_number}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Player withdrawals tab ── */}
+      {tab === "player" && (<>
       {/* Filters + Search */}
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
         <div className="flex gap-2">
@@ -272,6 +455,7 @@ export default function AdminWithdrawals() {
           </div>
         )}
       </div>
+      </>)}
     </div>
   );
 }

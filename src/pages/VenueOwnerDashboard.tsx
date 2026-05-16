@@ -175,6 +175,7 @@ export default function VenueOwnerDashboard() {
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [withdrawAmt, setWithdrawAmt] = useState("");
   const [withdrawPhone, setWithdrawPhone] = useState("");
+  const [withdrawProvider, setWithdrawProvider] = useState<"mtn" | "vodafone" | "airteltigo">("mtn");
   const [withdrawing, setWithdrawing] = useState(false);
 
   /* ─── Add venue modal ─── */
@@ -397,13 +398,21 @@ export default function VenueOwnerDashboard() {
     const amt = parseFloat(withdrawAmt);
     if (!amt || amt < 10 || !withdrawPhone.trim()) return;
     setWithdrawing(true);
-    const { data, error } = await supabase.functions.invoke("request-withdrawal", {
-      body: { amount: amt, phone: withdrawPhone.trim(), provider: "mtn" },
+    const { data, error } = await (supabase as any).rpc("request_venue_withdrawal", {
+      p_amount: amt,
+      p_phone_number: withdrawPhone.trim(),
+      p_provider: withdrawProvider,
+      p_venue_id: venues[0]?.id ?? null,
     });
-    if (error || data?.error) {
-      toast.error(data?.error || error?.message || "Withdrawal failed");
+    if (error) {
+      toast.error(error.message || "Withdrawal failed");
+    } else if (data?.error) {
+      const msg = data.error === "insufficient_balance"
+        ? `Insufficient balance. Available: ₵${(data.available ?? 0).toFixed(2)}`
+        : data.error;
+      toast.error(msg);
     } else {
-      toast.success(data?.message || "Withdrawal submitted");
+      toast.success("Withdrawal request submitted — admin will process within 24 h");
       setWithdrawOpen(false);
       setWithdrawAmt("");
       setWithdrawPhone("");
@@ -903,6 +912,27 @@ export default function VenueOwnerDashboard() {
                   placeholder="0.00"
                   className="w-full bg-secondary rounded-xl py-2.5 pl-8 pr-4 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground"
                 />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                Mobile Money Provider
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {(["mtn", "vodafone", "airteltigo"] as const).map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setWithdrawProvider(p)}
+                    className={`py-2 rounded-xl text-xs font-bold capitalize transition-colors ${
+                      withdrawProvider === p
+                        ? "bg-foreground text-background"
+                        : "bg-secondary text-muted-foreground hover:bg-secondary/80"
+                    }`}
+                  >
+                    {p === "airteltigo" ? "AirtelTigo" : p.charAt(0).toUpperCase() + p.slice(1)}
+                  </button>
+                ))}
               </div>
             </div>
             <div>
