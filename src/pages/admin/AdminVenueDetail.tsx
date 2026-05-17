@@ -86,50 +86,53 @@ export default function AdminVenueDetail() {
   const load = async () => {
     if (!id) return;
     setLoading(true);
+    try {
+      const { data: v } = await supabase.from("venues").select("*").eq("id", id).single();
+      if (!v) {
+        toast.error("Venue not found");
+        navigate("/admin/venues");
+        return;
+      }
+      setVenue((v as unknown) as VenueDetail);
 
-    const { data: v } = await supabase.from("venues").select("*").eq("id", id).single();
-    if (!v) {
-      toast.error("Venue not found");
-      navigate("/admin/venues");
-      return;
+      if (v.owner_id) {
+        const { data: op } = await supabase
+          .from("profiles")
+          .select("full_name, phone_number")
+          .eq("id", v.owner_id)
+          .maybeSingle();
+        setOwner((op ? { ...op, email: v.owner_email ?? null } : null) as OwnerProfile | null);
+      }
+
+      const now = new Date().toISOString();
+      const { data: up } = await supabase
+        .from("matches")
+        .select("id, join_code, match_date, format, entry_fee, core_paid_count, status, organizer:profiles(full_name, username)")
+        .eq("venue_id", id)
+        .in("status", ["upcoming", "live"])
+        .gte("match_date", now)
+        .order("match_date", { ascending: true });
+      setUpcoming((up ?? []).map((m: any) => ({
+        ...m,
+        organizer: Array.isArray(m.organizer) ? m.organizer[0] ?? null : m.organizer ?? null,
+      })) as MatchRow[]);
+
+      const { data: comp } = await supabase
+        .from("matches")
+        .select("id, join_code, match_date, format, entry_fee, core_paid_count, status, organizer:profiles(full_name, username)")
+        .eq("venue_id", id)
+        .eq("status", "completed")
+        .order("match_date", { ascending: false })
+        .limit(20);
+      setCompleted((comp ?? []).map((m: any) => ({
+        ...m,
+        organizer: Array.isArray(m.organizer) ? m.organizer[0] ?? null : m.organizer ?? null,
+      })) as MatchRow[]);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to load venue details");
+    } finally {
+      setLoading(false);
     }
-    setVenue((v as unknown) as VenueDetail);
-
-    if (v.owner_id) {
-      const { data: op } = await supabase
-        .from("profiles")
-        .select("full_name, phone_number")
-        .eq("id", v.owner_id)
-        .maybeSingle();
-      setOwner((op ? { ...op, email: v.owner_email ?? null } : null) as OwnerProfile | null);
-    }
-
-    const now = new Date().toISOString();
-    const { data: up } = await supabase
-      .from("matches")
-      .select("id, join_code, match_date, format, entry_fee, core_paid_count, status, organizer:profiles(full_name, username)")
-      .eq("venue_id", id)
-      .in("status", ["upcoming", "live"])
-      .gte("match_date", now)
-      .order("match_date", { ascending: true });
-    setUpcoming((up ?? []).map((m: any) => ({
-      ...m,
-      organizer: Array.isArray(m.organizer) ? m.organizer[0] ?? null : m.organizer ?? null,
-    })) as MatchRow[]);
-
-    const { data: comp } = await supabase
-      .from("matches")
-      .select("id, join_code, match_date, format, entry_fee, core_paid_count, status, organizer:profiles(full_name, username)")
-      .eq("venue_id", id)
-      .eq("status", "completed")
-      .order("match_date", { ascending: false })
-      .limit(20);
-    setCompleted((comp ?? []).map((m: any) => ({
-      ...m,
-      organizer: Array.isArray(m.organizer) ? m.organizer[0] ?? null : m.organizer ?? null,
-    })) as MatchRow[]);
-
-    setLoading(false);
   };
 
   useEffect(() => { load(); }, [id]);

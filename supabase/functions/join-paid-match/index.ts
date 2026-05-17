@@ -1,14 +1,11 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { checkRateLimit } from "../_shared/rateLimiter.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { getCorsHeaders } from "../_shared/cors.ts";
 
 const PAYSTACK_SECRET = Deno.env.get("PAYSTACK_SECRET_KEY");
 
 Deno.serve(async (req) => {
+  const corsHeaders = getCorsHeaders();
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -47,6 +44,20 @@ Deno.serve(async (req) => {
     if (!matchId || !paystackReference) {
       return new Response(JSON.stringify({ error: "Missing matchId or paystackReference" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Idempotency: if this reference was already processed, return immediately
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const svc = createClient(supabaseUrl, serviceKey);
+    const { data: existingTx } = await svc
+      .from("transactions")
+      .select("id, status")
+      .eq("payment_reference", paystackReference)
+      .maybeSingle();
+    if (existingTx && existingTx.status === "completed") {
+      return new Response(JSON.stringify({ success: true, alreadyProcessed: true }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -143,6 +154,7 @@ Deno.serve(async (req) => {
     // Notify organizer
     const joinerName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Someone";
     const paidCount = (match.core_paid_count ?? 0) + 1;
+    const maxCore = match.max_core_players ?? match.players_per_side ?? 10;
     console.log("Sending notification to organizer:", match.organizer_id);
 
     const { error: notifErr } = await supabase.from("notifications").insert({
@@ -194,7 +206,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ success: true, participant }), {
+    return new Response(JSON.stringify({ success: true, participant: result?.participant_id ?? null }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 

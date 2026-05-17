@@ -1,6 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+
+// Shared QueryClient reference so useAuth can invalidate stale queries after a token refresh.
+// Set from App.tsx via setAuthQueryClient().
+let _qc: QueryClient | null = null;
+export const setAuthQueryClient = (qc: QueryClient) => { _qc = qc; };
 
 // App-facing user shape — kept stable so existing components keep working.
 type AppUser = {
@@ -83,12 +89,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       else setPendingVerifyEmail(null);
     });
 
+    // When the tab regains focus after being backgrounded, proactively refresh
+    // the session so an expired access token doesn't leave the page stuck.
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        supabase.auth.getSession();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       const u = session?.user ?? null;
       setSbUser(u);
       setLoading(false);
       if (u && !isVerified(u)) setPendingVerifyEmail(u.email);
       else setPendingVerifyEmail(null);
+      if (event === "TOKEN_REFRESHED" && u) {
+        // Token refreshed — invalidate all React Query caches so components
+        // re-fetch with the new access token instead of showing stale/empty data.
+        _qc?.invalidateQueries();
+      }
       if (event === 'SIGNED_IN' && u) {
         // Turf-owner guard for OAuth
         const { data: prof } = await supabase.from("profiles").select("role").eq("id", u.id).maybeSingle();
@@ -105,7 +125,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       }
     });
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, []);
 
   // Load profile role / admin flag for route guards and dashboards.
@@ -165,8 +188,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
   const requireAuth = (action: () => void, mode?: "signin" | "signup") => {
     if (exposed) {
+      // User is authenticated and verified — run immediately.
       action();
+    } else if (loading) {
+      // Auth is still resolving (hydrating session). Enqueue the action;
+      // it will fire via runPending() once SIGNED_IN fires. Do NOT open
+      // the auth modal yet — the user may already be signed in.
+      pendingActionRef.current = action;
     } else {
+      // Definitively unauthenticated — enqueue and open the auth modal.
       pendingActionRef.current = action;
       openAuth(mode ?? "signin");
     }

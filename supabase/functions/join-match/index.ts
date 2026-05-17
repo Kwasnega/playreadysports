@@ -1,20 +1,18 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { getgetCorsHeaders() } from "../_shared/cors.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// CORS is handled via getCorsHeaders() from _shared/cors.ts
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: getCorsHeaders() });
   }
 
   try {
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Missing authorization header" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
@@ -27,7 +25,7 @@ Deno.serve(async (req) => {
     const { data: { user }, error: authErr } = await supabase.auth.getUser();
     if (authErr || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
@@ -35,7 +33,7 @@ Deno.serve(async (req) => {
     const { matchId, team: requestedTeam, slotType = "core" } = body;
     if (!matchId) {
       return new Response(JSON.stringify({ error: "Missing matchId" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
@@ -48,13 +46,13 @@ Deno.serve(async (req) => {
 
     if (matchErr || !match) {
       return new Response(JSON.stringify({ error: "Match not found" }), {
-        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 404, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
     if (match.status !== "upcoming" && match.status !== "live") {
       return new Response(JSON.stringify({ error: "Match is not open for joining" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
@@ -70,7 +68,7 @@ Deno.serve(async (req) => {
     if (existing) {
       const msg = existing.status === "waitlist" ? "Already on the waitlist" : "Already joined this match";
       return new Response(JSON.stringify({ error: msg }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
@@ -115,7 +113,7 @@ Deno.serve(async (req) => {
 
       if (wErr) {
         return new Response(JSON.stringify({ error: wErr.message }), {
-          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
         });
       }
 
@@ -129,7 +127,7 @@ Deno.serve(async (req) => {
 
       return new Response(
         JSON.stringify({ waitlisted: true, position: nextPos, participant: waitlistEntry }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        { status: 200, headers: { ...getCorsHeaders(), "Content-Type": "application/json" } },
       );
     }
 
@@ -167,7 +165,7 @@ Deno.serve(async (req) => {
 
     if (pErr) {
       return new Response(JSON.stringify({ error: pErr.message }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
@@ -214,12 +212,12 @@ Deno.serve(async (req) => {
     }
 
     return new Response(JSON.stringify({ participant }), {
-      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
     });
   } catch (err: any) {
     console.error("Edge function error:", err);
     return new Response(JSON.stringify({ error: err.message ?? "Internal error" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
     });
   }
 });

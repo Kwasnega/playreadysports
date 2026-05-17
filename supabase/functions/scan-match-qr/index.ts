@@ -1,24 +1,22 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { getCorsHeaders } from "../_shared/cors.ts";
 import { checkRateLimit } from "../_shared/rateLimiter.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// CORS is handled via getCorsHeaders() from _shared/cors.ts
 
 const WINDOW_BEFORE_MS = 2 * 60 * 60 * 1000;
 const WINDOW_AFTER_BUFFER_MS = 2 * 60 * 60 * 1000;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: getCorsHeaders() });
   }
 
   try {
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Missing authorization header" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
@@ -27,7 +25,7 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!serviceKey) {
       return new Response(JSON.stringify({ error: "Server misconfiguration" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
@@ -38,14 +36,14 @@ Deno.serve(async (req) => {
     const { data: { user }, error: authErr } = await supabase.auth.getUser();
     if (authErr || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
     const allowed = await checkRateLimit(supabase, user.id, "scan_match_qr", 80, 60);
     if (!allowed) {
       return new Response(JSON.stringify({ error: "Too many check-in attempts — try again later" }), {
-        status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 429, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
@@ -53,7 +51,7 @@ Deno.serve(async (req) => {
     const token = (body?.token as string | undefined)?.trim();
     if (!token) {
       return new Response(JSON.stringify({ error: "Missing token" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
@@ -67,7 +65,7 @@ Deno.serve(async (req) => {
       secret = decoded.slice(idx + 1);
     } catch {
       return new Response(JSON.stringify({ error: "Invalid check-in code" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
@@ -81,13 +79,13 @@ Deno.serve(async (req) => {
 
     if (mErr || !match || !match.qr_code_secret || match.qr_code_secret !== secret) {
       return new Response(JSON.stringify({ error: "Invalid or expired check-in code" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
     if (match.status !== "upcoming" && match.status !== "live") {
       return new Response(JSON.stringify({ error: "This match is not open for check-in" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
@@ -96,7 +94,7 @@ Deno.serve(async (req) => {
     const now = Date.now();
     if (now < start - WINDOW_BEFORE_MS || now > start + durationMs + WINDOW_AFTER_BUFFER_MS) {
       return new Response(JSON.stringify({ error: "Check-in is only available around match time" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
@@ -111,13 +109,13 @@ Deno.serve(async (req) => {
 
     if (pErr || !participant) {
       return new Response(JSON.stringify({ error: "You are not registered for this match" }), {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 403, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
     if (participant.status !== "active") {
       return new Response(JSON.stringify({ error: "Only active players can check in" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
@@ -125,13 +123,13 @@ Deno.serve(async (req) => {
       (entryFee <= 0 && participant.payment_status !== "refunded");
     if (!paidOk) {
       return new Response(JSON.stringify({ error: "Complete payment before checking in" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
     if (participant.attendance_scanned) {
       return new Response(JSON.stringify({ success: true, already: true, message: "You are already checked in!" }), {
-        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
@@ -191,12 +189,12 @@ Deno.serve(async (req) => {
     }
 
     return new Response(JSON.stringify({ success: true, message: "You are checked in!" }), {
-      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
     });
   } catch (err: any) {
     console.error("scan-match-qr:", err);
     return new Response(JSON.stringify({ error: err.message ?? "Internal error" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
     });
   }
 });

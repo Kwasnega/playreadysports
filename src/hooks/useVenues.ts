@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { getDistanceKm } from "@/lib/matchHelpers";
 
@@ -21,34 +22,28 @@ export type Venue = {
   image_urls: string[] | null;
 };
 
+async function fetchVenues(): Promise<Venue[]> {
+  const { data, error } = await supabase
+    .from("venues")
+    .select("*")
+    .eq("is_active", true)
+    .eq("status", "verified")
+    .order("name");
+
+  if (error) {
+    console.error("useVenues error:", error);
+    return [];
+  }
+  return (data ?? []) as Venue[];
+}
+
 export function useVenues(userLat?: number, userLng?: number) {
-  const [venues, setVenues] = useState<Venue[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const load = async () => {
-      const { data, error } = await supabase
-        .from("venues")
-        .select("*")
-        .eq("is_active", true)
-        .eq("status", "verified")
-        .order("name");
-
-      if (cancelled) return;
-
-      if (error) {
-        console.error("useVenues error:", error);
-        setVenues([]);
-      } else {
-        setVenues((data ?? []) as Venue[]);
-      }
-      setLoading(false);
-    };
-
-    load();
-  }, []);
+  const { data: venues = [], isLoading: loading } = useQuery({
+    queryKey: ["venues"],
+    queryFn: fetchVenues,
+    staleTime: 1000 * 60 * 2,
+    gcTime: 1000 * 60 * 5,
+  });
 
   const sorted = useMemo(() => {
     if (userLat == null || userLng == null) return venues;

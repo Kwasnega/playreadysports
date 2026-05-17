@@ -1,823 +1,882 @@
-# PlayReady Sports — Complete System Audit
+﻿# PLAYREADY SPORTS — ENTERPRISE PLATFORM AUDIT
 
-**Date:** 2026-05-13
-**Auditor:** CTO / Principal Engineer / Technical Due Diligence
-**Scope:** Full-stack codebase, architecture, security, product, scalability, production readiness
+**Date:** May 2026
+**Auditor Role:** Senior Engineering Architect · CTO Review · Technical Due Diligence
+**Stack:** React 18 · TypeScript · Vite · Supabase (PostgreSQL + Auth + Realtime + Edge Functions) · Paystack · Tailwind · shadcn/ui · GSAP
 **Repository:** `playreadysports-cloud/playreadysports`
 
 ---
 
-## 1. EXECUTIVE SUMMARY
+# SECTION 1 — EXECUTIVE SUMMARY
 
-### Overall Assessment
+## Platform Description
 
-PlayReady Sports is a **functionally capable but architecturally immature** sports community platform. It has a polished frontend veneer, a surprisingly complete feature set for an MVP, and a backend that covers the core business logic. However, it carries significant **technical debt, security gaps, and scalability risks** that would prevent it from safely handling real money at scale without substantial hardening.
+PlayReady Sports is a Ghana-focused sports community marketplace for structured football match organization. It connects three user types:
 
-The codebase appears to have been heavily **AI-generated** (evidenced by `lovable-tagger` dependency, empty README, and inconsistent architectural depth across files). This is not inherently bad, but it means some systems are "surface-level complete" — they look right but lack production-depth edge-case handling, security layers, and operational robustness.
+- **Players** — discover nearby matches, join, pay entry fees, review teammates, track wins/losses
+- **Organizers** — create matches, manage rosters, earn incentive bonuses on completion
+- **Turf Owners** — list venues, earn a cut of match revenue, manage bookings, request withdrawals
 
-### Maturity Level: **Late MVP / Early Beta**
+The platform handles real money (Paystack GHS), structured escrow, and realtime match coordination — positioning it squarely in fintech-adjacent territory requiring a significantly higher standard of correctness than a typical CRUD app.
 
-### Ratings (out of 10)
+## Current Stage: Late MVP / Early Beta
 
-| Category | Score | Rationale |
-|----------|-------|-----------|
-| **Overall app** | 5.5/10 | Feature-complete MVP with critical gaps |
-| **Frontend architecture** | 6/10 | Clean component hierarchy but no tests, no error boundaries |
-| **Backend architecture** | 5/10 | Supabase is sound but edge functions lack transactions, idempotency |
-| **Database architecture** | 6/10 | Good schema design but migration chaos, missing constraints found late |
-| **Scalability** | 4/10 | No caching, no CDN, realtime subs won't scale to 1000+ concurrent |
-| **UX** | 7/10 | Strong mobile-first design, good flow logic, some missing states |
-| **UI** | 7.5/10 | Modern, consistent, uses shadcn/ui well, nice admin panel |
-| **Mobile responsiveness** | 7/10 | Mobile-first, but some admin views may break on small screens |
-| **Security** | 4/10 | Firebase credentials hardcoded, RLS gaps, no rate limiting, no input sanitization |
-| **Maintainability** | 5/10 | Inconsistent patterns, duplicate edge functions, no documentation |
-| **Performance** | 5/10 | No lazy loading, no bundle analysis, realtime reloads on every change |
-| **Production readiness** | 4/10 | Missing monitoring, logging, backups, rollback, feature flags |
-| **Investor readiness** | 5/10 | Good demo, weak ops story, security concerns for fintech adjacency |
+The product has a complete core loop (create → join → pay → play → complete → payout) which is impressive for an MVP. However, it carries significant technical debt, security vulnerabilities, and missing production systems that prevent safe money handling at scale.
 
-### Biggest Strengths
+## Maturity Estimates
 
-1. **Complete core loop:** create match → join → pay → play → review. This is rare for an MVP.
-2. **Modern UI stack:** React 18, TypeScript, Tailwind, shadcn/ui, Vite. Fast dev velocity.
-3. **Paystack integration:** Properly handles Ghanaian mobile money + cards. GHS currency.
-4. **Realtime lobby:** Participants update live via Supabase realtime. Good UX.
-5. **Admin dashboard:** Actual admin panel with charts, player management, ban system.
-6. **Escrow concept:** Money held until match confirmed. Trust signal for users.
+| Dimension | Estimate |
+|-----------|----------|
+| Feature Completion | ~62% |
+| Production Readiness | ~35% |
+| Scalability Readiness | ~30% |
+| Investor Readiness | ~45% |
+| Security Readiness | ~38% |
+| Fintech / Payment Safety | ~50% |
 
-### Biggest Weaknesses
+## Letter-Grade Report Card
 
-1. **Firebase credentials hardcoded in source** — immediate critical security vulnerability.
-2. **`requireAuth` is a no-op** — anyone can trigger "protected" actions; auth is cosmetic.
-3. **No database transactions in edge functions** — partial failures can corrupt match state.
-4. **No Paystack webhooks** — relies on client-side callbacks which users can close/abandon.
-5. **Migration chaos** — 24 migration files with multiple "nuclear reset" schemas. No forward-only strategy.
-6. **No tests** — zero automated test coverage despite vitest being configured.
+| Category | Grade | Justification |
+|----------|-------|---------------|
+| Architecture (overall) | B- | Good stack choices, inconsistent discipline |
+| Frontend Architecture | C+ | Clean UI, weak state management, zero tests, no error boundaries |
+| Backend Architecture | C+ | Supabase solid, edge functions lack transactions + idempotency |
+| Database Design | B | Good schema, migration chaos, type mismatches found |
+| UX / UI | B+ | Modern, mobile-first, strong visual identity |
+| Mobile Experience | B | Main app great, admin views are desktop-only |
+| Security | D+ | Hardcoded Firebase key, requireAuth no-op, no rate limiting |
+| Payment Systems | C | Verification correct, no webhooks, no transactions, no idempotency |
+| Escrow Logic | C- | Concept solid, actual disbursement is a stub |
+| Admin Systems | B- | Feature-complete UI, weak server-side enforcement |
+| Social Systems | C | Friends + reviews present, no engagement loops |
+| Realtime Systems | B- | Works cleanly, won't scale past ~1,000 concurrent |
+| Scalability | D+ | No caching, no queues, inefficient triggers, N+1 patterns |
+| Maintainability | C | Inconsistent patterns, duplicate edge functions, no docs, no tests |
+| Code Organization | C+ | Reasonable structure, messy migrations, dead code |
+| Production Readiness | D+ | No CI/CD, no monitoring, no feature flags, no alert system |
 
-### Biggest Risks
+## Biggest Strengths
 
-1. **Financial:** If a Paystack callback fails or is manipulated, money and participant state can diverge.
-2. **Security:** Hardcoded Firebase API key, open CORS on edge functions, no rate limiting = easy DDoS/abuse.
-3. **Data integrity:** Race conditions on match joining (two users can both think they got the last slot).
-4. **Operational:** No observability. When something breaks in production, you will be blind.
+1. **Complete core business loop** — creation → payment → escrow → completion → payout. Rare for an MVP.
+2. **Modern tech stack** — Vite, React 18, TypeScript, Supabase, Tailwind, shadcn/ui. Fast iteration velocity.
+3. **Paystack integration** — properly handles GHS, mobile money (MTN/Vodafone/AirtelTigo), server-side verification.
+4. **Realtime lobby** — live participant list and chat via Supabase channels.
+5. **Comprehensive admin dashboard** — 14 admin pages covering live monitoring, player management, venue approvals, withdrawals, analytics.
+6. **QR check-in system** — unique per-match QR, attendance gate before escrow release.
+7. **Venue owner dashboard** — earnings display, withdrawal request flow, surge/discount pricing configuration.
+8. **Smart recommendation engine** — scoring algorithm (venue affinity, time preference, format, fill rate).
+9. **Wins/losses attribution DB trigger** — automatic stat update when organizer picks winning team.
+10. **Rate limiting infrastructure** — `rate_limits` table + `increment_rate_limit` RPC exists (needs wiring to edge functions).
 
----
+## Biggest Weaknesses
 
-## 2. COMPLETE FEATURE INVENTORY
+1. **Hardcoded Firebase API key** in source — critical credential leak visible in git history.
+2. **`requireAuth` is a no-op** — auth modal appears but action runs immediately regardless of login state.
+3. **No database transactions in edge functions** — partial failures corrupt match/payment state.
+4. **No Paystack webhooks registered** — if browser closes after payment, money is taken but no participant record created.
+5. **Migration strategy is chaotic** — 48 files including "nuclear_reset" schemas, unsafe for production data.
+6. **Zero automated tests** — vitest configured, no test files exist.
+7. **No observability** — no Sentry, no analytics, no logging infrastructure.
+8. **Refund not verified before marking** — DB marked refunded before Paystack confirms it.
+9. **Dead bundle weight ~285KB** — Three.js, Firebase, html2canvas unused but bundled.
+10. **Venue owner payout is a DB stub** — `venue_owner_balance` credits the column, no Paystack Transfer ever fires.
 
-### 2.1 Authentication System
+## Biggest Technical Risks
 
-| Aspect | Detail |
-|--------|--------|
-| **What it does** | Email/password signup, email verification, Google OAuth, password reset, session persistence |
-| **Implementation** | Supabase Auth with custom `useAuth` React context. Friendly error mapping. Verification polling every 3s. |
-| **Completion** | 85% |
-| **Code quality** | Good — clean context, stable `AppUser` abstraction, handles OAuth vs email-verified distinction |
-| **Scalability** | Good — Supabase Auth scales |
-| **UX quality** | Good — modal-based auth, smooth transitions, verification resend |
-| **Missing** | 2FA/MFA, magic links, phone OTP (critical for Ghana where email adoption is lower), social providers beyond Google |
-| **Technical concerns** | `requireAuth` callback just runs `action()` immediately without checking auth. Every caller must gate manually. |
-
-### 2.2 Google OAuth
-
-| Aspect | Detail |
-|--------|--------|
-| **Implementation** | `signInWithOAuth` with `prompt: "consent"`, `access_type: "offline"`. Modern Google logo SVG. |
-| **Completion** | 90% |
-| **Issues** | Consent screen shows Supabase project URL instead of "PlayReadySports" — requires Google Cloud Console branding config. |
-
-### 2.3 Profile System
-
-| Aspect | Detail |
-|--------|--------|
-| **What it does** | Avatar, username, full name, position, reputation score, bio, city, skill level |
-| **Implementation** | `profiles` table linked 1:1 to `auth.users`. Auto-created via trigger. Profile sheet + edit page + public player page. |
-| **Completion** | 80% |
-| **Missing** | Profile privacy settings, social links, verification badges, stats aggregation (total_matches is static) |
-
-### 2.4 Match Creation
-
-| Aspect | Detail |
-|--------|--------|
-| **What it does** | 3-step wizard: Setup (type/mode/format) → Venue picker → Details (date/time/fee/notes). Generates join code. |
-| **Implementation** | Edge function `create-match`. City-based prefix (ACC, KSI, TMA). Random 3-digit suffix. Auto-adds organizer as participant. |
-| **Completion** | 85% |
-| **Scalability** | Poor — 10-attempt loop for code uniqueness will fail under load. No collision handling at DB level. |
-| **Missing** | Recurring matches, templates, draft saving, image upload for match flyers |
-| **Technical concerns** | `create-match` edge function does not wrap organizer participant insert in a transaction. Can create orphaned matches. |
-
-### 2.5 Match Joining
-
-| Aspect | Detail |
-|--------|--------|
-| **What it does** | Free join via `join-free-match`, paid join via Paystack inline → `join-paid-match`. Join requests for private matches. |
-| **Implementation** | Three separate edge functions: `join-match` (legacy), `join-free-match`, `join-paid-match`. Frontend uses `initPaystackPayment`. |
-| **Completion** | 80% |
-| **Code quality** | Mediocre — duplicated capacity-check logic across 3 functions. Legacy `join-match` still exists and has different behavior (auto-flips match to `live`). |
-| **Scalability** | Poor — `count(*)` query + insert are not atomic. Race condition allows overfilling. |
-| **Missing** | Waitlist system, auto-promote spare to core, join deadline enforcement |
-| **Technical concerns** | **CRITICAL:** `join-paid-match` uses `ON CONFLICT upsert` but the unique constraint was only added recently. Prior to that, duplicate participants were possible. |
-
-### 2.6 Payment System
-
-| Aspect | Detail |
-|--------|--------|
-| **What it does** | Paystack inline popup (card + mobile money). Amount verification. Transaction recording. |
-| **Implementation** | `paystack.ts` loads inline JS dynamically. `join-paid-match` edge function verifies with Paystack API server-side. |
-| **Completion** | 75% |
-| **Code quality** | Good — server-side verification is correct. Amount mismatch check in pesewas. |
-| **Scalability** | Concern — no idempotency keys. User double-clicking Pay button could create duplicate transactions. |
-| **Missing** | Webhooks, idempotency, payment retries, payment method saving, partial refunds, fee breakdown display |
-| **Technical concerns** | **HIGH:** No webhook handler. If user closes browser after Paystack success but before `join-paid-match` is called, money is taken but participant record may not exist. |
-
-### 2.7 Refund System
-
-| Aspect | Detail |
-|--------|--------|
-| **What it does** | Auto-refund on match cancel (organizer). Refund on player leave (>2h before kickoff). |
-| **Implementation** | `cancel-match` and `leave-match` edge functions call Paystack `/refund`. Also `paystack-refund` standalone edge function. |
-| **Completion** | 70% |
-| **Code quality** | Mediocre — refund response from Paystack is not checked before marking local DB as "refunded". |
-| **Missing** | Refund status polling, admin-initiated partial refunds, refund history for users, refund failure handling |
-| **Technical concerns** | **HIGH:** If Paystack refund fails (network, insufficient balance, test mode), the app still marks the participant as refunded and notifies them. Money is NOT actually returned. |
-
-### 2.8 Escrow / Payout System
-
-| Aspect | Detail |
-|--------|--------|
-| **What it does** | Holds entry fees until match is "confirmed" (all slots paid). Records 95% payout to organizer, 5% platform fee on completion. |
-| **Implementation** | `escrow_status` enum column. `complete-match` edge function calculates payout. Transaction record inserted. |
-| **Completion** | 50% |
-| **Missing** | **CRITICAL:** No actual money movement to organizer. The "payout" is just a database row. No integration with Paystack Transfer, Wave, or mobile money disbursement. |
-| **Technical concerns** | The platform takes 5% but has no mechanism to actually collect it. This is a promise, not a system. |
-
-### 2.9 Realtime Lobby
-
-| Aspect | Detail |
-|--------|--------|
-| **What it does** | Live participant list, live chat, live notifications. |
-| **Implementation** | Supabase realtime subscriptions on `match_participants`, `messages`, `notifications`. |
-| **Completion** | 80% |
-| **Scalability** | Moderate concern — every open lobby creates a new channel. At 1000 concurrent lobbies, this is a lot of websocket overhead. Consider broadcast channels. |
-| **Missing** | Chat moderation, profanity filter, chat history pagination, image sharing in chat |
-
-### 2.10 Admin Dashboard
-
-| Aspect | Detail |
-|--------|--------|
-| **What it does** | Overview stats, player list with ban/unban, match list, venue management, payment history, reports, broadcast notifications. |
-| **Implementation** | `/admin/*` routes. `useAdmin` hook checks `role` column. Dark-themed sidebar. Recharts for analytics. |
-| **Completion** | 70% |
-| **Code quality** | Good UI, but ban actions are client-side direct DB calls with no server-side enforcement in edge functions. |
-| **Security** | **MEDIUM:** Admin routes return `null` for non-admins but the route still mounts briefly. No server-side API auth on admin RPCs. |
-| **Missing** | Admin activity log viewing UI, role assignment UI, content moderation queue, detailed analytics |
-
-### 2.11 Notifications
-
-| Aspect | Detail |
-|--------|--------|
-| **What it does** | In-app toast notifications for joins, payments, cancellations, match confirmations. Bell icon with unread count. |
-| **Implementation** | `notifications` table + realtime subscription. Toast variants per notification type. |
-| **Completion** | 75% |
-| **Missing** | Push notifications (FCM/OneSignal), email digests, SMS for match reminders, notification preferences/settings |
-
-### 2.12 Turf / Venue System
-
-| Aspect | Detail |
-|--------|--------|
-| **What it does** | Venue directory, turf owner registration, pitch booking system. |
-| **Implementation** | `venues` table, `RegisterTurf` page, `MyPitches` owner dashboard, `bookings` table. |
-| **Completion** | 60% |
-| **Code quality** | `bookings` table has weak typing (plain text `status`, no foreign key to `venues`). |
-| **Missing** | Availability calendar, booking conflict prevention, booking payment integration, owner payout system, venue approval workflow |
-
-### 2.13 Reviews & Reputation
-
-| Aspect | Detail |
-|--------|--------|
-| **What it does** | Post-match player ratings (1-5 stars), comment reviews. Reputation score on profile. |
-| **Implementation** | `reviews` table. `useMatchReviews` hook. Review form in lobby after match completion. |
-| **Completion** | 60% |
-| **Missing** | Weighted reputation algorithm, review moderation, review abuse detection, aggregate venue ratings |
+1. **Financial data corruption** — race conditions on join + partial edge function failure = user paid, not in match.
+2. **Platform fee never collected** — 5% commission calculated, logged, never transferred.
+3. **Organizer payout is virtual** — wallet balance credited in DB, no disbursement mechanism.
+4. **Scalability cliff** — at ~2,000 concurrent users, realtime subs + `count(*)` triggers + N+1 queries all hit walls simultaneously.
+5. **Security exposure** — hardcoded Firebase key + no rate limiting = open to API abuse and DDoS.
 
 ---
 
-## 3. FRONTEND ARCHITECTURE AUDIT
 
-### 3.1 Folder Structure
+# SECTION 2  FULL PRODUCT BREAKDOWN
 
+## 2.1 Authentication
+- **Email/password** signup with verification polling, Google OAuth, password reset.
+- `useAuth.tsx` (364 lines)  context, `AppUser` abstraction, `pendingActionRef` for post-login actions.
+- Turf owners blocked from main app on `SIGNED_IN` event (signed out immediately).
+- **Missing:** Phone OTP (critical for Ghana), MFA, magic links, session timeout warnings.
+
+## 2.2 Match Creation
+- 3-step wizard: type/mode/format  venue picker  date/time/fee/rules.
+- `create-match` edge function: city prefix + 3-char random code, inserts match + organizer participant.
+- **Risks:** Join code namespace tiny (~17,576/city). No draft saving. Match+participant insert not atomic.
+
+## 2.3 Match Discovery
+- Home feed: `useHomeMatches` + 6 additional hooks fire independently on mount (9 queries total).
+- `useSmartRecommendations`: venue affinity 40pts, mode 20pts, format 15pts, time 15pts, fill 10pts, recency 5pts.
+- **Risks:** All 50 matches sent to browser, filtered client-side. No PostGIS geospatial filter.
+
+## 2.4 Match Joining  Free
+- `join-free-match` edge function: capacity check + insert (two separate ops = race condition).
+- Fix: `SELECT FOR UPDATE` on match row inside an RPC transaction.
+
+## 2.5 Match Joining  Paid (Paystack)
+- Paystack inline popup  callback  `join-paid-match` edge function  server-side verify  `process_paid_join` RPC.
+- `paystack-webhook` exists with correct HMAC-SHA512 verification  but must be registered in Paystack dashboard.
+- **Critical gap:** Browser close between charge and callback = user paid, no participant record.
+
+## 2.6 Realtime Lobby
+- `Lobby.tsx` 60KB single file  must be decomposed.
+- 3 Supabase channels per lobby  1,000 lobbies = 3,000 WebSocket subs.
+- Full participant refetch on every realtime event (N+1 pattern).
+- No message pagination  all chat history loaded on open.
+
+## 2.7 Escrow + Completion
+- Payout math: `gross - platform_fee(5%) - organizer_incentive = venue_cut`.
+- Credits `wallet_balance` (organizer) and `venue_owner_balance` (venue owner) in DB.
+- **Critical gap:** No Paystack Transfer API call anywhere. All GHS stays in merchant account. Platform fee is never collected.
+
+## 2.8 QR Check-In
+- 192-bit secret per match, unguessable. Audit log in `match_checkin_events`. Well-implemented.
+- **Risk:** QR only on organizer phone  no fallback if device dies.
+
+## 2.9 Wallet System
+- `wallet_balances` + `wallet_transactions` tables. Top-up via Paystack, spend on joins, withdraw to MoMo.
+- `join_match_with_wallet` RPC uses `FOR UPDATE`  correctly prevents race conditions. Best financial code in the project.
+- **Critical risk:** `process_wallet_transaction` defined twice with incompatible return types (BOOLEAN vs jsonb). Runtime type error on wallet top-up.
+
+## 2.10 Venue System
+- 22+ column `venues` table: coordinates, amenities (GIN-indexed), surge/early-bird/student pricing.
+- Booking payment not implemented. `bookings` table uses plain text status + `pitch_id TEXT` (no FK). Architecturally weak.
+
+## 2.11 Admin Dashboard (14 pages)
+- AdminOverview, AdminLiveMonitor, AdminPlayers, AdminMatches, AdminVenues, AdminVenueDetail,
+  AdminRevenue, AdminCalendar, AdminReports, AdminBroadcast, AdminWithdrawals, AdminSettings,
+  AdminCreateOwner, AdminPayments.
+- `+12%` growth stat hardcoded in StatCard  always shows +12% regardless of actual data.
+- Admin routes client-side guarded only; data protected by RLS.
+
+## 2.12 Notifications
+- `notifications` table + realtime subscription + GSAP bell shake on new notification.
+- Types: join confirm, payment, match confirmed, cancelled, refund, withdrawal, venue earnings.
+- **Missing:** FCM push, email digest, SMS. Without push = zero re-engagement.
+
+## 2.13 Friends + Social Graph
+- `friendships` table (requester, addressee, status). Friend activity feed on home page.
+- `useSuggestedFriends` queries 100 profiles with no geospatial or social filter  will break at scale.
+
+## 2.14 Reviews + Reputation
+- `reviews` table with `UNIQUE(match_id, reviewer_id)`.
+- DB trigger `fn_attribute_match_result` auto-credits wins/losses/reputation on `winning_team` update.
+- Reputation gameable  no anomaly detection.
+
+## 2.15 Smart Recommendations
+- Scoring algorithm in `useSmartRecommendations.ts`. No collaborative filtering. Cold-start problem for new users.
+
+## 2.16 Match Reminders + Auto-Cancel
+- pg_cron fires `match-reminders` every 30 min (in-app notifications only, no push/SMS).
+- `auto-cancel-matches` hourly  cancels unfilled matches, triggers refunds.
+- Refund success not verified before DB update (same bug as manual cancel).
+
+## 2.17 Moderation
+- `reports` table. `ReportButton` on player profiles. Admin list view only.
+- **Completion: 35%.** No workflow, no auto-flagging, no appeal system.
+
+## 2.18 Leaderboard
+- `profiles ORDER BY metric DESC LIMIT 100`  full table scan. No index on `reputation_score`.
+- Should be a materialized view refreshed hourly.
+
+## 2.19 QR + Booking (Venues)
+- `NewBookingDialog` records bookings. `useVenueAvailability` checks conflicts.
+- No payment flow for bookings. Venue owners accept bookings with no payment guarantee.
+
+## 2.20 Weather Integration
+- `useWeather.ts` calls Open-Meteo (free, no key). 80% complete. Nice-to-have.
+
+
+---
+
+# SECTION 3  MATCH LIFECYCLE ANALYSIS
+
+## Full Match Lifecycle
+
+### Phase 1  Creation
+1. Organizer submits wizard  `create-match` edge function.
+2. Match: `status='upcoming'`, `escrow_status='none'`, join code + QR secret generated.
+3. Organizer auto-added as participant. Match appears in public home feed.
+
+**DB state:** `matches.status = upcoming`, `matches.escrow_status = none`
+
+### Phase 2  Discovery + Joining
+1. Players browse home feed, use join code, or follow friend activity.
+2. Free join: `join-free-match`  `payment_status='none'`, `status='active'`.
+3. Paid join: Paystack popup  `join-paid-match`  verify  `payment_status='paid'`, `core_paid_count++`.
+4. When `core_paid_count >= max_core_players`: `escrow_status='holding'`, all notified "Match confirmed!".
+
+**Weak point:** Capacity check and insert are NOT atomic. Two simultaneous joins can both read count=9 and both insert, overfilling a 10-slot match.
+
+### Phase 3  Match Day
+1. Players arrive at venue. Organizer displays QR.
+2. Players scan  `scan-match-qr`  `attendance_scanned=true`, checkin event logged.
+
+### Phase 4  Completion
+1. Organizer taps "Complete Match"  `complete-match` edge function.
+2. Guards: idempotency (`escrow_released_at` not set), status, auth, QR gate.
+3. Calculates: gross, platform_fee, organizer_incentive, venue_cut.
+4. Calls `process_wallet_transaction` RPC (organizer wallet).
+5. Calls `credit_venue_owner_balance` RPC (venue owner).
+6. Updates: `status='completed'`, `escrow_status='released'`, `escrow_released_at=now()`.
+7. Inserts transaction rows, sends notifications.
+
+**Weak point:** 7 sequential DB operations with zero transaction wrapping. Any failure mid-sequence leaves DB in inconsistent state.
+
+### Phase 5  Wins/Losses Attribution
+- Organizer sets `matches.winning_team` (text field).
+- DB trigger `fn_attribute_match_result` fires (once  guarded by `OLD.winning_team IS NULL`).
+- Winners: `total_wins++`, `reputation_score += 0.2`.
+- Losers: `total_losses++`, `reputation_score -= 0.2`.
+
+### Phase 6  Venue Owner Payout
+1. `venue_owner_balance` credited in DB on match completion.
+2. Owner requests withdrawal  `request_venue_withdrawal` RPC  balance held, request created.
+3. Admin sees request in AdminWithdrawals Venue payouts tab.
+4. Admin manually transfers GHS via MoMo outside the platform.
+5. Admin clicks Approve  `finalize_venue_withdrawal` RPC  owner notified.
+
+**This entire phase is manual. No automation. Not scalable.**
+
+## Race Condition + Bug Register
+
+| Scenario | Severity | Impact |
+|----------|----------|--------|
+| Two users join simultaneously, one slot left | HIGH | Overfill  extra participant in match |
+| Browser closes between Paystack charge and callback | HIGH | User paid, no participant record |
+| `complete-match` crashes after wallet credit, before match update | HIGH | Organizer credited, match stays "upcoming", can be completed again |
+| Auto-cancel refund fails silently | HIGH | Users not refunded, DB says they are |
+| Two admins approve same withdrawal simultaneously | MEDIUM | Double payout  no idempotency in finalize_venue_withdrawal |
+| `process_wallet_transaction` return type mismatch | MEDIUM | Runtime error on wallet top-up |
+| `recalc_core_paid` trigger vs manual increment drift | MEDIUM | core_paid_count desync |
+
+---
+
+# SECTION 4  PAYMENT + ESCROW SYSTEM AUDIT
+
+## 4.1 Paystack Integration Points
+1. **Client-side:** Inline JS popup (`paystack.ts`). Public key from env var.
+2. **Server-side verify:** `join-paid-match` + `paystack-verify` edge functions call Paystack REST API.
+3. **Webhook:** `paystack-webhook` edge function  HMAC-SHA512 timing-safe verification. Handles `charge.success`, `charge.failed`, `refund.processed`.
+
+## 4.2 Payment Flow
 ```
-src/
-  components/       # 65 items — UI primitives + feature components
-    ui/             # 49 items — shadcn/ui primitives
-    admin/          # 1 item — AdminLayout
-    matches/        # 1 item — ShareMatchCard
-    payment/        # 1 item — PaymentModal
-  pages/            # 21 items — route-level components
-    admin/          # 7 items — admin pages
-  hooks/            # 24 items — custom hooks
-  lib/              # 5 items — utilities
-  integrations/     # 2 items — Supabase client
+User  Paystack Popup  Pays  Callback fires  Browser calls join-paid-match
+   Edge fn: GET /verify/{reference} to Paystack API
+   Edge fn: calls process_paid_join RPC (atomic upsert + tx insert)
+   Notifies organizer
 ```
+**Webhook safety net (if registered):**
+```
+Paystack  POST /paystack-webhook  HMAC verify  process_paid_join RPC
+```
+Both paths call the same idempotent RPC. Design is correct. Operational status unknown.
 
-**Verdict:** Reasonably organized. Separation of pages vs components is clean. However:
-- `lib/` is too small — many helpers are scattered in hooks or inline.
-- No `services/` or `api/` layer — direct Supabase calls everywhere.
-- No `types/` directory — types live inside hooks.
+## 4.3 Idempotency
 
-### 3.2 State Management
+| Function | Check | Safe? |
+|----------|-------|-------|
+| `process_paid_join` RPC | EXISTS check on payment_reference | Yes |
+| `join-paid-match` edge fn | None | No |
+| `wallet-topup` | `wallet_transactions.reference UNIQUE` constraint | Yes |
+| `complete-match` | `escrow_released_at IS NOT NULL` | Yes |
+| `finalize_venue_withdrawal` | None | No |
 
-- **React Context:** `useAuth` only. Good — keeps auth centralized.
-- **React Query:** Configured but underutilized. Many hooks (`useMatchLobby`, `useHomeMatches`) use raw `useEffect` + `useState` instead of `useQuery`. This means no caching, no background refetching, no stale-while-revalidate.
-- **Local state:** Heavily used with `useState`. No Zustand, Redux, or Jotai.
-
-**Verdict:** Simpler than needed for some hooks, missing React Query benefits for others. The `useMatchLobby` hook re-implements what `useQuery` + `refetchInterval` would do better.
-
-### 3.3 Component Patterns
-
-**Strengths:**
-- shadcn/ui primitives provide consistency.
-- Good use of compound components (Sheet, Dialog).
-- Mobile-first responsive design.
-
-**Weaknesses:**
-- **No error boundaries.** A single component crash will white-screen the app.
-- **No suspense boundaries.** Every data load is manual `loading` state.
-- `RouteFade` uses GSAP for every route transition — adds ~3KB and unnecessary JS animation overhead.
-- `NearYou.tsx` hardcodes demo data as a fallback — this should be in a separate seed file.
-
-### 3.4 Hook Organization
-
-**Good:**
-- Hooks are granular and focused (`useVenues`, `useHomeStats`, `useUserLocation`).
-- `useAuth` is well-structured with verification flow.
-
-**Bad:**
-- `useMatchLobby` is 237 lines and does too much (fetch match, fetch participants, realtime sub, memoization). Should be split.
-- `useAdmin` does a client-side redirect — this should be a route guard, not a hook concern.
-- Many hooks duplicate Supabase query normalization logic (`Array.isArray(row.profile) ? row.profile[0] : row.profile`).
-
-### 3.5 Design System
-
-- **Tailwind config** is rich with custom colors, shadows, and fonts.
-- **CSS variables** for theming (light/dark via `next-themes`).
-- **Bricolage Grotesque** + **Inter** font pairing is modern and appropriate.
-- **Consistent spacing:** `px-5` on mobile, `max-w-[680px]` content constraint.
-
-**Issue:** Some admin pages use hardcoded colors (`bg-[#070B14]`, `text-slate-400`) instead of theme tokens. This breaks dark mode consistency.
-
----
-
-## 4. BACKEND + DATABASE AUDIT
-
-### 4.1 Supabase Architecture
-
-**Good:**
-- PostgreSQL with proper enums for type safety.
-- RLS enabled on all tables.
-- Realtime configured for messages, notifications, bookings.
-- Edge Functions for critical business logic (payment verification, match creation).
-
-**Bad:**
-- Edge Functions use `Deno.serve` with `corsHeaders` set to `Access-Control-Allow-Origin: *`. This is acceptable for a public API but should be restricted in production.
-- **No database transactions.** Every edge function does multiple sequential Supabase calls. If one fails midway, the database is left in an inconsistent state.
-
-### 4.2 PostgreSQL Schema
-
-**Strengths:**
-- Comprehensive tables: profiles, venues, matches, match_participants, messages, notifications, transactions, reviews, reports, audit_log, bookings, user_roles.
-- Good enum coverage: match_status, payment_status, escrow_status, participant_status, etc.
-- Proper foreign keys with CASCADE/SET NULL.
-- Indexes on frequently queried columns.
-
-**Weaknesses:**
-- **`matches` table has both `match_type` (enum) and `is_public` (boolean).** Redundant and confusing.
-- **`bookings` table uses plain text for `status` and `payment`** instead of enums. No foreign key to `venues` (uses `pitch_id` text).
-- **`profiles.role`** is plain text (`'user'`, `'admin'`, `'super_admin'`) while `user_roles` table has a proper `app_role` enum. Dual role systems = confusion.
-- **No `CHECK` constraints** on numeric fields (e.g., `entry_fee` could be negative without application validation).
-- **`reports` table lacks an `assigned_to` admin field** and resolution notes.
-
-### 4.3 RLS Policies
-
-**Overall:** Policies are generally well-thought-out but have gaps.
-
-| Table | Policy Quality | Issues |
-|-------|---------------|--------|
-| `profiles` | Good | Select all, update own. Fine for public profiles. |
-| `venues` | Good | Select all, insert/update own. |
-| `matches` | Good | Public select, participant select, organizer insert/update. |
-| `match_participants` | Fixed | Was recursively self-referencing. Now fixed with public match clause. |
-| `messages` | Good | Participant-only. Correct. |
-| `notifications` | Good | Own only. Correct. |
-| `transactions` | Weak | Select own only. No insert/update policies — edge functions bypass RLS with service role? Actually they use user JWT, so inserts would fail unless using service role key. **This is a potential bug.** |
-| `reviews` | Good | Select all, insert/update own. |
-| `reports` | Partial | Insert auth, select admin only. Users cannot see their own reports. |
-| `audit_log` | Good | Admin select only. |
-| `bookings` | **Weak** | Select all, no insert/update policies defined. Effectively open. |
-| `user_roles` | Minimal | Select own only. |
-
-**Critical concern:** Edge Functions create `supabase` client with `ANON_KEY` + user `Authorization` header. This means they operate under RLS. If a function tries to insert into `transactions` and there's no INSERT policy, it will fail silently or error. Many edge functions insert into `transactions` — verify these actually work.
-
-### 4.4 Triggers
-
-- `handle_new_user()` — creates profile + user_roles on signup. Good.
-- `recalc_core_paid()` — recalculates `core_paid_count` on every participant change.
-  - **Inefficient:** Runs a full `count(*)` subquery for every INSERT/UPDATE/DELETE on `match_participants`. Will become slow at scale. Should be incremental or use a materialized counter.
-- `set_updated_at()` — standard. Good.
-
-### 4.5 Migration Strategy
-
-**Disaster.** There are 24 migration files with names like:
-- `20260513001000_nuclear_reset_and_full_schema.sql`
-- `20260513002000_fresh_database_schema.sql`
-
-This indicates repeated "start over" approaches. In production, you **cannot** nuclear reset. The migrations should be:
-1. Forward-only
-2. Each does one additive change
-3. Never drop and recreate tables with data
-
-**Current state is not safe for production data.**
-
----
-
-## 5. AUTHENTICATION + SECURITY AUDIT
-
-### 5.1 Critical Vulnerabilities
-
-#### 🔴 CRITICAL: Hardcoded Firebase Credentials
-
-`src/lib/firebase.ts` contains a full Firebase config with API keys:
-
+## 4.4 Refund Safety
 ```typescript
-const firebaseConfig = {
-  apiKey: "AIzaSyCWsbhNzvBUR2eQT6jjtMCFKIxeyfax9LY",
-  // ...
-};
+await fetch("https://api.paystack.co/refund", body); // No response check
+await supabase.update({ status: "refunded" });        // Always runs
+```
+If Paystack returns an error, money is NOT refunded but DB says it is. Fix: check refund response before DB update; on failure set `status='refund_failed'` and alert admin.
+
+## 4.5 Money Flow Diagram
+```
+Player pays GHS 30  Paystack merchant account (stays here forever)
+PlayReady DB:
+  organizer wallet_balance  += 3.00  (incentive  virtual)
+  venue_owner_balance       += 25.50 (venue cut  virtual)
+  platform_fee = 1.50               (calculated, never collected)
+
+Real GHS movement: ZERO
 ```
 
-**Impact:** Firebase project can be abused, quota consumed, data accessed if Firestore rules are open. Even if unused, this is a leaked credential.
-
-**Fix:** Remove Firebase entirely (it appears unused) or move config to environment variables.
-
-#### 🔴 CRITICAL: `requireAuth` is a No-Op
-
-```typescript
-const requireAuth = useCallback((action: () => void, _mode?: "signin" | "signup") => {
-  action(); // Just runs it. No auth check.
-}, []);
-```
-
-**Impact:** Any component calling `requireAuth(() => doSomething())` will execute `doSomething` regardless of login state. The auth modal is supposed to gate actions, but it doesn't.
-
-**Fix:** Implement actual gating:
-```typescript
-const requireAuth = useCallback((action: () => void, mode?: "signin" | "signup") => {
-  if (user) { action(); }
-  else { pendingActionRef.current = action; openAuth(mode); }
-}, [user, openAuth]);
-```
-
-#### 🔴 HIGH: No Rate Limiting
-
-Edge functions have no rate limiting. An attacker can:
-- Spam `create-match` to generate thousands of codes
-- Spam `join-free-match` to flood a match
-- Spam `paystack-init` to create infinite pending transactions
-
-**Fix:** Implement IP-based rate limiting via Supabase `pgmq` or a middleware edge function.
-
-#### 🔴 HIGH: No Input Sanitization
-
-User-provided fields (`notes`, `teamName`, `bio`, `comment`) are inserted directly into Supabase. While React escapes XSS in rendering, edge functions that generate notifications with user content could be injection points.
-
-**Fix:** Sanitize all user text inputs with a library like `DOMPurify` or simple HTML escape.
-
-### 5.2 Medium Vulnerabilities
-
-#### 🟡 MEDIUM: Admin Route Client-Side Only
-
-`AdminLayout` checks `isAdmin` and returns `null` if false. But the route component still downloads and executes. A determined attacker can inspect the admin JS bundle.
-
-**Fix:** Use code-splitting with lazy loading for admin routes, plus server-side verification on all admin data endpoints.
-
-#### 🟡 MEDIUM: Paystack Refund Not Verified
-
-`cancel-match` and `leave-match` call Paystack `/refund` but don't check if it succeeded before updating local DB.
-
-#### 🟡 MEDIUM: Join Code Predictable
-
-3-digit random number with city prefix. Only ~900 codes per city. At scale, collisions are guaranteed.
-
-**Fix:** Use UUID-based codes or 6 alphanumeric characters.
-
-### 5.3 Low Vulnerabilities
-
-- `corsHeaders` with `*` origin — acceptable for mobile/web SPA but not ideal.
-- `.env` file is in git history (though `.gitignore` exists, it may have been committed earlier).
+## 4.6 Scores
+- **Fintech Trust Score: 4/10**  concept correct, execution incomplete
+- **Payment Architecture Score: 5.5/10**  design right, webhook unconfirmed, no Transfer integration
+- **Refund Reliability Score: 4/10**  not verified before marking
 
 ---
 
-## 6. PAYMENT + REFUND SYSTEM AUDIT
+# SECTION 5  DATABASE AUDIT
 
-### 6.1 Payment Flow Architecture
+## 5.1 Schema Quality
 
-```
-User clicks Pay
-  → Frontend: initPaystackPayment() (loads Paystack inline JS)
-  → Paystack popup: user enters card/MoMo
-  → Paystack: redirects to callback URL
-  → Frontend: calls join-paid-match edge function
-  → Edge Function: verifies payment with Paystack API
-  → Edge Function: upserts participant as paid
-  → Edge Function: inserts transaction record
-```
+| Table | Quality | Critical Issues |
+|-------|---------|----------------|
+| `profiles` | Good | `role` is plain text, self-updatable by user |
+| `matches` | Good | Redundant `match_type` + `is_public` columns |
+| `match_participants` | Good | `team` uses text AND enum inconsistently across migrations |
+| `venues` | Good | `bookings.pitch_id` not a UUID FK |
+| `bookings` | Poor | Text status/payment, no FK to venues |
+| `transactions` | Medium | No UNIQUE on `payment_reference` |
+| `wallet_balances` | Good | FK to auth.users; could orphan if profile creation fails |
+| `wallet_transactions` | Good | `reference UNIQUE` correctly prevents duplicates |
+| `venue_payout_requests` | Good | Recently added, correct structure |
+| `notifications` | Good | Missing composite index on `(user_id, is_read)` |
+| `messages` | Good | No soft delete, no pagination support column |
+| `reports` | Medium | No `assigned_to`, no resolution notes column |
+| `rate_limits` | Good | Exists but not wired to most edge functions |
+| `match_checkin_events` | Good | Well-designed audit log |
 
-**Missing: Webhook Handler**
+## 5.2 Critical Type Mismatch
+`process_wallet_transaction` defined in two migrations with incompatible signatures:
+- Old (wallet migration): `RETURNS BOOLEAN`, parameter `p_type public.wallet_transaction_type`
+- New (venue payout migration): `RETURNS jsonb`, parameter `p_type text`
 
-The correct architecture for payment systems is:
-```
-Paystack popup success
-  → Frontend calls backend
-  → Backend verifies AND responds
-  → PLUS: Paystack sends webhook to backend
-  → Backend processes webhook as source of truth
-```
+New drops old via `DROP FUNCTION IF EXISTS`. But `wallet_transactions.type` column is still the custom enum. Inserting plain text into an enum column without explicit cast fails in PostgreSQL unless implicit cast exists (it doesn't for named enums). **Test `wallet-topup` edge function immediately.**
 
-Without webhooks, if the user's connection drops between Paystack success and `join-paid-match` call, the app has their money but no participant record.
+## 5.3 Self-Escalation Vulnerability
+Profile UPDATE RLS policy: `USING (auth.uid() = id)`  no column restriction.
+A user can `UPDATE profiles SET role = 'admin' WHERE id = auth.uid()` and gain admin access.
 
-### 6.2 Idempotency
-
-**Missing.** The `generatePaymentReference` function includes `Date.now()`, so duplicates are unlikely. But there's no idempotency key check in the edge function. If the frontend calls `join-paid-match` twice (network retry), it could insert duplicate transactions.
-
-**Fix:** Add idempotency check:
-```typescript
-// In join-paid-match
-const { data: existingTxn } = await supabase
-  .from("transactions")
-  .select("id")
-  .eq("payment_reference", paystackReference)
-  .maybeSingle();
-if (existingTxn) return { success: true, alreadyProcessed: true };
+**Fix:**
+```sql
+CREATE POLICY "profiles_update_no_role_escalation" ON public.profiles
+  FOR UPDATE USING (auth.uid() = id)
+  WITH CHECK (auth.uid() = id AND role = (SELECT role FROM profiles WHERE id = auth.uid()));
 ```
 
-### 6.3 Transaction Consistency
+## 5.4 RLS Gaps
 
-**No database transactions.** In `join-paid-match`:
-1. Verify Paystack payment
-2. Upsert participant
-3. Insert transaction
-4. Send notification
+| Table | Gap |
+|-------|-----|
+| `profiles` | Role column self-updatable |
+| `transactions` | No INSERT policy for user JWT context |
+| `bookings` | No INSERT/UPDATE policies |
+| `reports` | Users cannot see their own filed reports |
 
-If step 3 fails, the user has paid but there's no transaction record. If step 2 fails, the user has paid but isn't in the match.
+## 5.5 Migration Health
+48 migration files. Multiple "nuclear reset" schemas indicate at least 3 full redesigns. Not safe for production data. Correct strategy: forward-only, additive, one change per file.
 
-**Fix:** Use Supabase RPC with a PostgreSQL function that wraps all writes in a transaction.
+## 5.6 Missing Indexes
+- `profiles(role)`  scanned in every admin RLS policy check
+- `profiles(reputation_score)`  leaderboard query
+- `venue_payout_requests(status, created_at)`  admin queue
+- `wallet_transactions(user_id, created_at)`  transaction history
 
-### 6.4 Refund Reliability
+## 5.7 ERD Summary
+```
+auth.users  1:1 profiles (balances, role)
+            1:1 wallet_balances
+            1:N wallet_transactions
 
-**Current behavior:** The app calls Paystack `/refund` API and marks the local DB as refunded immediately, regardless of the API response.
+profiles  1:N matches (organizer)
+          1:N match_participants
+          1:N reviews (reviewer + reviewed)
+          1:N notifications
+          1:N venue_payout_requests
 
-**Correct behavior:**
-1. Call refund API
-2. If accepted, mark as `refund_pending`
-3. Listen for Paystack webhook confirming refund
-4. Only then mark as `refunded`
+venues  1:1 profiles (owner)
+        1:N matches
+        1:N venue_payout_requests
+
+matches  1:N match_participants
+         1:N messages (chat)
+         1:N transactions
+         1:N match_checkin_events
+
+friendships  N:1 profiles (x2)
+user_roles   1:1 auth.users
+rate_limits  standalone
+```
 
 ---
 
-## 7. UI / UX AUDIT
+# SECTION 6  FRONTEND ARCHITECTURE AUDIT
 
-### 7.1 Visual Design
+## 6.1 File Size (Problem Areas)
 
-**Strengths:**
-- Modern, clean aesthetic with good use of rounded corners, subtle shadows, and glassmorphism.
-- Consistent typography (Bricolage Grotesque for headings, Inter for body).
-- Good color system with semantic tokens (`--destructive`, `--success`, `--live`).
-- Dark mode support.
+| File | Size | Action |
+|------|------|--------|
+| `Lobby.tsx` | 60KB | Split into LobbyHeader, LobbyParticipants, LobbyChat, LobbyActions |
+| `AdminPlayers.tsx` | 52KB | Split into PlayerList, PlayerDetail, PlayerActions |
+| `VenueOwnerDashboard.tsx` | 49KB | Split into VenueStats, WithdrawalPanel, BookingList |
+| `AdminLiveMonitor.tsx` | 42KB | Split into LiveMap, LiveMatchCard, LiveMetrics |
 
-**Weaknesses:**
-- Admin panel has a completely different visual language (dark sidebar, emerald accents) that doesn't match the main app.
-- Some inline styles (`style={{ boxShadow: "var(--shadow-card)" }}`) instead of Tailwind utilities.
+## 6.2 State Management
+- React Context for auth only  correct.
+- Raw `useEffect + useState` for everything else  no React Query benefits (caching, deduplication, background refetch).
+- Index page fires 79 independent hooks = 79 parallel queries, no deduplication.
+- `window.location.pathname` used inside `MobileTabs` instead of `useLocation()`.
 
-### 7.2 Mobile UX
+## 6.3 Bundle Waste
 
-**Strengths:**
-- Mobile-first design with bottom nav tabs.
-- Sheet-based UI for profile, notifications.
-- Touch-friendly button sizes (h-12, rounded-2xl).
+| Package | ~Gzip | Used? |
+|---------|-------|-------|
+| Three.js | 150KB | No |
+| Firebase SDK | 80KB | No |
+| html2canvas | 30KB | No |
+| GSAP | 25KB | Route fade only |
+| Recharts | 70KB | Admin only  should lazy-load |
 
-**Weaknesses:**
-- Create match wizard may be tedious on mobile (3 steps with no save/resume).
-- Chat UI in lobby is unverified for mobile keyboard handling.
+**Total dead weight: ~285KB gzip**
 
-### 7.3 Trust Signals
-
-**Present:**
-- "Secured by Paystack" badge in payment modal.
-- Escrow notice: "held securely until match day."
-- Reputation scores on player profiles.
-
-**Missing:**
-- No SSL/security badge.
-- No visible terms of service during signup (checkbox exists but no link).
-- No cancellation policy displayed before payment.
-- No organizer verification badge.
-
-### 7.4 Loading & Empty States
-
-**Good:**
-- Skeleton loaders in `NearYou`.
-- `isLoading` passed through to components.
-
-**Bad:**
-- No global loading state for route transitions.
-- No empty state for "no notifications" or "no matches in schedule."
-- No error boundary — crashes show white screen.
-
-### 7.5 Accessibility
-
-**Not evaluated deeply, but obvious gaps:**
-- Many buttons lack `aria-label`.
-- No focus trapping in modals (relies on radix-ui which may handle this, but custom modals like PaymentModal may not).
-- No skip-to-content link.
-- Color contrast on some admin panel text (`text-slate-400` on dark bg) may fail WCAG.
+## 6.4 Missing Patterns
+- No error boundaries  single throw = white screen.
+- No `React.lazy()`  entire app bundle loads on first page visit.
+- No virtualization  all match cards render into DOM.
+- No optimistic updates  UI lags behind server round-trip.
+- No skeleton loaders on most pages (only `NearYou`).
 
 ---
 
-## 8. PERFORMANCE AUDIT
+# SECTION 7  UX / UI AUDIT
 
-### 8.1 Bundle Size
+## 7.1 Visual Design
+- Strong: Bricolage Grotesque + Inter, consistent 680px constraint, dark mode CSS variables, shadcn/ui.
+- Weak: Admin panel has separate visual language (dark slate, emerald)  doesn't share design tokens with main app.
+- Hardcoded `+12%` growth stat in AdminOverview always shows +12% regardless of real data.
 
-- **GSAP** (~25KB gzipped) used only for a 0.45s route fade. Overkill.
-- **Three.js** (~150KB+) in dependencies but unused in any visible component. Dead weight.
-- **Firebase** (~80KB+) imported but unused. Dead weight.
-- **html2canvas** (~30KB) imported but unused.
-- **Recharts** (~70KB) used only in admin panel. Consider lazy loading admin routes.
+## 7.2 Key Flow Quality
 
-**Estimated waste:** 300KB+ of unnecessary JavaScript.
+| Flow | Quality | Friction |
+|------|---------|---------|
+| Match creation | B+ | No draft saving, tedious on mobile |
+| Match joining (free) | A- | Smooth, clear |
+| Match joining (paid) | B+ | No price breakdown before popup, no saved cards |
+| Lobby | B | Real-time good; chat + participants compete for mobile space |
+| Wallet top-up | B+ | Familiar Paystack UX |
+| Withdrawal request | B | Provider picker good, no balance history |
+| Admin actions | B | Confirm dialogs needed for destructive actions |
 
-### 8.2 Rerenders
+## 7.3 Onboarding
+No tutorial. No city prompt. No skill level wizard. No empty state for new users. Users land on home feed with no matches and no guidance.
 
-- `useAuth` context re-renders all consumers on every auth state change. Fine for small app, but will cause jank at scale.
-- `Lobby.tsx` is a massive component (700+ lines). Likely has unnecessary re-renders.
+## 7.4 Trust Signals
+Present: Paystack badge, "funds held securely" copy, reputation scores.
+Missing: Refund policy, cancellation terms, organizer verification badge, SSL indicator.
 
-### 8.3 Data Fetching
+## 7.5 Mobile vs Desktop
+Main app: Excellent (mobile-first, bottom tabs, generous touch targets).
+Admin panel: Desktop-only  tables overflow on phone, buttons stack poorly.
 
-- `useMatchLobby` reloads participants on every realtime event. This is a full `select` with joined profiles. At 10 messages/minute in a busy lobby, that's 10 full queries.
-- **Fix:** Use realtime for counts only, full reload on participant changes only.
+## 7.6 Benchmarks
 
-### 8.4 Realtime Performance
+| Platform | PlayReady Advantage | Gap to Close |
+|----------|--------------------|----|
+| Partiful | Real payments, escrow | Social card design, invite UX |
+| SweatPals | Full venue system | Activity diversity, community feed |
+| Plei | Ghana-specific MoMo | AI team balancing |
+| Meetup | Sport-specific features | Category breadth, SEO |
 
-- Each open page creates a unique channel name with `crypto.randomUUID()`. This prevents channel reuse but leaks memory if components unmount incorrectly.
-- At 1000 concurrent users each on the home page, there are 1000 separate `postgres_changes` listeners on the `matches` table. Supabase realtime may throttle this.
-
-### 8.5 No Lazy Loading
-
-`App.tsx` imports all pages at the top level:
-```typescript
-import Index from "./pages/Index.tsx";
-import JoinMatch from "./pages/JoinMatch.tsx";
-// ... etc
-```
-
-**Fix:** Use `React.lazy()` + `Suspense` for all route components.
-
----
-
-## 9. DEVOPS + DEPLOYMENT AUDIT
-
-### 9.1 CI/CD
-
-**Missing entirely.** No GitHub Actions, no Vercel/Netlify config, no preview deployments.
-
-### 9.2 Monitoring
-
-**Missing entirely.** No Sentry, no LogRocket, no Supabase Log Explorer integration. When edge functions fail, you only have Supabase dashboard logs (retained for 1 hour on free tier).
-
-### 9.3 Analytics
-
-**Missing.** No Google Analytics, no Mixpanel, no Amplitude. You cannot measure conversion funnels.
-
-### 9.4 Backups
-
-Supabase provides daily backups on Pro tier. On free tier, you're responsible. No evidence of backup strategy.
-
-### 9.5 Environment Management
-
-- `.env.example` is 44 bytes (effectively empty).
-- `.env` contains real credentials and is in the repo. `.gitignore` exists but may not be effective.
-- No staging environment configuration.
-
-### 9.6 Testing
-
-- `vitest` and `@testing-library/react` are in devDependencies.
-- **Zero test files.** `src/test/` exists but is likely empty or contains boilerplate.
-- **Zero e2e tests.** No Playwright, no Cypress.
+**Premium App Score: 6.5/10 | Virality: 3/10 | Retention: 4/10 | Trust: 6/10**
 
 ---
 
-## 10. PRODUCT STRATEGY AUDIT
+# SECTION 8  REALTIME SYSTEMS AUDIT
 
-### 10.1 Retention Loops
+## 8.1 What's Realtime
+Tables in publication: `messages`, `match_participants`, `notifications`, `matches`.
 
-**Present:**
-- Match reminders via notifications.
-- Reputation score incentivizes good behavior.
+## 8.2 Subscription Pattern Issues
+- 3 channels per lobby  `crypto.randomUUID()` names  channels never reused.
+- Full participant list refetch on every realtime event (should be incremental).
+- At 1,000 concurrent lobbies: 3,000 WebSocket subscriptions (Supabase free tier caps at 200 concurrent connections).
 
-**Missing:**
-- No weekly digest email.
-- No "matches near you" push when a new match is created.
-- No social features (follow players, friend lists).
-- No streaks or achievement system.
+## 8.3 Scaling Fixes
+1. Use Supabase Broadcast channels for chat (no DB)  reserve `postgres_changes` for payment/status events.
+2. Replace full refetch with incremental update: `INSERT`  append, `DELETE`  filter out.
+3. Deduplicate home feed subscriptions  one channel for all matches, filter client-side.
 
-### 10.2 Network Effects
-
-**Weak.** The platform is a marketplace (organizers + players) but there's no mechanism that makes the platform more valuable as more users join. No viral invite system, no "share match to WhatsApp" deep link with referral tracking.
-
-### 10.3 Monetization
-
-**Current:**
-- 5% platform fee on paid matches (not actually collected).
-- Venue booking fees (not implemented).
-
-**Missing:**
-- No premium organizer subscriptions (featured matches, analytics).
-- No player premium (priority booking, verified status).
-- No advertising system for venues.
-
-### 10.4 Trust Systems
-
-**Present:**
-- Reviews and reputation scores.
-- Escrow for payments.
-
-**Missing:**
-- No organizer verification (ID check, phone verify).
-- No dispute resolution workflow.
-- No no-show tracking or penalties.
+## 8.4 UX Quality
+- Lobby participant updates: instant. 
+- Chat: instant. 
+- Notification bell: GSAP shake. 
+- Home feed: NOT realtime. Requires refresh. (Acceptable for MVP.)
 
 ---
 
-## 11. MISSING FEATURES + SYSTEMS
+# SECTION 9  SECURITY AUDIT
 
-### MUST HAVE (Launch Blockers)
+## 9.1 Critical
 
-1. **Paystack webhooks** — Critical for payment reliability.
-2. **Rate limiting** — Prevent abuse and DDoS.
-3. **Firebase removal** — Security risk if unused.
-4. **`requireAuth` fix** — Currently a no-op.
-5. **Database transactions** — Critical for payment consistency.
-6. **Input sanitization** — Prevent XSS and injection.
-7. **Tests** — At minimum, critical path e2e tests.
-8. **Error boundaries** — Prevent white screens.
-9. **Idempotency on payments** — Prevent double charges.
-10. **Admin API server-side verification** — Don't trust client-side role checks.
+###  Hardcoded Firebase API Key
+`src/lib/firebase.ts` contains live Firebase config in source code. Visible in git history.
+**Fix:** Remove Firebase entirely (unused) or rotate key and move to env vars.
 
-### HIGH PRIORITY
+###  No Rate Limiting on Edge Functions
+`rate_limits` table + `increment_rate_limit` RPC built but not wired to edge functions.
+**Fix:** Add `checkRateLimit()` (already in `_shared/rateLimiter.ts`) to all public edge functions.
 
-11. **Phone OTP auth** — More important than email in Ghana.
-12. **Push notifications** — FCM integration for match reminders.
-13. **Lazy loading** — Reduce bundle size by 50%+.
-14. **Remove dead dependencies** — Three.js, Firebase, html2canvas.
-15. **Waitlist system** — When match is full, allow spares to queue.
-16. **Match cancellation by players** — Not just organizer.
-17. **Venue booking conflict prevention** — Don't double-book pitches.
-18. **Payout mechanism** — Actually send money to organizers.
-19. **Analytics integration** — Mixpanel/Amplitude.
-20. **Feature flags** — Launch darkly for safe deployments.
+###  `profiles.role` Self-Escalation
+Profile UPDATE RLS has no column restriction. User can set own role to `admin`.
+**Fix:** Add `WITH CHECK` that prevents role escalation (see Section 5.3).
 
-### MEDIUM PRIORITY
+## 9.2 High
 
-21. **Recurring matches** — Weekly fixtures.
-22. **Match templates** — Save common setups.
-23. **Team balancing** — Auto-assign based on skill/rating.
-24. **Chat moderation** — Auto-flag profanity.
-25. **Image uploads** — Match photos, venue photos.
-26. **Social features** — Follow players, activity feed.
-27. **Leaderboards** — Top players, top organizers.
-28. **Multi-sport support** — Basketball, volleyball expansion.
-29. **i18n** — Twi, Ga translations for Ghana market.
-30. **Progressive Web App** — Offline support, installable.
+###  CORS `*` on All Edge Functions
+`"Access-Control-Allow-Origin": "*"` on every edge function.
+**Fix:** Restrict to production domain in production environment.
 
-### FUTURE SCALE FEATURES
+###  Refund Not Verified Before DB Update
+Paystack refund API called, response ignored, DB immediately marked refunded.
+**Fix:** Check response, mark `refund_failed` on error, alert admin.
 
-31. **Native mobile app** — React Native / Flutter.
-32. **AI matchmaking** — Suggest matches based on skill/location/time.
-33. **Insurance integration** — Injury coverage for paid matches.
-34. **Live streaming** — Stream matches from venue cameras.
-35. **NFT badges / collectibles** — For tournament winners.
+###  QR Grace Period Abuse
+Dishonest organizer: schedule match  let 30-min grace pass  complete and claim escrow without match occurring.
+**Fix:** Require minimum scan count (e.g., 50% of paid players) even during grace period.
+
+## 9.3 Medium
+
+###  Admin Routes Client-Side Only
+Admin JS bundle downloads for all users. Admin data protected by RLS  data is safe, but sensitive business logic exposed in JS.
+
+###  Join Code Brute-Force
+~17,576 codes per city. No rate limiting on code lookup.
+**Fix:** Rate limit code entry, add lockout after 5 failed attempts.
+
+## 9.4 Low
+- `.env` may have been committed before `.gitignore` rule was effective  check git history.
+- `md5(random()::text)` for join code generation  MD5 is weak, use `gen_random_bytes()`.
+- No profanity filter on chat messages.
 
 ---
 
-## 12. TECHNICAL DEBT REPORT
+# SECTION 10  SCALABILITY AUDIT
+
+## 10.1 Capacity Estimate
+
+| DAU | Expected Behavior |
+|-----|------------------|
+| 0500 | Works fine on free tier |
+| 5002,000 | Home feed slows, realtime lag, trigger bottleneck starts |
+| 2,00010,000 | Multiple failure points hit simultaneously |
+| 10,000+ | Requires architectural overhaul first |
+
+## 10.2 Top Bottlenecks
+
+1. **`recalc_core_paid` trigger**  full `SELECT COUNT(*)` on every participant change. Fix: incremental `+1/-1` update.
+2. **Home feed N+1**  9 queries on mount, all records fetched, client-side filtered. Fix: PostGIS, cursor pagination, React Query.
+3. **Realtime fan-out**  3 channels per lobby, full refetch on every event. Fix: Broadcast channels for chat, incremental updates.
+4. **`useSuggestedFriends`**  unbounded `SELECT * FROM profiles LIMIT 100` with no geospatial filter.
+5. **Leaderboard**  full `profiles` table scan without index on sort column.
+
+## 10.3 Caching Plan
+
+| Data | Strategy | TTL |
+|------|----------|-----|
+| Sports list | React Query | 24h |
+| Venues list | React Query | 5min |
+| Leaderboard | Materialized view | 1h |
+| Smart recommendations | React Query | 15min |
+| Player profiles | React Query | 5min |
+| Platform settings | Edge fn memory | 5min |
+
+## 10.4 Database Scaling Path
+1. **Now:** Missing indexes (role, reputation_score, payout status).
+2. **At 5,000 users:** Read replica for reporting queries.
+3. **At 20,000 users:** Supabase Pro + PgBouncer connection pooling.
+4. **At 100,000 users:** Shard by city, separate analytics DB.
+
+---
+
+# SECTION 11  BUSINESS SYSTEMS AUDIT
+
+## 11.1 Revenue Reality
+**Current revenue: GHS 0.** Commission calculated, never collected. Bookings recorded, no payment. The platform moves player money through Paystack but captures none of it.
+
+## 11.2 Monetization Opportunities
+
+| Stream | Readiness | Potential |
+|--------|-----------|---------|
+| 5% match commission via Paystack split | Needs Transfer integration | High |
+| Venue booking payment | Needs payment flow | Medium |
+| Organizer Pro subscription (analytics, featured) | Design + build | Medium |
+| Player Premium (early access, verified badge) | Design + build | Low-Medium |
+| Venue featured placement | Design + build | Low |
+| Tournament hosting fee | Build tournament system first | Future |
+
+## 11.3 Growth Loops (Present vs Missing)
+
+**Present (weak):**
+- Player joins  rates teammates  teammates discover platform.
+- Organizer creates  friends see activity feed  join  become organizers.
+
+**Missing (high impact):**
+- Share match to WhatsApp with deep link (viral join).
+- "Invite 3 friends  earn GHS 5 wallet credit" referral.
+- "Your friend Kofi just joined PlayReady" notification.
+- Match completion shareable card (wins + team photo).
+
+## 11.4 Operational Scalability
+Every venue payout requires admin to manually transfer GHS via MoMo. At 100 completed matches/day (realistic at moderate scale) = 100+ manual transfers. **This is a critical operational bottleneck.** Automate with Paystack Transfer API on admin approval.
+
+## 11.5 Market Fit Assessment
+Ghana's sports culture (especially football), high mobile money penetration, and existing informal match organization via WhatsApp groups = strong product-market fit signal. The platform formalizes what people already do informally and adds trust (escrow) + convenience (discovery). Core value proposition is sound.
+
+---
+
+# SECTION 12  MISSING FEATURES + GAPS
+
+## Must Build Now (Launch Blockers)
+1. Confirm Paystack webhook registered in dashboard.
+2. Wire `checkRateLimit()` to all public edge functions.
+3. Fix `profiles.role` self-escalation RLS policy.
+4. Remove/rotate hardcoded Firebase credentials.
+5. Verify `process_wallet_transaction` type mismatch  test wallet top-up.
+6. Fix refund: check Paystack response before marking DB refunded.
+7. Add React error boundaries around route-level components.
+8. Add idempotency check in `join-paid-match` edge function.
+
+## Should Build Soon (High Priority)
+9. Paystack Transfer API integration for organizer + venue owner disbursements.
+10. Platform fee collection via Paystack sub-accounts or split payments.
+11. `React.lazy()` + Suspense  cut initial bundle ~40%.
+12. Remove Three.js, Firebase, html2canvas (~285KB gzip savings).
+13. Phone OTP auth via Africa's Talking or Twilio.
+14. FCM push notifications (highest-impact retention feature).
+15. Waitlist + auto-promote when match slot opens.
+16. Booking payment flow.
+17. Sentry error monitoring.
+18. Mixpanel or PostHog analytics.
+19. CI/CD via GitHub Actions.
+20. Add missing DB indexes (role, reputation_score, payout status).
+
+## Later (Medium Priority)
+21. Recurring matches / weekly fixtures.
+22. Match templates.
+23. Team balancing by skill rating.
+24. Chat moderation (profanity filter, report message).
+25. Multi-sport lobby support.
+26. Dispute resolution workflow.
+27. No-show tracking + penalties.
+28. Progressive Web App (installable  huge in Ghana).
+29. i18n  Twi, Ga.
+30. Leaderboard materialized view.
+
+## Future
+31. Native mobile app (React Native).
+32. AI matchmaking.
+33. Tournament / league system.
+34. Insurance / injury coverage.
+35. Multi-city franchise expansion.
+
+---
+
+# SECTION 13  TECHNICAL DEBT REPORT
 
 | # | Debt | Severity | Location | Fix Effort |
 |---|------|----------|----------|------------|
-| 1 | Hardcoded Firebase credentials | **Critical** | `src/lib/firebase.ts` | 30 min |
-| 2 | `requireAuth` no-op | **Critical** | `src/hooks/useAuth.tsx:119` | 15 min |
-| 3 | No DB transactions in edge functions | **Critical** | All edge functions | 4 hours |
-| 4 | No Paystack webhooks | **Critical** | Missing file | 4 hours |
-| 5 | No rate limiting | **High** | Edge functions | 2 hours |
-| 6 | Duplicate join edge functions | **High** | `supabase/functions/join-*` | 2 hours |
-| 7 | `match_type` + `is_public` duplication | **Medium** | `matches` table | 1 hour |
-| 8 | Dual role system (`profiles.role` + `user_roles`) | **Medium** | Schema | 2 hours |
-| 9 | `recalc_core_paid` trigger inefficiency | **Medium** | Migration | 1 hour |
-| 10 | No lazy loading | **Medium** | `App.tsx` | 1 hour |
-| 11 | Dead dependencies (Three.js, Firebase) | **Medium** | `package.json` | 15 min |
-| 12 | GSAP for simple fade | **Low** | `App.tsx` | 30 min |
-| 13 | Empty README | **Low** | `README.md` | 1 hour |
-| 14 | Admin pages hardcoded colors | **Low** | `src/pages/admin/*` | 2 hours |
-| 15 | No test coverage | **High** | Entire project | 1 week |
+| 1 | Hardcoded Firebase API key | Critical | `src/lib/firebase.ts` | 30min |
+| 2 | `profiles.role` self-escalation via UPDATE policy | Critical | RLS policy | 15min |
+| 3 | No DB transactions in edge functions | Critical | All edge functions | 48h |
+| 4 | Paystack webhook not confirmed registered | Critical | Operational | 15min |
+| 5 | `process_wallet_transaction` type mismatch | Critical | Two migrations | 30min |
+| 6 | No rate limiting wired to edge functions | High | `_shared/rateLimiter.ts` exists | 2h |
+| 7 | Refund not verified before DB update | High | `cancel-match`, `leave-match` | 1h |
+| 8 | No error boundaries | High | `App.tsx` | 1h |
+| 9 | No idempotency in `join-paid-match` | High | Edge function | 30min |
+| 10 | No idempotency in `finalize_venue_withdrawal` | High | RPC | 30min |
+| 11 | Dead bundle dependencies (Three.js, Firebase) | High | `package.json` | 15min |
+| 12 | No lazy loading for routes | High | `App.tsx` | 1h |
+| 13 | Dual role system (`profiles.role` + `user_roles` table) | Medium | Schema | 2h |
+| 14 | Redundant `match_type` + `is_public` columns | Medium | `matches` table | 1h |
+| 15 | `recalc_core_paid` trigger uses full `COUNT(*)` | Medium | Migration | 30min |
+| 16 | `useSuggestedFriends` unbounded query | Medium | Hook | 30min |
+| 17 | `Lobby.tsx` 60KB single component | Medium | `src/pages/Lobby.tsx` | 4h |
+| 18 | CORS `*` on all edge functions | Medium | All edge functions | 30min |
+| 19 | GSAP for simple route fade | Low | `App.tsx` | 30min |
+| 20 | Empty README | Low | `README.md` | 1h |
+| 21 | Admin hardcoded color values | Low | Admin pages | 2h |
+| 22 | Join code uses MD5(random()) | Low | DB trigger | 30min |
+| 23 | Zero test coverage | High | Entire project | 1 week+ |
+| 24 | No CI/CD | High | GitHub Actions | 2h |
+| 25 | `+12%` hardcoded growth stat | Low | `AdminOverview.tsx` | 10min |
 
 ---
 
-## 13. COMPLETION ESTIMATION
+# SECTION 14  FINAL VERDICT
 
-| Area | Completion % | Why |
-|------|-------------|-----|
-| **Overall** | 55% | Feature-complete MVP but missing production hardening |
-| **Frontend** | 65% | Good UI, bad architecture depth, no tests |
-| **Backend** | 60% | Schema is good, edge functions lack transactions and webhooks |
-| **Infrastructure** | 30% | No CI/CD, no monitoring, no caching, no CDN |
-| **UX** | 70% | Flows are good, missing edge states and accessibility |
-| **Scalability readiness** | 35% | Will break at 1000+ DAU without major work |
-| **Production readiness** | 40% | Missing too many operational systems |
+## Is PlayReady production ready?
+**No.** Missing: webhook confirmation, rate limiting, error boundaries, transaction safety, refund verification, role escalation fix, type mismatch fix. These are collectively a launch blocker for a platform handling real GHS.
 
----
+## Is PlayReady scalable?
+**Not in its current form.** The architecture hits walls at ~2,000 DAU. The specific failure points are well-understood and fixable with 24 weeks of focused engineering. The underlying Supabase stack scales horizontally when used correctly.
 
-## 14. PRIORITY IMPLEMENTATION ROADMAP
+## Is PlayReady investor-ready?
+**Borderline.** The demo is compelling. The market (Ghana football organization + mobile money) is real and underserved. The product vision is clear. However: hardcoded credentials in source code, zero platform revenue collection, and manual payouts would raise serious red flags in technical due diligence. 23 weeks of hardening makes this investable.
 
-### URGENT (This Week)
+## Is PlayReady technically impressive?
+**Yes, for its stage.** The breadth of implemented systems is remarkable for an early-stage product: QR check-in, smart recommendations, full admin panel, escrow concept, realtime lobby, wallet system, venue pricing configuration. This shows sophisticated product thinking even where execution depth is lacking.
 
-1. **Remove Firebase** or move config to env vars.
-2. **Fix `requireAuth`** to actually gate actions.
-3. **Add idempotency check** to `join-paid-match`.
-4. **Verify RLS policies** allow edge function inserts into `transactions`.
-5. **Add rate limiting** to `create-match`, `join-paid-match`, `paystack-init`.
-6. **Write e2e test** for the happy path: signup → create match → join → pay → complete.
+## Is PlayReady overengineered anywhere?
+**Slightly.** GSAP for a route fade, `StoriesRail` with unimplemented stories, `MotmVote` with limited usage. Minor. The bigger risk is underengineering of the financial layer.
 
-### SHORT TERM (Next 2 Weeks)
+## Is PlayReady underbuilt anywhere?
+**Yes, significantly:**
+- Payment disbursement (the core business transaction is fake).
+- Push notifications (retention is impossible without them).
+- Test coverage (zero automated tests on a money-handling platform).
+- Observability (blind in production).
 
-7. **Implement Paystack webhook handler** edge function.
-8. **Consolidate join edge functions** into one with mode parameter.
-9. **Add database transaction wrapper** for critical paths.
-10. **Lazy load all routes** with `React.lazy()`.
-11. **Remove dead dependencies** (Three.js, html2canvas, Firebase).
-12. **Add error boundaries** around major route sections.
-13. **Write README** with setup, architecture, and deployment instructions.
+## What would senior engineers criticize?
+1. No database transactions wrapping multi-step financial operations.
+2. Role escalation via self-update of `profiles.role`.
+3. Hardcoded Firebase credentials in version control.
+4. Zero test coverage on payment-critical paths.
+5. 285KB of dead JavaScript shipped to every user.
+6. 48 migrations with "nuclear reset" files.
+7. Dual role system creating confusion about source of truth.
+8. Full participant list refetched on every chat message.
 
-### MEDIUM TERM (Next Month)
+## What would investors like?
+1. Complete core business loop (rare for this stage).
+2. Ghana-specific market insight (MoMo, local sports culture).
+3. Escrow = trust infrastructure  fintech-grade UX differentiation.
+4. Admin dashboard showing operational readiness.
+5. Smart recommendations showing product sophistication.
 
-14. **Implement phone OTP** via Twilio or Africa's Talking.
-15. **Add push notifications** via Firebase Cloud Messaging.
-16. **Build waitlist system** for full matches.
-17. **Add venue booking conflict detection**.
-18. **Implement actual payout** to organizers via Paystack Transfer.
-19. **Set up Sentry** for error tracking.
-20. **Add basic analytics** (Mixpanel or Google Analytics).
+## What would users love?
+1. Seamless Paystack mobile money integration.
+2. Real-time lobby  "watching" the match fill up is engaging.
+3. QR check-in as a physical trust ceremony.
+4. Reputation scores building identity over time.
+5. "Friends playing" section reducing search friction.
 
-### LONG TERM (Next Quarter)
-
-21. **Native mobile app** (React Native sharing codebase).
-22. **AI matchmaking** based on skill/location/history.
-23. **Multi-city expansion** with dynamic venue onboarding.
-24. **Tournament / league system**.
-25. **Insurance / injury reporting integration**.
-
----
-
-## 15. FINAL CTO-LEVEL VERDICT
-
-### Brutally Honest Assessment
-
-PlayReady Sports is a **promising MVP with a strong visual identity and a complete core loop**, but it is **not production-ready for handling real money at scale**. The codebase has the hallmarks of rapid AI-assisted development: features appear complete on the surface, but lack the defensive depth required for financial transactions, user data protection, and operational resilience.
-
-### Is this a strong startup foundation?
-
-**Yes, with major caveats.** The product vision is clear, the UX is appealing, and the tech stack is modern. However, the team needs to:
-1. Stop adding features and harden what exists.
-2. Treat payment flows with the same rigor as a bank.
-3. Invest in observability and testing.
-
-### Would investors take it seriously?
-
-**Not in its current state.** The hardcoded Firebase credentials alone would kill most due diligence processes. The lack of tests, monitoring, and payment webhook handling would raise red flags for any technical investor. However, the demo is compelling and the market (Ghana sports organization) is legitimate. With 2-3 weeks of hardening, it becomes investable.
-
-### Can it realistically scale?
-
-**Not without significant architectural work.** The current realtime subscription model, lack of caching, and inefficient triggers will hit walls at modest scale (low thousands of users). Supabase is capable of scaling, but the application patterns need to change (use materialized views, implement proper caching, move to webhook-driven async processing).
-
-### Top 10 Most Important Next Actions
-
-1. 🔴 **Remove or env-var the Firebase config** — security blocker.
-2. 🔴 **Fix `requireAuth`** — auth is currently cosmetic.
-3. 🔴 **Add Paystack webhook handler** — payment reliability blocker.
-4. 🔴 **Add DB transactions** to `join-paid-match`, `cancel-match`, `complete-match`.
-5. 🔴 **Add rate limiting** to all public edge functions.
-6. 🟡 **Consolidate join functions** and remove legacy `join-match`.
-7. 🟡 **Remove dead dependencies** (Three.js, Firebase, html2canvas).
-8. 🟡 **Add React error boundaries** + lazy loading.
-9. 🟡 **Write at least 3 e2e tests** for the critical path.
-10. 🟡 **Set up Sentry** + basic analytics.
+## What could kill the platform at scale?
+1. **Payment scandal**  user pays, doesn't get into match (webhook gap).
+2. **Refund failure**  match cancelled, money not returned, support overwhelmed.
+3. **Organizer abandonment**  payouts are manual and slow, organizers stop using the platform.
+4. **Realtime meltdown**  1,000 concurrent lobbies hit Supabase connection limit, all go dark.
+5. **Data breach**  Firebase key exposure or SQL injection through unvalidated inputs.
 
 ---
 
-*End of Audit Report*
+# TOP 20 PRIORITY FIXES
+
+1. Register Paystack webhook URL in Paystack dashboard settings.
+2. Wire `checkRateLimit()` to all public edge functions.
+3. Fix `profiles.role` RLS `WITH CHECK` to prevent self-escalation.
+4. Remove Firebase credentials from source; rotate the leaked key.
+5. Fix `process_wallet_transaction` type mismatch (test wallet top-up now).
+6. Verify Paystack refund response before marking DB as refunded.
+7. Add error boundaries around all route-level components.
+8. Add idempotency check to `join-paid-match` (reference already processed?).
+9. Add `SELECT FOR UPDATE` on match row in join capacity check.
+10. Restrict CORS from `*` to production domain.
+11. Add missing DB indexes: `profiles(role)`, `profiles(reputation_score)`, `venue_payout_requests(status, created_at)`.
+12. Remove Three.js, Firebase SDK, html2canvas from `package.json`.
+13. Add `React.lazy()` + `Suspense` for all route-level imports in `App.tsx`.
+14. Replace `recalc_core_paid` trigger full-count with incremental `+1/-1` update.
+15. Add idempotency to `finalize_venue_withdrawal` (status guard before update).
+16. Fix `+12%` hardcoded growth stat in `AdminOverview`.
+17. Add `transactions` INSERT RLS policy for authenticated users (or confirm service role is used).
+18. Add `bookings` INSERT/UPDATE RLS policies.
+19. Wrap `complete-match` multi-step write in a single PostgreSQL function (transaction).
+20. Add `withCheck` column restriction on `profiles.role` UPDATE policy.
+
+---
+
+# TOP 20 PRIORITY FEATURES
+
+1. **Paystack Transfer API**  actual GHS disbursement to organizers and venue owners.
+2. **FCM Push Notifications**  without push, retention is near zero.
+3. **Phone OTP auth**  more accessible than email in Ghana.
+4. **Platform fee collection**  Paystack sub-accounts or split payments.
+5. **Waitlist + auto-promote**  when full, spare players queue and auto-fill departures.
+6. **WhatsApp match share**  deep link with join code, viral growth.
+7. **Booking payment flow**  convert venue bookings from records to transactions.
+8. **Sentry + source maps**  error monitoring in production.
+9. **Mixpanel/PostHog analytics**  track funnel conversion, payment drop-off, churn.
+10. **CI/CD via GitHub Actions**  automated lint + type-check + deploy.
+11. **Recurring matches**  weekly fixtures for regular groups.
+12. **Team balancing**  auto-assign teams by reputation/skill.
+13. **Dispute resolution flow**  structured admin review for payment disputes.
+14. **Organizer analytics dashboard**  earnings history, fill rate, player retention.
+15. **Progressive Web App**  installable on Android, offline support.
+16. **No-show tracking**  automatic penalty for paid no-shows after QR gate.
+17. **Post-match shareable card**  winning team photo + stats = organic social sharing.
+18. **Referral system**  "Invite 3 friends  GHS 5 wallet credit."
+19. **Tournament / league system**  multi-match structured competition.
+20. **i18n**  Twi/Ga language options for broader Ghana reach.
+
+---
+
+# TOP 10 UX IMPROVEMENTS
+
+1. City/location prompt on first login  personalize feed immediately.
+2. Match join confirmation screen before Paystack popup  show price breakdown.
+3. Empty state on home feed for new users  show "no matches yet, create one!" with CTA.
+4. Onboarding wizard  3-screen tour of how matches work.
+5. Wallet balance visible in bottom nav (not just on `/wallet` page).
+6. "Copy join link" button on every match card  WhatsApp-ready message.
+7. Cancellation/refund policy displayed on match detail before payment.
+8. Admin mobile view  responsive admin tables for on-the-go management.
+9. Optimistic join UI  show player in lobby immediately, revert on failure.
+10. Organizer earnings history chart  monthly trend visible in venue dashboard.
+
+---
+
+# TOP 10 SECURITY IMPROVEMENTS
+
+1. Remove and rotate hardcoded Firebase API key.
+2. Fix `profiles.role` self-escalation RLS policy.
+3. Wire rate limiting to all public edge functions.
+4. Restrict CORS to production domain only.
+5. Add `transactions` INSERT RLS policy.
+6. Add `bookings` INSERT/UPDATE RLS policies.
+7. Verify Paystack refund before updating DB status.
+8. Replace `md5(random())` in join code trigger with `gen_random_bytes()`.
+9. Add QR scan minimum threshold even during grace period (prevent no-show fraud).
+10. Audit git history for accidental `.env` commits; rotate any exposed secrets.
+
+---
+
+# TOP 10 SCALABILITY IMPROVEMENTS
+
+1. Replace full participant refetch with incremental realtime updates in lobby.
+2. Use Supabase Broadcast channels for chat (eliminate `postgres_changes` for chat).
+3. Convert home feed to PostGIS `ST_DWithin` server-side geospatial filter.
+4. Add cursor-based pagination to home feed, leaderboard, and admin lists.
+5. Migrate all data hooks to React Query (caching, deduplication, background refetch).
+6. Replace `recalc_core_paid` full count trigger with incremental counter.
+7. Add `React.lazy()` + Suspense for route code-splitting.
+8. Create materialized leaderboard view refreshed hourly.
+9. Add missing indexes (role, reputation_score, payout status, wallet tx user+date).
+10. Move analytics queries to separate read replica at 5,000+ users.
+
+---
+
+# OVERALL PLATFORM SCORES
+
+| Dimension | Score |
+|-----------|-------|
+| **OVERALL PLATFORM** | **54/100** |
+| **PRODUCTION READINESS** | **32/100** |
+| **SCALE READINESS** | **28/100** |
+| **INVESTOR READINESS** | **46/100** |
+| **MARKET POTENTIAL** | **78/100** |
+
+---
+
+# FINAL CTO-STYLE VERDICT
+
+PlayReady Sports is a **technically ambitious, product-savvy, but production-immature platform** at a critical inflection point. It has done something genuinely hard: built a full-stack marketplace with real payment flows, structured escrow, realtime coordination, and an admin operations layer in what appears to be a very short timeline. That breadth is a genuine strength.
+
+But breadth without depth is dangerous when real money is involved. The platform currently processes zero GHS to anyone  it's an accounting ledger that promises future money movement. The most important next 30 days are not adding features. They are:
+
+1. Making every paid GHS actually move to the right person reliably.
+2. Ensuring no user can ever pay without getting their match slot.
+3. Ensuring no match can ever cancel without every user getting their refund.
+
+Once those three guarantees are real (not just theoretical), the platform is fundable, scalable, and launchable. The market is right. The timing is right for Ghana. The product vision is clear. The technology foundation (Supabase, Paystack, React) is sound and modern.
+
+The gap between where it is and where it needs to be is 36 weeks of focused hardening by an engineer who knows what they're doing. This audit provides the roadmap.
+
+**Ship when money is safe. The features can wait.**
+
+---
+
+*Audit completed  May 2026*
+*Files scanned: 127 (src/ + supabase/) | Migrations reviewed: 48 | Edge functions reviewed: 24*

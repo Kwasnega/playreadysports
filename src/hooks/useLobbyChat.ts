@@ -23,16 +23,39 @@ export type ChatMessage = {
   created_at: string;
 };
 
+const PAGE_SIZE = 50;
+
+type ProfileCache = Record<string, { full_name: string | null; username: string | null; avatar_url: string | null }>;
+
+function normalizeRow(row: any, cache?: ProfileCache): ChatMessage {
+  const s = Array.isArray(row.sender) ? row.sender[0] ?? {} : row.sender ?? {};
+  const prof = cache?.[row.sender_id] ?? s;
+  return {
+    id: row.id,
+    sender_id: row.sender_id,
+    sender_name: prof.full_name ?? prof.username ?? "Unknown",
+    sender_avatar: prof.avatar_url ?? null,
+    content: row.content,
+    created_at: row.created_at,
+  };
+}
+
 export function useLobbyChat(matchId: string | undefined) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const profileCache = useRef<ProfileCache>({});
+  const oldestCreatedAt = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!matchId) { setMessages([]); return; }
+    if (!matchId) { setMessages([]); setHasMore(false); return; }
 
     let cancelled = false;
     setLoading(true);
+    profileCache.current = {};
+    oldestCreatedAt.current = null;
 
     const load = async () => {
       const { data, error } = await supabase
@@ -42,33 +65,30 @@ export function useLobbyChat(matchId: string | undefined) {
           sender:profiles(username, full_name, avatar_url)
         `)
         .eq("match_id", matchId)
-        .order("created_at", { ascending: true })
-        .limit(50);
+        .order("created_at", { ascending: false })
+        .limit(PAGE_SIZE);
 
       if (cancelled) return;
 
       if (error) {
         console.error("useLobbyChat load error:", error);
       } else {
-        const normalized = (data ?? []).map((row: any) => {
+        const rows = (data ?? []).reverse();
+        rows.forEach((row: any) => {
           const s = Array.isArray(row.sender) ? row.sender[0] ?? {} : row.sender ?? {};
-          return {
-            id: row.id,
-            sender_id: row.sender_id,
-            sender_name: s.full_name ?? s.username ?? "Unknown",
-            sender_avatar: s.avatar_url ?? null,
-            content: row.content,
-            created_at: row.created_at,
-          } as ChatMessage;
+          profileCache.current[row.sender_id] = s;
         });
+        const normalized = rows.map((row: any) => normalizeRow(row, profileCache.current));
         setMessages(normalized);
+        setHasMore((data ?? []).length === PAGE_SIZE);
+        if (rows.length > 0) oldestCreatedAt.current = rows[0].created_at;
       }
       setLoading(false);
     };
 
     load();
 
-    // Realtime subscription
+    // Realtime subscription — profile cache eliminates N+1 fetch on most messages
     const channelName = "lobby-chat:" + matchId;
     const channel = supabase
       .channel(channelName)
@@ -80,25 +100,23 @@ export function useLobbyChat(matchId: string | undefined) {
           table: "messages",
           filter: `match_id=eq.${matchId}`,
         } as any,
-        (payload: any) => {
+        async (payload: any) => {
           const newRow = payload.new;
-          // Fetch sender profile for the new message
-          supabase
-            .from("profiles")
-            .select("username, full_name, avatar_url")
-            .eq("id", newRow.sender_id)
-            .single()
-            .then(({ data: prof }) => {
-              const msg: ChatMessage = {
-                id: newRow.id,
-                sender_id: newRow.sender_id,
-                sender_name: prof?.full_name ?? prof?.username ?? "Unknown",
-                sender_avatar: prof?.avatar_url ?? null,
-                content: newRow.content,
-                created_at: newRow.created_at,
-              };
-              setMessages((prev) => [...prev, msg]);
-            });
+          let prof = profileCache.current[newRow.sender_id];
+          if (!prof) {
+            const { data: p } = await supabase
+              .from("profiles")
+              .select("username, full_name, avatar_url")
+              .eq("id", newRow.sender_id)
+              .single();
+            prof = p ?? { full_name: null, username: null, avatar_url: null };
+            profileCache.current[newRow.sender_id] = prof;
+          }
+          const msg = normalizeRow(newRow, profileCache.current);
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === msg.id)) return prev;
+            return [...prev, msg];
+          });
         }
       )
       .subscribe();
@@ -109,6 +127,32 @@ export function useLobbyChat(matchId: string | undefined) {
       supabase.removeChannel(channel);
     };
   }, [matchId]);
+
+  const loadMore = useCallback(async () => {
+    if (!matchId || !hasMore || loadingMore || !oldestCreatedAt.current) return;
+    setLoadingMore(true);
+    const { data, error } = await supabase
+      .from("messages")
+      .select(`
+        id, sender_id, content, created_at,
+        sender:profiles(username, full_name, avatar_url)
+      `)
+      .eq("match_id", matchId)
+      .lt("created_at", oldestCreatedAt.current)
+      .order("created_at", { ascending: false })
+      .limit(PAGE_SIZE);
+    setLoadingMore(false);
+    if (error) { console.error("useLobbyChat loadMore error:", error); return; }
+    const rows = (data ?? []).reverse();
+    rows.forEach((row: any) => {
+      const s = Array.isArray(row.sender) ? row.sender[0] ?? {} : row.sender ?? {};
+      profileCache.current[row.sender_id] = s;
+    });
+    const older = rows.map((row: any) => normalizeRow(row, profileCache.current));
+    setMessages((prev) => [...older, ...prev]);
+    setHasMore((data ?? []).length === PAGE_SIZE);
+    if (rows.length > 0) oldestCreatedAt.current = rows[0].created_at;
+  }, [matchId, hasMore, loadingMore]);
 
   // Auto-scroll to bottom on new message
   useEffect(() => {
@@ -134,5 +178,5 @@ export function useLobbyChat(matchId: string | undefined) {
     return { blocked: false };
   }, [matchId]);
 
-  return { messages, loading, sendMessage, scrollRef };
+  return { messages, loading, loadingMore, hasMore, loadMore, sendMessage, scrollRef };
 }

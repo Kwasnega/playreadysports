@@ -1,22 +1,20 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { getgetCorsHeaders() } from "../_shared/cors.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// CORS is handled via getCorsHeaders() from _shared/cors.ts
 
 const PAYSTACK_SECRET = Deno.env.get("PAYSTACK_SECRET_KEY");
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: getCorsHeaders() });
   }
 
   try {
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Missing authorization" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
@@ -29,7 +27,7 @@ Deno.serve(async (req) => {
     const { data: { user }, error: authErr } = await supabase.auth.getUser();
     if (authErr || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
@@ -37,14 +35,14 @@ Deno.serve(async (req) => {
     const { reference } = body;
     if (!reference) {
       return new Response(JSON.stringify({ error: "Missing reference" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
     // Verify with Paystack
     if (!PAYSTACK_SECRET) {
       return new Response(JSON.stringify({ error: "Paystack not configured" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
@@ -55,7 +53,7 @@ Deno.serve(async (req) => {
 
     if (!verifyData.status || verifyData.data.status !== "success") {
       return new Response(JSON.stringify({ error: verifyData.message || "Payment not verified" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
@@ -75,20 +73,20 @@ Deno.serve(async (req) => {
       // Check if it's a unique constraint violation (duplicate top-up attempt)
       if (rpcError.message?.includes("wallet_transactions_reference_key") || rpcError.code === '23505') {
         return new Response(JSON.stringify({ success: true, message: "Already processed" }), {
-          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
         });
       }
       throw rpcError;
     }
 
     return new Response(JSON.stringify({ success: true, newBalance: amountInCedis }), {
-      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
     });
 
   } catch (err: any) {
     console.error("Wallet top-up error:", err);
     return new Response(JSON.stringify({ error: err.message ?? "Internal error" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
     });
   }
 });

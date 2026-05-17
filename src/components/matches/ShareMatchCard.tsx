@@ -1,11 +1,10 @@
-import { useRef, useState, useCallback } from "react";
-import html2canvas from "html2canvas";
-import { X, Copy, Share2, MessageCircle, Download, Check } from "lucide-react";
+import { useState, useCallback } from "react";
+import { X, Copy, Share2, MessageCircle, Download, CheckCheck } from "lucide-react";
 import { toast } from "sonner";
 
 /* ------------------------------------------------------------
-   ShareMatchCard — renders a visual match card off-screen,
-   captures it with html2canvas, and offers share options.
+   ShareMatchCard — generates a match card via Canvas 2D API,
+   and offers share options. No external dependencies.
    ------------------------------------------------------------ */
 
 export type ShareMatchData = {
@@ -28,33 +27,101 @@ export function ShareMatchCard({
   onClose: () => void;
   data: ShareMatchData;
 }) {
-  const cardRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
 
-  const generate = useCallback(async () => {
-    if (!cardRef.current || blobUrl) return;
+  const generate = useCallback(() => {
+    if (blobUrl) return;
     setGenerating(true);
     try {
-      const canvas = await html2canvas(cardRef.current, {
-        scale: 3,
-        backgroundColor: null,
-        logging: false,
-      });
+      const SCALE = 3;
+      const W = 400 * SCALE, H = 540 * SCALE;
+      const canvas = document.createElement("canvas");
+      canvas.width = W; canvas.height = H;
+      const c = canvas.getContext("2d")!;
+      c.scale(SCALE, SCALE);
+
+      // Background
+      c.fillStyle = "#0f172a";
+      const r = 24;
+      c.beginPath();
+      c.moveTo(r, 0); c.lineTo(400 - r, 0); c.arcTo(400, 0, 400, r, r);
+      c.lineTo(400, 540 - r); c.arcTo(400, 540, 400 - r, 540, r);
+      c.lineTo(r, 540); c.arcTo(0, 540, 0, 540 - r, r);
+      c.lineTo(0, r); c.arcTo(0, 0, r, 0, r); c.closePath(); c.fill();
+
+      const cx = 200;
+      let y = 36;
+
+      // Brand label
+      c.font = "700 11px system-ui, sans-serif";
+      c.fillStyle = "#94a3b8"; c.textAlign = "center"; c.letterSpacing = "0.15em";
+      c.fillText("PLAYREADYSPORTS", cx, y); y += 44;
+
+      // Emoji
+      c.font = "52px system-ui"; c.fillText("\u26BD", cx, y); y += 30;
+
+      // Venue
+      c.font = "800 22px system-ui, sans-serif"; c.fillStyle = "#f8fafc";
+      c.fillText(data.venueName.slice(0, 28), cx, y); y += 28;
+
+      // Date
+      c.font = "400 14px system-ui, sans-serif"; c.fillStyle = "#cbd5e1";
+      c.fillText(data.matchDate, cx, y); y += 22;
+
+      // Format badge
+      const badgeText = `${data.format} \xB7 ${data.mode === "gala" ? "Gala" : "Two-team"}`;
+      c.font = "700 11px system-ui, sans-serif"; c.fillStyle = "#e2e8f0";
+      const bw = c.measureText(badgeText).width + 28;
+      c.fillStyle = "#1e293b";
+      c.beginPath();
+      const bx = cx - bw / 2, by = y;
+      c.roundRect(bx, by, bw, 24, 12); c.fill();
+      c.font = "700 11px system-ui, sans-serif"; c.fillStyle = "#e2e8f0"; c.textAlign = "center";
+      c.fillText(badgeText, cx, y + 16); y += 36;
+
+      // City
+      c.font = "400 12px system-ui, sans-serif"; c.fillStyle = "#94a3b8";
+      c.fillText(data.venueCity || "Accra", cx, y); y += 22;
+
+      // Fee
+      c.font = "600 13px system-ui, sans-serif"; c.fillStyle = "#cbd5e1";
+      c.fillText(data.entryFee > 0 ? `\u20B5${data.entryFee}/player` : "Free", cx, y); y += 32;
+
+      // Join code box
+      c.fillStyle = "#1e293b";
+      c.beginPath(); c.roundRect(28, y, 344, 68, 16); c.fill();
+      c.strokeStyle = "#475569"; c.lineWidth = 1.5;
+      c.setLineDash([6, 4]);
+      c.beginPath(); c.roundRect(28, y, 344, 68, 16); c.stroke();
+      c.setLineDash([]);
+      c.font = "700 10px system-ui, sans-serif"; c.fillStyle = "#94a3b8";
+      c.fillText("JOIN CODE", cx, y + 20);
+      c.font = `800 ${data.joinCode.length > 8 ? 20 : 26}px ui-monospace, monospace`; c.fillStyle = "#f8fafc";
+      c.fillText(data.joinCode, cx, y + 50); y += 84;
+
+      // Spots
+      const spotsLeft = data.spotsLeft;
+      c.font = "700 13px system-ui, sans-serif";
+      c.fillStyle = spotsLeft <= 2 ? "#fbbf24" : "#94a3b8";
+      const sl = spotsLeft <= 0 ? "Full" : `${spotsLeft} spot${spotsLeft === 1 ? "" : "s"} left`;
+      c.fillText(sl, cx, y); y += 40;
+
+      // Footer
+      c.font = "400 10px system-ui, sans-serif"; c.fillStyle = "#64748b";
+      c.fillText("playreadysports.com", cx, y);
+
       canvas.toBlob((b) => {
-        if (b) {
-          const url = URL.createObjectURL(b);
-          setBlobUrl(url);
-        }
+        if (b) setBlobUrl(URL.createObjectURL(b));
         setGenerating(false);
       }, "image/png");
     } catch (err) {
-      console.error("html2canvas error:", err);
+      console.error("Canvas card error:", err);
       toast.error("Failed to generate image");
       setGenerating(false);
     }
-  }, [blobUrl]);
+  }, [blobUrl, data]);
 
   if (open && !blobUrl && !generating) {
     // Auto-generate when opened
@@ -105,190 +172,10 @@ export function ShareMatchCard({
     `${window.location.origin}/lobby/${data.joinCode}`
   );
 
-  const spotsLabel = data.spotsLeft <= 0 ? "Full" : `${data.spotsLeft} spot${data.spotsLeft === 1 ? "" : "s"} left`;
-  const feeLabel = data.entryFee > 0 ? `₵${data.entryFee}/player` : "Free";
-
   if (!open) return null;
 
   return (
     <>
-      {/* Off-screen card for capture */}
-      <div
-        ref={cardRef}
-        style={{
-          position: "fixed",
-          left: "-9999px",
-          top: "-9999px",
-          width: "400px",
-          minHeight: "540px",
-          padding: "36px 32px",
-          background: "#0f172a",
-          color: "#fff",
-          fontFamily: "system-ui, -apple-system, sans-serif",
-          borderRadius: "24px",
-          boxSizing: "border-box",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: "0px",
-        }}
-      >
-        {/* Logo */}
-        <p style={{
-          fontSize: "11px",
-          fontWeight: 700,
-          letterSpacing: "0.15em",
-          textTransform: "uppercase",
-          color: "#94a3b8",
-          margin: "0 0 18px",
-          textAlign: "center",
-          width: "100%",
-        }}>
-          PlayReadySports
-        </p>
-
-        {/* Football emoji */}
-        <div style={{
-          fontSize: "56px",
-          lineHeight: "56px",
-          margin: "0 0 18px",
-          textAlign: "center",
-          width: "100%",
-        }}>
-          ⚽
-        </div>
-
-        {/* Venue */}
-        <p style={{
-          fontSize: "22px",
-          fontWeight: 800,
-          textAlign: "center",
-          margin: "0 0 6px",
-          lineHeight: 1.2,
-          width: "100%",
-        }}>
-          {data.venueName}
-        </p>
-
-        {/* Date/time */}
-        <p style={{
-          fontSize: "14px",
-          textAlign: "center",
-          color: "#cbd5e1",
-          margin: "0 0 14px",
-          width: "100%",
-        }}>
-          {data.matchDate}
-        </p>
-
-        {/* Format badge */}
-        <span style={{
-          display: "inline-block",
-          fontSize: "11px",
-          fontWeight: 700,
-          textTransform: "uppercase",
-          letterSpacing: "0.05em",
-          background: "#1e293b",
-          color: "#e2e8f0",
-          padding: "6px 14px",
-          borderRadius: "999px",
-          margin: "0 0 12px",
-        }}>
-          {data.format} · {data.mode === "gala" ? "Gala" : "Two-team"}
-        </span>
-
-        {/* Area — show city only, not redundant venue name */}
-        <p style={{
-          fontSize: "12px",
-          textAlign: "center",
-          color: "#94a3b8",
-          margin: "0 0 10px",
-          width: "100%",
-        }}>
-          {data.venueCity || "Accra"}
-        </p>
-
-        {/* Entry fee */}
-        <p style={{
-          fontSize: "13px",
-          textAlign: "center",
-          color: "#cbd5e1",
-          margin: "0 0 22px",
-          fontWeight: 600,
-          width: "100%",
-        }}>
-          {feeLabel}
-        </p>
-
-        {/* Join code */}
-        <div style={{
-          width: "100%",
-          background: "#1e293b",
-          borderRadius: "16px",
-          padding: "12px 16px 10px",
-          textAlign: "center",
-          margin: "0 0 14px",
-          border: "1.5px dashed #475569",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          boxSizing: "border-box",
-          overflow: "hidden",
-        }}>
-          <p style={{
-            fontSize: "10px",
-            fontWeight: 700,
-            letterSpacing: "0.12em",
-            textTransform: "uppercase",
-            color: "#94a3b8",
-            margin: "0 0 4px",
-            lineHeight: 1,
-          }}>
-            Join code
-          </p>
-          <p style={{
-            fontSize: "26px",
-            fontWeight: 800,
-            fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-            letterSpacing: "0.04em",
-            color: "#f8fafc",
-            margin: 0,
-            lineHeight: 1.1,
-            maxWidth: "100%",
-            overflowWrap: "break-word",
-            wordWrap: "break-word",
-            textAlign: "center",
-          }}>
-            {data.joinCode}
-          </p>
-        </div>
-
-        {/* Spots */}
-        <p style={{
-          fontSize: "13px",
-          fontWeight: 700,
-          textAlign: "center",
-          color: data.spotsLeft <= 2 ? "#fbbf24" : "#94a3b8",
-          margin: "0 0 22px",
-          width: "100%",
-        }}>
-          {spotsLabel}
-        </p>
-
-        {/* Footer */}
-        <p style={{
-          fontSize: "10px",
-          textAlign: "center",
-          color: "#64748b",
-          margin: 0,
-          letterSpacing: "0.05em",
-          width: "100%",
-        }}>
-          playreadysports.com
-        </p>
-      </div>
-
       {/* Modal overlay */}
       <div
         className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
@@ -355,7 +242,7 @@ export function ShareMatchCard({
             >
               {copied ? (
                 <>
-                  <Check className="w-4 h-4 text-success" /> Copied
+                  <CheckCheck className="w-4 h-4 text-success" /> Copied
                 </>
               ) : (
                 <>
@@ -370,11 +257,3 @@ export function ShareMatchCard({
   );
 }
 
-// Inline check icon for copy feedback
-function Check({ className }: { className?: string }) {
-  return (
-    <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
-  );
-}

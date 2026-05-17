@@ -59,7 +59,8 @@ export function useSuggestedFriends() {
           .select("user_id")
           .in("match_id", myMatchIds)
           .eq("status", "active")
-          .neq("user_id", user.id);
+          .neq("user_id", user.id)
+          .limit(100);
         (coPlayers ?? []).forEach((p: any) => coPlayerIds.add(p.user_id));
       }
 
@@ -102,7 +103,8 @@ export function useSuggestedFriends() {
           .select("requester_id, recipient_id")
           .in("requester_id", friendArray)
           .in("recipient_id", friendArray)
-          .eq("status", "accepted");
+          .eq("status", "accepted")
+          .limit(200);
 
         const mutualCounts = new Map<string, number>();
         (theirFriends ?? []).forEach((f: any) => {

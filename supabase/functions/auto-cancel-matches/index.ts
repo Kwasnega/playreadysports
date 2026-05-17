@@ -1,4 +1,5 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { getgetCorsHeaders() } from "../_shared/cors.ts";
 
 /**
  * auto-cancel-matches
@@ -7,14 +8,11 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
  * (default 20 min before kickoff if paid count < min threshold).
  */
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// CORS is handled via getCorsHeaders() from _shared/cors.ts
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: getCorsHeaders() });
   }
 
   try {
@@ -49,7 +47,7 @@ Deno.serve(async (req) => {
 
     if (!candidates || candidates.length === 0) {
       return new Response(JSON.stringify({ cancelled: 0, checked: 0 }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
@@ -150,13 +148,13 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({ cancelled: cancelledCount, checked: candidates.length }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 200, headers: { ...getCorsHeaders(), "Content-Type": "application/json" } }
     );
   } catch (err: any) {
     console.error("auto-cancel-matches error:", err);
     return new Response(JSON.stringify({ error: err.message ?? "Internal error" }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
     });
   }
 });

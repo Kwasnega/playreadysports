@@ -1,4 +1,5 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { getgetCorsHeaders() } from "../_shared/cors.ts";
 
 /**
  * match-reminders — Scheduled edge function (invoke via cron every 10 minutes)
@@ -6,10 +7,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
  * Uses a `reminder_sent_flags` jsonb column on matches to avoid duplicate notifications.
  */
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// CORS is handled via getCorsHeaders() from _shared/cors.ts
 
 interface ReminderWindow {
   key: string;
@@ -45,7 +43,7 @@ const REMINDER_WINDOWS: ReminderWindow[] = [
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: getCorsHeaders() });
   }
 
   try {
@@ -53,7 +51,7 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!serviceKey) {
       return new Response(JSON.stringify({ error: "Server misconfiguration" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
@@ -126,12 +124,12 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({ success: true, notificationsSent: totalSent }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      { status: 200, headers: { ...getCorsHeaders(), "Content-Type": "application/json" } },
     );
   } catch (err: any) {
     console.error("match-reminders error:", err);
     return new Response(JSON.stringify({ error: err.message ?? "Internal error" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
     });
   }
 });

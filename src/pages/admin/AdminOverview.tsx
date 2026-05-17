@@ -14,8 +14,10 @@ const cardGradients = [
   { from: "from-rose-500/20", to: "to-rose-600/10", iconBg: "bg-rose-500/10", iconColor: "text-rose-400", accent: "#FB7185" },
 ];
 
-function StatCard({ label, value, icon: Icon, index }: { label: string; value: string | number; icon: any; index: number }) {
+function StatCard({ label, value, icon: Icon, index, trend }: { label: string; value: string | number; icon: any; index: number; trend?: number | null }) {
   const g = cardGradients[index % cardGradients.length];
+  const trendPos = trend != null && trend >= 0;
+  const trendStr = trend == null ? null : `${trendPos ? "+" : ""}${trend.toFixed(0)}%`;
   return (
     <div className="relative group">
       <div className={`absolute inset-0 bg-gradient-to-br ${g.from} ${g.to} rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
@@ -24,10 +26,12 @@ function StatCard({ label, value, icon: Icon, index }: { label: string; value: s
           <div className={`w-10 h-10 rounded-xl ${g.iconBg} flex items-center justify-center`}>
             <Icon className={`w-5 h-5 ${g.iconColor}`} />
           </div>
-          <div className="flex items-center gap-1 text-emerald-400 text-xs font-medium">
-            <TrendingUp className="w-3 h-3" />
-            <span>+12%</span>
-          </div>
+          {trendStr && (
+            <div className={`flex items-center gap-1 text-xs font-medium ${trendPos ? "text-emerald-400" : "text-rose-400"}`}>
+              <TrendingUp className="w-3 h-3" />
+              <span>{trendStr}</span>
+            </div>
+          )}
         </div>
         <p className="text-3xl font-bold text-white tracking-tight">{value}</p>
         <p className="text-xs text-slate-400 mt-1 font-medium uppercase tracking-wider">{label}</p>
@@ -48,6 +52,7 @@ function CustomTooltip({ active, payload, label }: any) {
 
 export default function AdminOverview() {
   const [metrics, setMetrics] = useState({ players: 0, matches: 0, revenue: 0, fees: 0 });
+  const [trends, setTrends] = useState<{ matchTrend: number | null; revenueTrend: number | null }>({ matchTrend: null, revenueTrend: null });
   const [chartData, setChartData] = useState<{ day: string; count: number }[]>([]);
   const [recentTxns, setRecentTxns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -91,24 +96,38 @@ export default function AdminOverview() {
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const [{ count: players }, { count: matches }, { data: txns }, { data: walletTxns }, { data: chart }, { data: recent }, { data: setting }] = await Promise.all([
-        supabase.from("profiles").select("*", { count: "exact", head: true }),
-        supabase.from("matches").select("*", { count: "exact", head: true }).eq("status", "upcoming"),
-        supabase.from("transactions").select("amount").eq("type", "entry_fee").eq("status", "completed"),
-        (supabase as any).from("wallet_transactions").select("amount").eq("type", "spend").eq("status", "completed"),
-        (supabase as any).rpc("matches_per_day", { days: 14 }),
-        supabase.from("transactions").select("id, amount, type, status, created_at, user:profiles(full_name, username), match:matches(join_code)").order("created_at", { ascending: false }).limit(10),
-        (supabase as any).from("platform_settings").select("value").eq("key", "commission_rate").single(),
-      ]);
-      const rate = parseFloat(setting?.value ?? "0.05");
-      setCommissionRate(isNaN(rate) ? 0.05 : rate);
-      const gatewayRevenue = (txns ?? []).reduce((s, t) => s + (Number(t.amount) || 0), 0);
-      const walletRevenue = (walletTxns ?? []).reduce((s, t) => s + (Math.abs(Number(t.amount)) || 0), 0);
-      const revenue = gatewayRevenue + walletRevenue;
-      setMetrics({ players: players ?? 0, matches: matches ?? 0, revenue, fees: Math.round(revenue * rate * 100) / 100 });
-      setChartData((chart ?? []).map((d: any) => ({ day: d.day.slice(5), count: Number(d.count) })));
-      setRecentTxns(recent ?? []);
-      setLoading(false);
+      try {
+        const [{ count: players }, { count: matches }, { data: txns }, { data: walletTxns }, { data: chart }, { data: recent }, { data: setting }] = await Promise.all([
+          supabase.from("profiles").select("*", { count: "exact", head: true }),
+          supabase.from("matches").select("*", { count: "exact", head: true }).eq("status", "upcoming"),
+          supabase.from("transactions").select("amount").eq("type", "entry_fee").eq("status", "completed"),
+          (supabase as any).from("wallet_transactions").select("amount").eq("type", "spend").eq("status", "completed"),
+          (supabase as any).rpc("matches_per_day", { days: 14 }),
+          supabase.from("transactions").select("id, amount, type, status, created_at, user:profiles(full_name, username), match:matches(join_code)").order("created_at", { ascending: false }).limit(10),
+          (supabase as any).from("platform_settings").select("value").eq("key", "commission_rate").single(),
+        ]);
+        const rate = parseFloat(setting?.value ?? "0.05");
+        setCommissionRate(isNaN(rate) ? 0.05 : rate);
+        const gatewayRevenue = (txns ?? []).reduce((s, t) => s + (Number(t.amount) || 0), 0);
+        const walletRevenue = (walletTxns ?? []).reduce((s, t) => s + (Math.abs(Number(t.amount)) || 0), 0);
+        const revenue = gatewayRevenue + walletRevenue;
+        setMetrics({ players: players ?? 0, matches: matches ?? 0, revenue, fees: Math.round(revenue * rate * 100) / 100 });
+        const chartPoints = (chart ?? []).map((d: any) => ({ day: d.day.slice(5), count: Number(d.count) }));
+        setChartData(chartPoints);
+        // Compute match trend: last 7 days vs prior 7 days from chart data
+        if (chartPoints.length >= 14) {
+          const recent7 = chartPoints.slice(-7).reduce((s, d) => s + d.count, 0);
+          const prior7  = chartPoints.slice(-14, -7).reduce((s, d) => s + d.count, 0);
+          const matchTrend = prior7 === 0 ? null : ((recent7 - prior7) / prior7) * 100;
+          const revenueTrend = matchTrend; // proxy for now — same match volume drives revenue
+          setTrends({ matchTrend, revenueTrend });
+        }
+        setRecentTxns(recent ?? []);
+      } catch (e: any) {
+        toast.error(e?.message || "Failed to load dashboard data");
+      } finally {
+        setLoading(false);
+      }
     })();
   }, []);
 
@@ -129,10 +148,10 @@ export default function AdminOverview() {
   };
 
   const cards = [
-    { label: "Total Players", value: metrics.players.toLocaleString(), icon: Users },
-    { label: "Active Matches", value: metrics.matches.toLocaleString(), icon: Trophy },
-    { label: "Total Revenue", value: `₵${metrics.revenue.toLocaleString()}`, icon: CreditCard },
-    { label: "Platform Fees", value: `₵${metrics.fees.toLocaleString()}`, icon: PiggyBank },
+    { label: "Total Players",  value: metrics.players.toLocaleString(),         icon: Users,       trend: null },
+    { label: "Active Matches", value: metrics.matches.toLocaleString(),          icon: Trophy,      trend: trends.matchTrend },
+    { label: "Total Revenue",  value: `₵${metrics.revenue.toLocaleString()}`,   icon: CreditCard,  trend: trends.revenueTrend },
+    { label: "Platform Fees",  value: `₵${metrics.fees.toLocaleString()}`,      icon: PiggyBank,   trend: trends.revenueTrend },
   ];
 
   return (
@@ -173,7 +192,7 @@ export default function AdminOverview() {
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
           {cards.map((c, i) => (
-            <StatCard key={c.label} {...c} index={i} />
+            <StatCard key={c.label} {...c} index={i} trend={c.trend} />
           ))}
         </div>
       )}

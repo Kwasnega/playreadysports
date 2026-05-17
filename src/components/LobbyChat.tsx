@@ -35,7 +35,7 @@ export const LobbyChat = ({ matchCode, matchId, isOrganizer = true, teamColorA, 
   playerTeams?: Record<string, string>;
 }) => {
   const { user } = useAuth();
-  const { messages, sendMessage, scrollRef } = useLobbyChat(matchId);
+  const { messages, loading, loadingMore, hasMore, loadMore, sendMessage, scrollRef } = useLobbyChat(matchId);
   const [text, setText] = useState("");
   const [open, setOpen] = useState(true);
   const [pinnedId, setPinnedId] = useState<string | null>(null);
@@ -157,6 +157,17 @@ export const LobbyChat = ({ matchCode, matchId, isOrganizer = true, teamColorA, 
                 "radial-gradient(at 0% 0%, hsl(var(--primary) / 0.12), transparent 55%), radial-gradient(at 100% 100%, hsl(var(--surface-warm) / 0.55), transparent 60%), linear-gradient(180deg, hsl(var(--surface-cool) / 0.35), hsl(var(--background)) 80%)",
             }}
           >
+            {hasMore && (
+              <div className="flex justify-center pb-2">
+                <button
+                  onClick={loadMore}
+                  disabled={loadingMore}
+                  className="text-[11px] font-semibold text-muted-foreground hover:text-foreground bg-secondary/60 hover:bg-secondary rounded-full px-4 py-1.5 transition-all disabled:opacity-50"
+                >
+                  {loadingMore ? "Loading…" : "Load older messages"}
+                </button>
+              </div>
+            )}
             {messages.map(m => {
               const mine = m.sender_id === meId;
               const playerTeam = playerTeams?.[m.sender_id];

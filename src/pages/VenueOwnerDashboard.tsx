@@ -206,99 +206,101 @@ export default function VenueOwnerDashboard() {
       return;
     }
     setLoading(true);
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("venue_owner_balance")
+        .eq("id", user.id)
+        .maybeSingle();
+      setVenueBalance(Number((profile as any)?.venue_owner_balance ?? 0) || 0);
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("venue_owner_balance")
-      .eq("id", user.id)
-      .maybeSingle();
-    setVenueBalance(Number((profile as any)?.venue_owner_balance ?? 0) || 0);
+      const { data: vens } = await supabase
+        .from("venues")
+        .select(
+          "id, name, status, surge_peak_start_hour, surge_peak_end_hour, surge_multiplier, early_bird_hours_before, early_bird_discount_pct, student_discount_pct",
+        )
+        .eq("owner_email", user.email);
 
-    const { data: vens } = await supabase
-      .from("venues")
-      .select(
-        "id, name, status, surge_peak_start_hour, surge_peak_end_hour, surge_multiplier, early_bird_hours_before, early_bird_discount_pct, student_discount_pct",
-      )
-      .eq("owner_email", user.email);
+      const venueList = (vens ?? []) as VenueRow[];
+      setVenues(venueList);
 
-    const venueList = (vens ?? []) as VenueRow[];
-    setVenues(venueList);
+      const { data: setting } = await (supabase as any)
+        .from("platform_settings")
+        .select("value")
+        .eq("key", "commission_rate")
+        .maybeSingle();
+      const rate = parseFloat(setting?.value ?? "0.05");
+      setCommissionRate(isNaN(rate) ? 0.05 : rate);
 
-    const { data: setting } = await (supabase as any)
-      .from("platform_settings")
-      .select("value")
-      .eq("key", "commission_rate")
-      .maybeSingle();
-    const rate = parseFloat(setting?.value ?? "0.05");
-    setCommissionRate(isNaN(rate) ? 0.05 : rate);
+      const verified = venueList.filter((v) => v.status === "verified");
+      const venueIds = verified.map((v) => v.id);
 
-    const verified = venueList.filter((v) => v.status === "verified");
-    const venueIds = verified.map((v) => v.id);
+      if (!venueIds.length) {
+        setTodayMatches([]);
+        setEarnings([]);
+        setHeatBuckets([]);
+        return;
+      }
 
-    if (!venueIds.length) {
-      setTodayMatches([]);
-      setEarnings([]);
-      setHeatBuckets([]);
+      const sel = new Date(selectedDate);
+      const dayStart = startOfLocalDay(sel).toISOString();
+      const dayEnd = endOfLocalDay(sel).toISOString();
+
+      const { data: today } = await supabase
+        .from("matches")
+        .select("id, join_code, match_date, format, entry_fee, core_paid_count, status, venue_id")
+        .in("venue_id", venueIds)
+        .in("status", ["upcoming", "live"])
+        .gte("match_date", dayStart)
+        .lte("match_date", dayEnd)
+        .order("match_date", { ascending: true });
+      setTodayMatches((today ?? []) as TodayMatch[]);
+
+      const { data: completed } = await supabase
+        .from("matches")
+        .select("id, join_code, match_date, format, entry_fee, core_paid_count, venue_id, status")
+        .in("venue_id", venueIds)
+        .eq("status", "completed")
+        .order("match_date", { ascending: false });
+
+      const grouped: VenueEarning[] = verified.map((v) => {
+        const venueMatches = (completed ?? []).filter((m: any) => m.venue_id === v.id).map((m: any) => ({
+          id: m.id,
+          join_code: m.join_code,
+          match_date: m.match_date,
+          format: m.format,
+          entry_fee: Number(m.entry_fee) || 0,
+          core_paid_count: Number(m.core_paid_count) || 0,
+          gross: (Number(m.entry_fee) || 0) * (Number(m.core_paid_count) || 0),
+        }));
+        return {
+          venueId: v.id,
+          venueName: v.name,
+          matches: venueMatches,
+          totalGross: venueMatches.reduce((s, m) => s + m.gross, 0),
+        };
+      });
+      setEarnings(grouped);
+
+      const since = new Date();
+      since.setDate(since.getDate() - 90);
+      const { data: heatRows } = await supabase
+        .from("matches")
+        .select("match_date")
+        .in("venue_id", venueIds)
+        .gte("match_date", since.toISOString());
+
+      const buckets = Array.from({ length: 24 }, (_, h) => ({ hour: `${h}h`, count: 0 }));
+      (heatRows ?? []).forEach((row: any) => {
+        const h = new Date(row.match_date).getHours();
+        if (h >= 0 && h < 24) buckets[h].count += 1;
+      });
+      setHeatBuckets(buckets);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to load dashboard data");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const sel = new Date(selectedDate);
-    const dayStart = startOfLocalDay(sel).toISOString();
-    const dayEnd = endOfLocalDay(sel).toISOString();
-
-    const { data: today } = await supabase
-      .from("matches")
-      .select("id, join_code, match_date, format, entry_fee, core_paid_count, status, venue_id")
-      .in("venue_id", venueIds)
-      .in("status", ["upcoming", "live"])
-      .gte("match_date", dayStart)
-      .lte("match_date", dayEnd)
-      .order("match_date", { ascending: true });
-    setTodayMatches((today ?? []) as TodayMatch[]);
-
-    const { data: completed } = await supabase
-      .from("matches")
-      .select("id, join_code, match_date, format, entry_fee, core_paid_count, venue_id, status")
-      .in("venue_id", venueIds)
-      .eq("status", "completed")
-      .order("match_date", { ascending: false });
-
-    const grouped: VenueEarning[] = verified.map((v) => {
-      const venueMatches = (completed ?? []).filter((m: any) => m.venue_id === v.id).map((m: any) => ({
-        id: m.id,
-        join_code: m.join_code,
-        match_date: m.match_date,
-        format: m.format,
-        entry_fee: Number(m.entry_fee) || 0,
-        core_paid_count: Number(m.core_paid_count) || 0,
-        gross: (Number(m.entry_fee) || 0) * (Number(m.core_paid_count) || 0),
-      }));
-      return {
-        venueId: v.id,
-        venueName: v.name,
-        matches: venueMatches,
-        totalGross: venueMatches.reduce((s, m) => s + m.gross, 0),
-      };
-    });
-    setEarnings(grouped);
-
-    const since = new Date();
-    since.setDate(since.getDate() - 90);
-    const { data: heatRows } = await supabase
-      .from("matches")
-      .select("match_date")
-      .in("venue_id", venueIds)
-      .gte("match_date", since.toISOString());
-
-    const buckets = Array.from({ length: 24 }, (_, h) => ({ hour: `${h}h`, count: 0 }));
-    (heatRows ?? []).forEach((row: any) => {
-      const h = new Date(row.match_date).getHours();
-      if (h >= 0 && h < 24) buckets[h].count += 1;
-    });
-    setHeatBuckets(buckets);
-
-    setLoading(false);
   }, [user?.email, user?.id, selectedDate]);
 
   useEffect(() => {

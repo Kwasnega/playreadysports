@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { ShieldAlert, Lock, Loader2 } from "lucide-react";
@@ -111,6 +111,24 @@ function PlayerLoginGate() {
 export function ProtectedRoute({ children, roles }: Props) {
   const { user, loading, profileRole, isAdmin } = useAuth();
   const [loginRefresh, setLoginRefresh] = useState(0);
+  const [profileTimedOut, setProfileTimedOut] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Safety valve: if profileRole is still null after 5 s, force a session
+  // re-check. Prevents the role-loading spinner from being stuck forever
+  // when a token refresh completed but the profile fetch silently failed.
+  useEffect(() => {
+    if (user && profileRole === null && !isAdmin && roles && roles.length > 0) {
+      timerRef.current = setTimeout(async () => {
+        await supabase.auth.getSession();
+        setProfileTimedOut(true);
+      }, 5000);
+    } else {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      setProfileTimedOut(false);
+    }
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [user, profileRole, isAdmin, roles]);
 
   const isAdminRoute = roles?.some((r) => r === "admin" || r === "super_admin");
 
@@ -134,6 +152,13 @@ export function ProtectedRoute({ children, roles }: Props) {
   // profileRole is null while the profile fetch is in-flight.
   if (roles && roles.length > 0) {
     if (profileRole === null && !isAdmin) {
+      // Timed out waiting for profile — session refresh was triggered above.
+      // If still null, treat as unauthenticated to avoid infinite spinner.
+      if (profileTimedOut) {
+        return isAdminRoute
+          ? <AdminLoginGate onSuccess={() => { setProfileTimedOut(false); setLoginRefresh((n) => n + 1); }} />
+          : <PlayerLoginGate />;
+      }
       // Still loading profile — show spinner instead of "Access Denied"
       return (
         <div className="min-h-screen flex items-center justify-center">

@@ -14,6 +14,7 @@ export type LobbyParticipant = {
   status: string;
   joined_at: string;
   attendance_scanned?: boolean;
+  no_show?: boolean;
 };
 
 export type LobbyMatch = {
@@ -67,7 +68,7 @@ export function useMatchLobby(joinCode: string) {
     const { data, error: pErr } = await supabase
       .from("match_participants")
       .select(`
-        id, user_id, slot_type, team, payment_status, status, joined_at, attendance_scanned,
+        id, user_id, slot_type, team, payment_status, status, joined_at, attendance_scanned, no_show,
         profile:profiles(username, full_name, avatar_url)
       `)
       .eq("match_id", mid)
@@ -90,6 +91,7 @@ export function useMatchLobby(joinCode: string) {
           status: row.status,
           joined_at: row.joined_at,
           attendance_scanned: !!row.attendance_scanned,
+          no_show: !!row.no_show,
         } as LobbyParticipant;
       });
       setParticipants(normalized);
@@ -146,7 +148,7 @@ export function useMatchLobby(joinCode: string) {
     return () => { cancelled = true; };
   }, [joinCode, loadParticipants]);
 
-  // Realtime subscription for participants
+  // Realtime subscription — incremental updates instead of full refetch
   useEffect(() => {
     if (!matchId) return;
 
@@ -161,35 +163,64 @@ export function useMatchLobby(joinCode: string) {
           table: "match_participants",
           filter: `match_id=eq.${matchId}`,
         } as any,
-        () => {
-          // Reload participants
-          supabase
-            .from("match_participants")
-            .select(`
-              id, user_id, slot_type, team, payment_status, status, joined_at, attendance_scanned,
-              profile:profiles(username, full_name, avatar_url)
-            `)
-            .eq("match_id", matchId)
-            .order("joined_at", { ascending: true })
-            .then(({ data }) => {
-              const normalized = (data ?? []).map((row: any) => {
-                const prof = Array.isArray(row.profile) ? row.profile[0] ?? {} : row.profile ?? {};
-                return {
-                  id: row.id,
-                  user_id: row.user_id,
-                  username: prof.username ?? null,
-                  full_name: prof.full_name ?? null,
-                  avatar_url: prof.avatar_url ?? null,
-                  slot_type: row.slot_type,
-                  team: row.team,
-                  payment_status: row.payment_status,
-                  status: row.status,
-                  joined_at: row.joined_at,
-                  attendance_scanned: !!row.attendance_scanned,
-                } as LobbyParticipant;
+        (payload: any) => {
+          const ev = payload.eventType;
+          const newRow = payload.new;
+          const oldRow = payload.old;
+
+          if (ev === "DELETE") {
+            setParticipants((prev) => prev.filter((p) => p.id !== oldRow.id));
+            return;
+          }
+
+          if (ev === "INSERT" && newRow) {
+            // Profile not included in realtime payload; do a single-row fetch
+            supabase
+              .from("profiles")
+              .select("username, full_name, avatar_url")
+              .eq("id", newRow.user_id)
+              .single()
+              .then(({ data: prof }) => {
+                setParticipants((prev) => {
+                  if (prev.some((p) => p.id === newRow.id)) return prev;
+                  const next = [...prev, {
+                    id: newRow.id,
+                    user_id: newRow.user_id,
+                    username: prof?.username ?? null,
+                    full_name: prof?.full_name ?? null,
+                    avatar_url: prof?.avatar_url ?? null,
+                    slot_type: newRow.slot_type,
+                    team: newRow.team,
+                    payment_status: newRow.payment_status,
+                    status: newRow.status,
+                    joined_at: newRow.joined_at,
+                    attendance_scanned: !!newRow.attendance_scanned,
+                  } as LobbyParticipant];
+                  return next.sort((a, b) =>
+                    new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime()
+                  );
+                });
               });
-              setParticipants(normalized);
-            });
+            return;
+          }
+
+          if (ev === "UPDATE" && newRow) {
+            setParticipants((prev) =>
+              prev.map((p) =>
+                p.id === newRow.id
+                  ? {
+                      ...p,
+                      slot_type: newRow.slot_type ?? p.slot_type,
+                      team: newRow.team ?? p.team,
+                      payment_status: newRow.payment_status ?? p.payment_status,
+                      status: newRow.status ?? p.status,
+                      attendance_scanned: !!newRow.attendance_scanned,
+                    }
+                  : p
+              )
+            );
+            return;
+          }
         }
       )
       .subscribe();

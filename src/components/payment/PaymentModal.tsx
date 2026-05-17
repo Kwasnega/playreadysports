@@ -1,4 +1,4 @@
-import { X, Shield, Lock } from "lucide-react";
+import { X, Shield, Lock, Wallet, CreditCard, RotateCcw } from "lucide-react";
 import { useState } from "react";
 
 interface PaymentModalProps {
@@ -6,18 +6,26 @@ interface PaymentModalProps {
   matchName: string;
   matchCode: string;
   entryFee: number;
+  walletBalance?: number;
   onPay: () => void;
+  onPayWithWallet?: () => void;
   onClose: () => void;
 }
 
-export function PaymentModal({ open, matchName, matchCode, entryFee, onPay, onClose }: PaymentModalProps) {
+export function PaymentModal({ open, matchName, matchCode, entryFee, walletBalance = 0, onPay, onPayWithWallet, onClose }: PaymentModalProps) {
   const [paying, setPaying] = useState(false);
+  const canUseWallet = walletBalance >= entryFee && !!onPayWithWallet;
 
   if (!open) return null;
 
-  const handlePay = () => {
+  const handleCardPay = () => {
     setPaying(true);
     onPay();
+  };
+
+  const handleWalletPay = () => {
+    setPaying(true);
+    onPayWithWallet?.();
   };
 
   return (
@@ -62,6 +70,15 @@ export function PaymentModal({ open, matchName, matchCode, entryFee, onPay, onCl
           </p>
         </div>
 
+        {/* Cancellation policy */}
+        <div className="flex items-start gap-2.5 bg-secondary/50 rounded-xl p-3 border border-border/40">
+          <RotateCcw className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            <span className="font-semibold text-foreground">Cancellation policy:</span>{" "}
+            Full refund if you leave more than 2 hours before kick-off. Within 2 hours, the entry fee is non-refundable.
+          </p>
+        </div>
+
         {/* Paystack badge */}
         <div className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
           <Shield className="w-3.5 h-3.5 text-emerald-500" />
@@ -70,12 +87,25 @@ export function PaymentModal({ open, matchName, matchCode, entryFee, onPay, onCl
 
         {/* Actions */}
         <div className="space-y-2.5">
+          {canUseWallet && (
+            <button
+              onClick={handleWalletPay}
+              disabled={paying}
+              className="w-full bg-emerald-500 text-white font-semibold rounded-full px-4 py-3.5 text-sm flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+              <Wallet className="w-4 h-4" />
+              {paying ? "Processing…" : `Pay ₵${entryFee} from wallet`}
+            </button>
+          )}
           <button
-            onClick={handlePay}
+            onClick={handleCardPay}
             disabled={paying}
-            className="w-full bg-foreground text-background font-semibold rounded-full px-4 py-3.5 text-sm flex items-center justify-center gap-2 disabled:opacity-60"
+            className={`w-full font-semibold rounded-full px-4 py-3.5 text-sm flex items-center justify-center gap-2 disabled:opacity-60 ${
+              canUseWallet ? "bg-secondary text-foreground" : "bg-foreground text-background"
+            }`}
           >
-            {paying ? "Opening checkout…" : `Pay ₵${entryFee}`}
+            <CreditCard className="w-4 h-4" />
+            {paying ? "Opening checkout…" : `Pay ₵${entryFee} with card`}
           </button>
           <button
             onClick={onClose}

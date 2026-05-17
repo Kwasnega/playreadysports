@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import {
   Bell, BellOff, UserPlus, UserMinus, CalendarClock, XCircle, ShieldAlert, Megaphone, Mail, CheckCheck,
 } from "lucide-react";
-import { gsap } from "gsap";
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/components/ui/popover";
@@ -34,12 +33,10 @@ export const NotificationsBell = () => {
   // Bell shake when a new unread arrives.
   useEffect(() => {
     if (unreadCount > prevUnread.current && bellRef.current) {
-      gsap.fromTo(
-        bellRef.current,
-        { rotation: 0 },
-        { rotation: -12, duration: 0.07, yoyo: true, repeat: 5, ease: "power1.inOut",
-          onComplete: () => gsap.set(bellRef.current, { rotation: 0 }) },
-      );
+      const el = bellRef.current;
+      el.classList.remove("animate-bell-shake");
+      void el.offsetWidth;
+      el.classList.add("animate-bell-shake");
     }
     prevUnread.current = unreadCount;
   }, [unreadCount]);
@@ -47,9 +44,14 @@ export const NotificationsBell = () => {
   // Stagger items on open.
   useEffect(() => {
     if (!open || !listRef.current) return;
-    const rows = listRef.current.querySelectorAll("[data-notif]");
+    const rows = Array.from(listRef.current.querySelectorAll<HTMLElement>("[data-notif]"));
     if (!rows.length) return;
-    gsap.fromTo(rows, { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.25, stagger: 0.04, ease: "power2.out" });
+    rows.forEach((r, i) => {
+      r.style.opacity = "0";
+      r.style.transform = "translateY(6px)";
+      r.style.transition = `opacity 0.2s ease ${i * 0.04}s, transform 0.2s ease ${i * 0.04}s`;
+      requestAnimationFrame(() => { r.style.opacity = "1"; r.style.transform = "translateY(0)"; });
+    });
   }, [open, items.length]);
 
   const onClick = (n: { id: string; link?: string; type: NotifType; message: string }) => {

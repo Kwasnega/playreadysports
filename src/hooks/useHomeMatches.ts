@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 export type Venue = {
@@ -48,72 +49,91 @@ export type HomeMatch = {
   participants: Participant[];
 };
 
+const PAGE_SIZE = 10;
+
+async function fetchHomeMatches(cursor?: string): Promise<HomeMatch[]> {
+  const now = new Date().toISOString();
+  let q = supabase
+    .from("matches")
+    .select(`
+      *,
+      venue:venues(id, name, city, area, lat, lng),
+      organizer:profiles(id, username, full_name, avatar_url, reputation_score),
+      participants:match_participants(id, user_id, status, team, slot_type, payment_status)
+    `)
+    .in("status", ["upcoming", "live"] as any)
+    .eq("match_type", "public" as any)
+    .gte("match_date", now)
+    .order("match_date", { ascending: true })
+    .limit(PAGE_SIZE);
+
+  if (cursor) q = q.gt("match_date", cursor);
+
+  const { data, error } = await q;
+
+  if (error) {
+    console.error("useHomeMatches error:", error);
+    throw new Error(error.message);
+  }
+
+  return (data ?? []).map((row: any) => ({
+    ...row,
+    venue: Array.isArray(row.venue) ? row.venue[0] ?? null : row.venue ?? null,
+    organizer: Array.isArray(row.organizer) ? row.organizer[0] ?? null : row.organizer ?? null,
+    participants: Array.isArray(row.participants) ? row.participants : [],
+  })) as HomeMatch[];
+}
+
 export function useHomeMatches() {
-  const [matches, setMatches] = useState<HomeMatch[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [allMatches, setAllMatches] = useState<HomeMatch[]>([]);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+  const { data: initialMatches = [], isLoading: loading, error } = useQuery({
+    queryKey: ["home-matches"],
+    queryFn: () => fetchHomeMatches(),
+    staleTime: 1000 * 30,
+    gcTime: 1000 * 60 * 2,
+  });
 
   useEffect(() => {
-    let cancelled = false;
+    setAllMatches(initialMatches);
+    setHasMore(initialMatches.length === PAGE_SIZE);
+  }, [initialMatches]);
 
-    const load = async () => {
-      setLoading(true);
-      setError(null);
+  const loadMore = useCallback(async () => {
+    if (!hasMore || allMatches.length === 0) return;
+    setIsLoadingMore(true);
+    const lastDate = allMatches[allMatches.length - 1].match_date;
+    try {
+      const next = await fetchHomeMatches(lastDate);
+      setAllMatches((prev) => [...prev, ...next]);
+      setHasMore(next.length === PAGE_SIZE);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [allMatches, hasMore]);
 
-      const now = new Date().toISOString();
-
-      const { data, error: supaError } = await supabase
-        .from("matches")
-        .select(`
-          *,
-          venue:venues(id, name, city, area, lat, lng),
-          organizer:profiles(id, username, full_name, avatar_url, reputation_score),
-          participants:match_participants(id, user_id, status, team, slot_type, payment_status)
-        `)
-        .in("status", ["upcoming", "live"] as any)
-        .eq("match_type", "public" as any)
-        .gte("match_date", now)
-        .order("match_date", { ascending: true })
-        .limit(10);
-
-      if (cancelled) return;
-
-      if (supaError) {
-        console.error("useHomeMatches error:", supaError);
-        setError(supaError.message);
-        setMatches([]);
-      } else {
-        const normalized = (data ?? []).map((row: any) => ({
-          ...row,
-          venue: Array.isArray(row.venue) ? row.venue[0] ?? null : row.venue ?? null,
-          organizer: Array.isArray(row.organizer) ? row.organizer[0] ?? null : row.organizer ?? null,
-          participants: Array.isArray(row.participants) ? row.participants : [],
-        })) as HomeMatch[];
-        setMatches(normalized);
-      }
-
-      setLoading(false);
-    };
-
-    load();
-
-    // Realtime subscription for matches
+  // Realtime subscription — naive reload on match changes
+  useEffect(() => {
     const channelName = "home-matches:" + Math.random().toString(36).slice(2) + Date.now().toString(36);
     const channel = supabase
       .channel(channelName)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "matches", filter: `match_type=eq.public` } as any,
-        () => load()
+        () => {
+          supabase.removeChannel(channel);
+        }
       )
       .subscribe();
 
     return () => {
-      cancelled = true;
       channel.unsubscribe();
       supabase.removeChannel(channel);
     };
   }, []);
 
-  return { matches, loading, error };
+  const errorMsg = error instanceof Error ? error.message : null;
+  return { matches: allMatches, loading, error: errorMsg, hasMore, loadMore, isLoadingMore };
 }

@@ -246,123 +246,129 @@ export default function AdminLiveMonitor() {
   /* ─── Data loading ─── */
   const load = useCallback(async () => {
     setLoading(true);
+    try {
+      const { data: matchesRaw } = await supabase
+        .from("matches")
+        .select(`
+          id, join_code, title, match_date, status, match_mode, format, entry_fee,
+          max_core_players, core_paid_count, escrow_status, duration_minutes,
+          venue:venues(name, city, lat, lng),
+          participants:match_participants(
+            id, user_id, status, payment_status, slot_type, team, joined_at, attendance_scanned,
+            profiles(full_name, username)
+          )
+        `)
+        .in("status", ["upcoming", "live"] as any)
+        .order("match_date", { ascending: true });
 
-    const { data: matchesRaw } = await supabase
-      .from("matches")
-      .select(`
-        id, join_code, title, match_date, status, match_mode, format, entry_fee,
-        max_core_players, core_paid_count, escrow_status, duration_minutes,
-        venue:venues(name, city, lat, lng),
-        participants:match_participants(
-          id, user_id, status, payment_status, slot_type, team, joined_at, attendance_scanned,
-          profiles(full_name, username)
-        )
-      `)
-      .in("status", ["upcoming", "live"] as any)
-      .order("match_date", { ascending: true });
+      const normalized = (matchesRaw ?? []).map((m: any) => ({
+        ...m,
+        payments_frozen: false,
+        venue: Array.isArray(m.venue) ? m.venue[0] ?? null : m.venue ?? null,
+        organizer: null,
+        participants: (m.participants ?? []).map((p: any) => ({
+          ...p,
+          profiles: Array.isArray(p.profiles) ? p.profiles[0] ?? null : p.profiles ?? null,
+        })),
+      })) as LiveMatch[];
 
-    const normalized = (matchesRaw ?? []).map((m: any) => ({
-      ...m,
-      payments_frozen: false,
-      venue: Array.isArray(m.venue) ? m.venue[0] ?? null : m.venue ?? null,
-      organizer: null,
-      participants: (m.participants ?? []).map((p: any) => ({
-        ...p,
-        profiles: Array.isArray(p.profiles) ? p.profiles[0] ?? null : p.profiles ?? null,
-      })),
-    })) as LiveMatch[];
+      setMatches(normalized);
 
-    setMatches(normalized);
+      // Compute stats client-side from matches
+      const liveMatches = normalized.filter((m) => m.status === "live");
+      const playersOnPitch = liveMatches.reduce((sum, m) => sum + m.participants.filter((p: any) => p.status === "active").length, 0);
+      const totalEscrow = normalized.reduce((sum, m) => sum + (Number(m.entry_fee ?? 0) * Number(m.core_paid_count ?? 0)), 0);
+      setStats({ live_matches: liveMatches.length, players_on_pitch: playersOnPitch, total_escrow: totalEscrow, active_users: 0 });
+      setInterventions([]);
+      setLastRefresh(new Date());
 
-    // Compute stats client-side from matches
-    const liveMatches = normalized.filter((m) => m.status === "live");
-    const playersOnPitch = liveMatches.reduce((sum, m) => sum + m.participants.filter((p: any) => p.status === "active").length, 0);
-    const totalEscrow = normalized.reduce((sum, m) => sum + (Number(m.entry_fee ?? 0) * Number(m.core_paid_count ?? 0)), 0);
-    setStats({ live_matches: liveMatches.length, players_on_pitch: playersOnPitch, total_escrow: totalEscrow, active_users: 0 });
-    setInterventions([]);
-    setLastRefresh(new Date());
+      // Compute critical alerts client-side
+      const computedAlerts: CriticalAlert[] = [];
+      const now = Date.now();
 
-    // Compute critical alerts client-side
-    const computedAlerts: CriticalAlert[] = [];
-    const now = Date.now();
+      normalized.forEach((m) => {
+        const matchTime = new Date(m.match_date).getTime();
+        const isLive = m.status === "live";
+        const isUpcoming = m.status === "upcoming";
+        const activeParts = m.participants.filter((p) => p.status === "active");
+        const paidParts = activeParts.filter((p) => p.payment_status === "paid");
+        const unpaidParts = activeParts.filter((p) => p.payment_status !== "paid");
 
-    normalized.forEach((m) => {
-      const matchTime = new Date(m.match_date).getTime();
-      const isLive = m.status === "live";
-      const isUpcoming = m.status === "upcoming";
-      const activeParts = m.participants.filter((p) => p.status === "active");
-      const paidParts = activeParts.filter((p) => p.payment_status === "paid");
-      const unpaidParts = activeParts.filter((p) => p.payment_status !== "paid");
-
-      // Stuck match > 3h
-      if (isLive && now - matchTime > 3 * 60 * 60 * 1000) {
-        computedAlerts.push({
-          id: `stuck-${m.id}`,
-          severity: "critical",
-          category: "stuck_match",
-          title: "Stuck Match",
-          message: `Match ${m.join_code} has been live for over 3 hours.`,
-          match_id: m.id,
-        });
-      }
-
-      // Organizer MIA at kickoff
-      if (isUpcoming && matchTime < now && matchTime > now - 15 * 60 * 1000) {
-        computedAlerts.push({
-          id: `mia-${m.id}`,
-          severity: "critical",
-          category: "organizer_mia",
-          title: "Organizer MIA",
-          message: `Match ${m.join_code} should have started but is still upcoming.`,
-          match_id: m.id,
-        });
-      }
-
-      // Mass payment failure (< 50% paid, starts in < 30min)
-      if (isUpcoming && m.entry_fee > 0 && activeParts.length > 0) {
-        const pctPaid = paidParts.length / activeParts.length;
-        const minsToStart = (matchTime - now) / (60 * 1000);
-        if (minsToStart < 30 && minsToStart > 0 && pctPaid < 0.5) {
+        // Stuck match > 3h
+        if (isLive && now - matchTime > 3 * 60 * 60 * 1000) {
           computedAlerts.push({
-            id: `pay-${m.id}`,
-            severity: "warning",
-            category: "mass_payment_failure",
-            title: "Mass Payment Failure",
-            message: `Match ${m.join_code} has only ${Math.round(pctPaid * 100)}% paid with ${Math.round(minsToStart)}m to kickoff.`,
+            id: `stuck-${m.id}`,
+            severity: "critical",
+            category: "stuck_match",
+            title: "Stuck Match",
+            message: `Match ${m.join_code} has been live for over 3 hours.`,
             match_id: m.id,
           });
         }
-      }
-    });
 
-    // High report rate in last hour
-    const { data: recentReports } = await supabase
-      .from("reports")
-      .select("match_id")
-      .gte("created_at", new Date(now - 60 * 60 * 1000).toISOString())
-      .not("match_id", "is", null);
+        // Organizer MIA at kickoff
+        if (isUpcoming && matchTime < now && matchTime > now - 15 * 60 * 1000) {
+          computedAlerts.push({
+            id: `mia-${m.id}`,
+            severity: "critical",
+            category: "organizer_mia",
+            title: "Organizer MIA",
+            message: `Match ${m.join_code} should have started but is still upcoming.`,
+            match_id: m.id,
+          });
+        }
 
-    const reportCounts: Record<string, number> = {};
-    (recentReports ?? []).forEach((r: any) => {
-      if (r.match_id) reportCounts[r.match_id] = (reportCounts[r.match_id] || 0) + 1;
-    });
+        // Mass payment failure (< 50% paid, starts in < 30min)
+        if (isUpcoming && m.entry_fee > 0 && activeParts.length > 0) {
+          const pctPaid = paidParts.length / activeParts.length;
+          const minsToStart = (matchTime - now) / (60 * 1000);
+          if (minsToStart < 30 && minsToStart > 0 && pctPaid < 0.5) {
+            computedAlerts.push({
+              id: `pay-${m.id}`,
+              severity: "warning",
+              category: "mass_payment_failure",
+              title: "Mass Payment Failure",
+              message: `Match ${m.join_code} has only ${Math.round(pctPaid * 100)}% paid with ${Math.round(minsToStart)}m to kickoff.`,
+              match_id: m.id,
+            });
+          }
+        }
 
-    Object.entries(reportCounts).forEach(([matchId, count]) => {
-      if (count >= 2) {
-        const match = normalized.find((m) => m.id === matchId);
-        computedAlerts.push({
-          id: `report-${matchId}`,
-          severity: "critical",
-          category: "high_report_rate",
-          title: "High Report Rate",
-          message: `Match ${match?.join_code || matchId.slice(0, 6)} has ${count} reports in the last hour.`,
-          match_id: matchId,
-        });
-      }
-    });
+        void unpaidParts;
+      });
 
-    setAlerts(computedAlerts);
-    setLoading(false);
+      // High report rate in last hour
+      const { data: recentReports } = await supabase
+        .from("reports")
+        .select("match_id")
+        .gte("created_at", new Date(now - 60 * 60 * 1000).toISOString())
+        .not("match_id", "is", null);
+
+      const reportCounts: Record<string, number> = {};
+      (recentReports ?? []).forEach((r: any) => {
+        if (r.match_id) reportCounts[r.match_id] = (reportCounts[r.match_id] || 0) + 1;
+      });
+
+      Object.entries(reportCounts).forEach(([matchId, count]) => {
+        if (count >= 2) {
+          const match = normalized.find((m) => m.id === matchId);
+          computedAlerts.push({
+            id: `report-${matchId}`,
+            severity: "critical",
+            category: "high_report_rate",
+            title: "High Report Rate",
+            message: `Match ${match?.join_code || matchId.slice(0, 6)} has ${count} reports in the last hour.`,
+            match_id: matchId,
+          });
+        }
+      });
+
+      setAlerts(computedAlerts);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to load monitor data");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { load(); }, [load]);

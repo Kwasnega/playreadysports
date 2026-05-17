@@ -1,23 +1,20 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { getgetCorsHeaders() } from "../_shared/cors.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// CORS is handled via getCorsHeaders() from _shared/cors.ts
 
 const VALID_PROVIDERS = ["mtn", "vodafone", "airteltigo"];
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: getCorsHeaders() });
   }
 
   try {
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Missing authorization" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
@@ -30,7 +27,7 @@ Deno.serve(async (req) => {
     const { data: { user }, error: authErr } = await supabase.auth.getUser();
     if (authErr || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
@@ -39,13 +36,13 @@ Deno.serve(async (req) => {
 
     if (!amount || typeof amount !== "number" || amount < 10) {
       return new Response(JSON.stringify({ error: "Minimum withdrawal is ₵10" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
     if (!phone || !VALID_PROVIDERS.includes(provider)) {
       return new Response(JSON.stringify({ error: "Valid phone and provider (mtn/vodafone/airteltigo) required" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
@@ -63,7 +60,7 @@ Deno.serve(async (req) => {
     if (deductErr || !deductResult?.success) {
       const msg = deductResult?.error || deductErr?.message || "Wallet deduction failed";
       return new Response(JSON.stringify({ error: msg }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
@@ -73,13 +70,13 @@ Deno.serve(async (req) => {
       reference,
       message: "Withdrawal request submitted. An admin will review and process it shortly.",
     }), {
-      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
     });
 
   } catch (err: any) {
     console.error("Wallet withdraw error:", err);
     return new Response(JSON.stringify({ error: err.message ?? "Internal error" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
     });
   }
 });

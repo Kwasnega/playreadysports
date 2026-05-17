@@ -178,6 +178,20 @@
   .animate-cta-pulse {
     animation: cta-pulse 1.6s ease-in-out infinite;
   }
+
+  @keyframes bell-shake {
+    0%   { transform: rotate(0deg); }
+    15%  { transform: rotate(-12deg); }
+    30%  { transform: rotate(12deg); }
+    45%  { transform: rotate(-10deg); }
+    60%  { transform: rotate(10deg); }
+    75%  { transform: rotate(-6deg); }
+    90%  { transform: rotate(6deg); }
+    100% { transform: rotate(0deg); }
+  }
+  .animate-bell-shake {
+    animation: bell-shake 0.5s ease-in-out;
+  }
 }
 
 @layer base {

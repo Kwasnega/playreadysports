@@ -1,8 +1,4 @@
 import { useEffect, useRef } from "react";
-import { gsap } from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-
-gsap.registerPlugin(ScrollTrigger);
 
 type Props = {
   to: number;
@@ -14,7 +10,7 @@ type Props = {
   className?: string;
 };
 
-/** Scroll-triggered animated counter with a brief scale pulse. */
+/** Scroll-triggered animated counter. CSS/rAF-based — no GSAP dependency. */
 export const CountUp = ({ to, from = 0, duration = 1.8, prefix = "", suffix = "", decimals = 0, className = "" }: Props) => {
   const ref = useRef<HTMLSpanElement>(null);
   useEffect(() => {
@@ -26,24 +22,38 @@ export const CountUp = ({ to, from = 0, duration = 1.8, prefix = "", suffix = ""
       el.textContent = `${prefix}${to.toFixed(decimals)}${suffix}`;
       return;
     }
-    const obj = { v: from };
-    const ctx = gsap.context(() => {
-      const tl = gsap.timeline({ scrollTrigger: { trigger: el, start: "top 90%", once: true } });
-      tl.to(obj, {
-        v: to,
-        duration,
-        ease: "power2.out",
-        onUpdate: () => { el.textContent = `${prefix}${obj.v.toFixed(decimals)}${suffix}`; },
-      })
-        .fromTo(el, { scale: 0.92 }, { scale: 1, duration: 0.6, ease: "power3.out" }, 0)
-        .fromTo(
-          el,
-          { textShadow: "0 0 0 rgba(0, 229, 255, 0)" },
-          { textShadow: "0 0 18px rgba(0, 229, 255, 0.45)", duration: 0.8, yoyo: true, repeat: 1 },
-          0,
-        );
-    }, el);
-    return () => ctx.revert();
+
+    let raf = 0;
+    const runCount = () => {
+      const startTime = performance.now();
+      const range = to - from;
+      const tick = (now: number) => {
+        const elapsed = (now - startTime) / 1000;
+        const progress = Math.min(elapsed / duration, 1);
+        // ease-out cubic
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const current = from + range * eased;
+        el.textContent = `${prefix}${current.toFixed(decimals)}${suffix}`;
+        if (progress < 1) {
+          raf = requestAnimationFrame(tick);
+        } else {
+          el.textContent = `${prefix}${to.toFixed(decimals)}${suffix}`;
+        }
+      };
+      raf = requestAnimationFrame(tick);
+    };
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          observer.disconnect();
+          runCount();
+        }
+      },
+      { threshold: 0.1 },
+    );
+    observer.observe(el);
+    return () => { observer.disconnect(); cancelAnimationFrame(raf); };
   }, [to, from, duration, prefix, suffix, decimals]);
   return <span ref={ref} className={className}>{`${prefix}${from.toFixed(decimals)}${suffix}`}</span>;
 };

@@ -1,4 +1,5 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { getgetCorsHeaders() } from "../_shared/cors.ts";
 
 /**
  * cleanup-chat — Scheduled edge function (invoke via cron or pg_cron)
@@ -7,14 +8,11 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
  * Also deletes messages for cancelled matches immediately.
  */
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// CORS is handled via getCorsHeaders() from _shared/cors.ts
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: getCorsHeaders() });
   }
 
   try {
@@ -22,7 +20,7 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!serviceKey) {
       return new Response(JSON.stringify({ error: "Server misconfiguration" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
@@ -40,7 +38,7 @@ Deno.serve(async (req) => {
 
     if (!expiredMatches || expiredMatches.length === 0) {
       return new Response(JSON.stringify({ deleted: 0, matches: 0 }), {
-        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
@@ -61,12 +59,12 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({ deleted: totalDeleted, matches: matchIds.length }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      { status: 200, headers: { ...getCorsHeaders(), "Content-Type": "application/json" } },
     );
   } catch (err: any) {
     console.error("cleanup-chat error:", err);
     return new Response(JSON.stringify({ error: err.message ?? "Internal error" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
     });
   }
 });

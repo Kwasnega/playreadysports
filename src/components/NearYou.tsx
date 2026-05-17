@@ -164,11 +164,17 @@ export const NearYou = ({
             ))}
           </ul>
         ) : filtered.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border/70 py-10 px-5 text-center">
-            <Sparkles className="w-5 h-5 text-muted-foreground mx-auto mb-2" />
+          <div className="rounded-2xl border border-dashed border-border/70 py-10 px-5 text-center space-y-3">
+            <Sparkles className="w-5 h-5 text-muted-foreground mx-auto" />
             <p className="text-sm text-muted-foreground">
               Nothing nearby right now. Be first — create a match.
             </p>
+            <Link
+              to="/create"
+              className="inline-flex items-center justify-center gap-2 bg-foreground text-background rounded-full px-5 py-2.5 text-sm font-semibold hover:bg-foreground/90 transition-colors"
+            >
+              Create match
+            </Link>
           </div>
         ) : (
           <ul className="space-y-3">

@@ -1,15 +1,13 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { getCorsHeaders } from "../_shared/cors.ts";
 import { checkRateLimit } from "../_shared/rateLimiter.ts";
 
 // CORS headers for browser calls
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// CORS is handled via getCorsHeaders() from _shared/cors.ts
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: getCorsHeaders() });
   }
 
   try {
@@ -20,7 +18,7 @@ Deno.serve(async (req) => {
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Missing authorization header" }), {
         status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
@@ -35,7 +33,7 @@ Deno.serve(async (req) => {
     if (authErr || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
@@ -43,7 +41,7 @@ Deno.serve(async (req) => {
     const allowed = await checkRateLimit(supabase, user.id, "create_match", 5, 60);
     if (!allowed) {
       return new Response(JSON.stringify({ error: "Rate limit exceeded — try again later" }), {
-        status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 429, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
@@ -67,7 +65,7 @@ Deno.serve(async (req) => {
     if (!venueId || !matchType || !matchMode || !format || !matchDate) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
         status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
@@ -76,14 +74,14 @@ Deno.serve(async (req) => {
     if (isNaN(kickoff.getTime()) || kickoff.getTime() <= Date.now()) {
       return new Response(JSON.stringify({ error: "Match date must be in the future" }), {
         status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
     if (typeof entryFee !== "number" || entryFee < 0) {
       return new Response(JSON.stringify({ error: "Entry fee must be >= 0" }), {
         status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
@@ -99,14 +97,14 @@ Deno.serve(async (req) => {
     if (profileErr) {
       return new Response(JSON.stringify({ error: "Failed to load profile" }), {
         status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
     if (profile?.is_banned || (profile?.banned_until && new Date(profile.banned_until) > new Date())) {
       return new Response(JSON.stringify({ error: "Account is banned" }), {
         status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
@@ -122,7 +120,7 @@ Deno.serve(async (req) => {
     if (venueErr || !venue) {
       return new Response(JSON.stringify({ error: "Venue not found" }), {
         status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
@@ -158,7 +156,7 @@ Deno.serve(async (req) => {
     if (!joinCode) {
       return new Response(JSON.stringify({ error: "Could not generate unique join code" }), {
         status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
@@ -205,7 +203,7 @@ Deno.serve(async (req) => {
       console.error("Insert match error:", insertErr);
       return new Response(JSON.stringify({ error: insertErr?.message ?? "Failed to create match" }), {
         status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
@@ -233,13 +231,13 @@ Deno.serve(async (req) => {
     // ------------------------------------------------------------------
     return new Response(JSON.stringify({ match }), {
       status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
     });
   } catch (err: any) {
     console.error("Edge function error:", err);
     return new Response(JSON.stringify({ error: err.message ?? "Internal error" }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
     });
   }
 });

@@ -11,12 +11,7 @@ import { useEnter } from "@/hooks/useReveal";
 import { NotificationsBell } from "@/components/NotificationsBell";
 import { FriendsSheet } from "@/components/FriendsSheet";
 import { useHomeMatches, HomeMatch } from "@/hooks/useHomeMatches";
-import { useUserLocation } from "@/hooks/useUserLocation";
-import { useHomeStats } from "@/hooks/useHomeStats";
-import { useSmartRecommendations } from "@/hooks/useSmartRecommendations";
-import { useFriendsPlaying } from "@/hooks/useFriendsPlaying";
-import { useFriendActivity } from "@/hooks/useFriendActivity";
-import { useFriends } from "@/hooks/useFriends";
+import { useHomeFeed } from "@/hooks/useHomeFeed";
 import { useWallet } from "@/hooks/useWallet";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -314,8 +309,7 @@ const LiveStatsBar = ({ matches, players }: { matches: number; players: number }
 );
 
 /* Smart recommendations rail */
-const RecommendationsRail = () => {
-  const { recommendations, loading } = useSmartRecommendations();
+const RecommendationsRail = ({ recommendations, loading }: { recommendations: any[]; loading: boolean }) => {
   const navigate = useNavigate();
   if (loading) return null;
   if (recommendations.length === 0) return null;
@@ -366,8 +360,7 @@ const RecommendationsRail = () => {
 };
 
 /* Friend activity feed */
-const FriendActivityFeed = () => {
-  const { activities, loading } = useFriendActivity();
+const FriendActivityFeed = ({ activities, loading }: { activities: any[]; loading: boolean }) => {
   const navigate = useNavigate();
   if (loading) return null;
   if (activities.length === 0) return null;
@@ -419,8 +412,7 @@ const FriendActivityFeed = () => {
 };
 
 /* Friends playing rail */
-const FriendsPlayingRail = () => {
-  const { matches, loading } = useFriendsPlaying();
+const FriendsPlayingRail = ({ matches, loading }: { matches: any[]; loading: boolean }) => {
   const navigate = useNavigate();
   if (loading) return null;
   if (matches.length === 0) return null;
@@ -475,11 +467,23 @@ const FriendsPlayingRail = () => {
 };
 
 const Index = () => {
-  const { matches, loading: matchesLoading } = useHomeMatches();
-  const { location } = useUserLocation();
-  const { stats } = useHomeStats();
-  const { user } = useAuth();
-  const { friends } = useFriends();
+  const {
+    user,
+    matches,
+    matchesLoading,
+    hasMore,
+    loadMore,
+    isLoadingMore,
+    location,
+    stats,
+    friends,
+    recommendations,
+    recsLoading,
+    friendsPlaying,
+    friendsLoading,
+    activities,
+    activityLoading,
+  } = useHomeFeed();
 
   const userLat = location?.lat ?? 5.6037; // Accra default
   const userLng = location?.lng ?? -0.187;
@@ -499,10 +503,22 @@ const Index = () => {
       <Hero liveCount={liveCount} />
       <QuickActions />
       <LiveStatsBar matches={stats.matchesToday} players={stats.playersOnline} />
-      <RecommendationsRail />
-      <FriendsPlayingRail />
+      <RecommendationsRail recommendations={recommendations} loading={recsLoading} />
+      <FriendsPlayingRail matches={friendsPlaying} loading={friendsLoading} />
+      <FriendActivityFeed activities={activities} loading={activityLoading} />
       <div id="near-you">
-        <NearYou variant="curated" limit={3} items={feedItems} isLoading={matchesLoading} />
+        <NearYou variant="curated" limit={undefined} items={feedItems} isLoading={matchesLoading} />
+        {hasMore && (
+          <div className="max-w-[680px] mx-auto px-5 pt-3 pb-2">
+            <button
+              onClick={loadMore}
+              disabled={isLoadingMore}
+              className="w-full py-2.5 rounded-xl bg-secondary text-sm font-semibold hover:bg-secondary/80 disabled:opacity-50 transition-colors"
+            >
+              {isLoadingMore ? "Loading..." : "Load more matches"}
+            </button>
+          </div>
+        )}
       </div>
       <MobileTabs />
     </main>
