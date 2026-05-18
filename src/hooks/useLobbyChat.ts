@@ -60,10 +60,7 @@ export function useLobbyChat(matchId: string | undefined) {
     const load = async () => {
       const { data, error } = await supabase
         .from("messages")
-        .select(`
-          id, sender_id, content, created_at,
-          sender:profiles(username, full_name, avatar_url)
-        `)
+        .select("id, sender_id, content, created_at")
         .eq("match_id", matchId)
         .order("created_at", { ascending: false })
         .limit(PAGE_SIZE);
@@ -74,10 +71,14 @@ export function useLobbyChat(matchId: string | undefined) {
         console.error("useLobbyChat load error:", error);
       } else {
         const rows = (data ?? []).reverse();
-        rows.forEach((row: any) => {
-          const s = Array.isArray(row.sender) ? row.sender[0] ?? {} : row.sender ?? {};
-          profileCache.current[row.sender_id] = s;
-        });
+        const senderIds = [...new Set(rows.map((r: any) => r.sender_id))];
+        if (senderIds.length > 0) {
+          const { data: profs } = await (supabase as any)
+            .from("public_profiles")
+            .select("id, username, full_name, avatar_url")
+            .in("id", senderIds);
+          (profs ?? []).forEach((p: any) => { profileCache.current[p.id] = p; });
+        }
         const normalized = rows.map((row: any) => normalizeRow(row, profileCache.current));
         setMessages(normalized);
         setHasMore((data ?? []).length === PAGE_SIZE);
@@ -104,8 +105,8 @@ export function useLobbyChat(matchId: string | undefined) {
           const newRow = payload.new;
           let prof = profileCache.current[newRow.sender_id];
           if (!prof) {
-            const { data: p } = await supabase
-              .from("profiles")
+            const { data: p } = await (supabase as any)
+              .from("public_profiles")
               .select("username, full_name, avatar_url")
               .eq("id", newRow.sender_id)
               .single();
@@ -133,10 +134,7 @@ export function useLobbyChat(matchId: string | undefined) {
     setLoadingMore(true);
     const { data, error } = await supabase
       .from("messages")
-      .select(`
-        id, sender_id, content, created_at,
-        sender:profiles(username, full_name, avatar_url)
-      `)
+      .select("id, sender_id, content, created_at")
       .eq("match_id", matchId)
       .lt("created_at", oldestCreatedAt.current)
       .order("created_at", { ascending: false })
@@ -144,10 +142,14 @@ export function useLobbyChat(matchId: string | undefined) {
     setLoadingMore(false);
     if (error) { console.error("useLobbyChat loadMore error:", error); return; }
     const rows = (data ?? []).reverse();
-    rows.forEach((row: any) => {
-      const s = Array.isArray(row.sender) ? row.sender[0] ?? {} : row.sender ?? {};
-      profileCache.current[row.sender_id] = s;
-    });
+    const senderIds = [...new Set(rows.map((r: any) => r.sender_id))];
+    if (senderIds.length > 0) {
+      const { data: profs } = await (supabase as any)
+        .from("public_profiles")
+        .select("id, username, full_name, avatar_url")
+        .in("id", senderIds);
+      (profs ?? []).forEach((p: any) => { profileCache.current[p.id] = p; });
+    }
     const older = rows.map((row: any) => normalizeRow(row, profileCache.current));
     setMessages((prev) => [...older, ...prev]);
     setHasMore((data ?? []).length === PAGE_SIZE);

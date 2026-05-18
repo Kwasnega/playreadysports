@@ -48,8 +48,8 @@ async function fetchLeaderboard(timeframe: Timeframe, city?: string | null) {
       .limit(50);
     if (city) q = q.eq("city", city);
   } else {
-    q = supabase
-      .from("profiles")
+    q = (supabase as any)
+      .from("public_profiles")
       .select("id, username, full_name, avatar_url, reputation_score, total_matches_played, total_wins, city")
       .gt("reputation_score", 0)
       .or("role.is.null,role.neq.turf_owner");
@@ -65,8 +65,8 @@ async function fetchLeaderboard(timeframe: Timeframe, city?: string | null) {
 
   // Fallback: if leaderboard_mv is empty, query profiles directly
   if (timeframe === "all" && list.length === 0) {
-    let fb = supabase
-      .from("profiles")
+    let fb = (supabase as any)
+      .from("public_profiles")
       .select("id, username, full_name, avatar_url, reputation_score, total_matches_played, total_wins, city")
       .gt("reputation_score", 0)
       .or("role.is.null,role.neq.turf_owner")

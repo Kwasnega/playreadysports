@@ -67,35 +67,43 @@ export function useMatchLobby(joinCode: string) {
   const loadParticipants = useCallback(async (mid: string) => {
     const { data, error: pErr } = await supabase
       .from("match_participants")
-      .select(`
-        id, user_id, slot_type, team, payment_status, status, joined_at, attendance_scanned, no_show,
-        profile:profiles(username, full_name, avatar_url)
-      `)
+      .select("id, user_id, slot_type, team, payment_status, status, joined_at, attendance_scanned, no_show")
       .eq("match_id", mid)
       .order("joined_at", { ascending: true });
 
     if (pErr) {
       console.error("loadParticipants error:", pErr);
-    } else {
-      const normalized = (data ?? []).map((row: any) => {
-        const prof = Array.isArray(row.profile) ? row.profile[0] ?? {} : row.profile ?? {};
-        return {
-          id: row.id,
-          user_id: row.user_id,
-          username: prof.username ?? null,
-          full_name: prof.full_name ?? null,
-          avatar_url: prof.avatar_url ?? null,
-          slot_type: row.slot_type,
-          team: row.team,
-          payment_status: row.payment_status,
-          status: row.status,
-          joined_at: row.joined_at,
-          attendance_scanned: !!row.attendance_scanned,
-          no_show: !!row.no_show,
-        } as LobbyParticipant;
-      });
-      setParticipants(normalized);
+      return;
     }
+
+    const userIds = [...new Set((data ?? []).map((r: any) => r.user_id))];
+    const profMap: Record<string, any> = {};
+    if (userIds.length > 0) {
+      const { data: profs } = await (supabase as any)
+        .from("public_profiles")
+        .select("id, username, full_name, avatar_url")
+        .in("id", userIds);
+      (profs ?? []).forEach((p: any) => { profMap[p.id] = p; });
+    }
+
+    const normalized = (data ?? []).map((row: any) => {
+      const prof = profMap[row.user_id] ?? {};
+      return {
+        id: row.id,
+        user_id: row.user_id,
+        username: prof.username ?? null,
+        full_name: prof.full_name ?? null,
+        avatar_url: prof.avatar_url ?? null,
+        slot_type: row.slot_type,
+        team: row.team,
+        payment_status: row.payment_status,
+        status: row.status,
+        joined_at: row.joined_at,
+        attendance_scanned: !!row.attendance_scanned,
+        no_show: !!row.no_show,
+      } as LobbyParticipant;
+    });
+    setParticipants(normalized);
   }, []);
 
   const refresh = useCallback(async () => {
@@ -113,11 +121,7 @@ export function useMatchLobby(joinCode: string) {
     const load = async () => {
       const { data, error: supaErr } = await supabase
         .from("matches")
-        .select(`
-          *,
-          venue:venues(id, name, city, area, lat, lng, image_urls),
-          organizer:profiles(id, username, full_name, avatar_url, reputation_score)
-        `)
+        .select("*, venue:venues(id, name, city, area, lat, lng, image_urls)")
         .eq("join_code", joinCode)
         .single();
 
@@ -129,10 +133,20 @@ export function useMatchLobby(joinCode: string) {
         return;
       }
 
+      let organizer = null;
+      if ((data as any).organizer_id) {
+        const { data: org } = await (supabase as any)
+          .from("public_profiles")
+          .select("id, username, full_name, avatar_url, reputation_score")
+          .eq("id", (data as any).organizer_id)
+          .maybeSingle();
+        organizer = org ?? null;
+      }
+
       const m = {
         ...data,
         venue: Array.isArray(data.venue) ? data.venue[0] ?? null : data.venue ?? null,
-        organizer: Array.isArray(data.organizer) ? data.organizer[0] ?? null : data.organizer ?? null,
+        organizer,
         team_color_a: (data as any).team_color_a ?? null,
         team_color_b: (data as any).team_color_b ?? null,
         winning_team: (data as any).winning_team ?? null,
@@ -175,8 +189,8 @@ export function useMatchLobby(joinCode: string) {
 
           if (ev === "INSERT" && newRow) {
             // Profile not included in realtime payload; do a single-row fetch
-            supabase
-              .from("profiles")
+            (supabase as any)
+              .from("public_profiles")
               .select("username, full_name, avatar_url")
               .eq("id", newRow.user_id)
               .single()

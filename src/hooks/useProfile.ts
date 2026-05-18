@@ -8,7 +8,6 @@ export type Profile = {
   avatar_url: string | null;
   city: string | null;
   position: string | null;
-  phone_number: string | null;
   bio: string | null;
   reputation_score: number | null;
   created_at: string;
@@ -54,9 +53,9 @@ export function useProfile(username: string | undefined) {
 
     // Fetch profile by username or UUID
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(username);
-    const { data: prof, error: profErr } = await supabase
-      .from("profiles")
-      .select("id, username, full_name, avatar_url, city, position, phone_number, bio, reputation_score, created_at")
+    const { data: prof, error: profErr } = await (supabase as any)
+      .from("public_profiles")
+      .select("id, username, full_name, avatar_url, city, position, bio, reputation_score, created_at")
       .eq(isUuid ? "id" : "username", username)
       .maybeSingle();
 
@@ -129,18 +128,23 @@ export function useProfile(username: string | undefined) {
     // Reviews received
     const { data: reviewRows } = await supabase
       .from("reviews")
-      .select(`
-        id, reviewer_id, rating, comment, created_at,
-        reviewer:profiles(full_name, username, avatar_url)
-      `)
+      .select("id, reviewer_id, rating, comment, created_at")
       .eq("reviewed_user_id", userId)
       .order("created_at", { ascending: false });
 
-    const normalizedReviews: ReviewRow[] = [];
-    for (const r of reviewRows ?? []) {
-      const rev = (r as any).reviewer;
-      const revProf = Array.isArray(rev) ? rev[0] ?? null : rev ?? null;
-      normalizedReviews.push({
+    const reviewerIds = [...new Set((reviewRows ?? []).map((r: any) => r.reviewer_id))];
+    const reviewerMap: Record<string, any> = {};
+    if (reviewerIds.length > 0) {
+      const { data: revProfs } = await (supabase as any)
+        .from("public_profiles")
+        .select("id, full_name, username, avatar_url")
+        .in("id", reviewerIds);
+      (revProfs ?? []).forEach((p: any) => { reviewerMap[p.id] = p; });
+    }
+
+    const normalizedReviews: ReviewRow[] = (reviewRows ?? []).map((r: any) => {
+      const revProf = reviewerMap[r.reviewer_id] ?? null;
+      return {
         id: r.id,
         reviewer_id: r.reviewer_id,
         reviewer_name: revProf?.full_name ?? revProf?.username ?? "Anonymous",
@@ -148,8 +152,8 @@ export function useProfile(username: string | undefined) {
         rating: r.rating,
         comment: r.comment,
         created_at: r.created_at,
-      });
-    }
+      };
+    });
     setReviews(normalizedReviews);
     setLoading(false);
   }, [username]);

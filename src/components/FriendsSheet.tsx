@@ -50,8 +50,8 @@ export const FriendsSheet = ({ trigger }: Props) => {
 
       const result: any[] = [];
       if (me?.city) {
-        const { data: cityPlayers } = await supabase
-          .from("profiles")
+        const { data: cityPlayers } = await (supabase as any)
+          .from("public_profiles")
           .select("id, username, full_name, avatar_url, city")
           .eq("city", me.city)
           .neq("id", user.id)
@@ -72,17 +72,24 @@ export const FriendsSheet = ({ trigger }: Props) => {
       if (myMatchIds.length > 0) {
         const { data: coPlayers } = await supabase
           .from("match_participants")
-          .select("user_id, user:profiles(id, username, full_name, avatar_url)")
+          .select("user_id")
           .in("match_id", myMatchIds)
           .eq("status", "active")
           .neq("user_id", user.id)
-          .limit(10);
-        (coPlayers ?? []).forEach((p: any) => {
-          const profile = Array.isArray(p.user) ? p.user[0] : p.user;
-          if (!profile || friendIds.has(profile.id) || pendingIds.has(profile.id)) return;
-          if (result.find((r) => r.id === profile.id)) return;
-          result.push({ ...profile, reason: "Played together" });
-        });
+          .limit(30);
+        const coIds = [...new Set((coPlayers ?? []).map((p: any) => p.user_id))]
+          .filter((id) => !friendIds.has(id) && !pendingIds.has(id));
+        if (coIds.length > 0) {
+          const { data: coProfiles } = await (supabase as any)
+            .from("public_profiles")
+            .select("id, username, full_name, avatar_url")
+            .in("id", coIds)
+            .limit(10);
+          (coProfiles ?? []).forEach((profile: any) => {
+            if (result.find((r) => r.id === profile.id)) return;
+            result.push({ ...profile, reason: "Played together" });
+          });
+        }
       }
 
       setSuggested(result.slice(0, 10));
@@ -94,8 +101,8 @@ export const FriendsSheet = ({ trigger }: Props) => {
   const handleSearch = async () => {
     if (!searchQuery.trim() || !user) return;
     setSearching(true);
-    const { data } = await supabase
-      .from("profiles")
+    const { data } = await (supabase as any)
+      .from("public_profiles")
       .select("id, username, full_name, avatar_url")
       .or(`username.ilike.%${searchQuery}%,full_name.ilike.%${searchQuery}%`)
       .neq("id", user.id)

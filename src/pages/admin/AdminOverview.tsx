@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { callAdminSettings } from "@/lib/adminSettingsFn";
 import {
   Users, Trophy, CreditCard, PiggyBank, TrendingUp, ArrowUpRight,
   Trash2, AlertTriangle, X, Settings, Percent,
@@ -133,12 +134,12 @@ export default function AdminOverview() {
 
   const saveCommissionRate = async () => {
     setSavingRate(true);
-    const { error } = await (supabase as any)
-      .from("platform_settings")
-      .update({ value: commissionRate.toString() })
-      .eq("key", "commission_rate");
+    const { error } = await callAdminSettings("POST", {
+      key: "commission_rate",
+      value: commissionRate.toString(),
+    });
     setSavingRate(false);
-    if (error) toast.error(error.message);
+    if (error) toast.error(error);
     else {
       toast.success(`Commission rate saved: ${(commissionRate * 100).toFixed(1)}%`);
       setSettingsOpen(false);

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { callAdminSettings } from "@/lib/adminSettingsFn";
 import { Settings, Save } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -24,21 +25,14 @@ export default function AdminSettings() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await (supabase as any)
-      .from("platform_settings")
-      .select("key, value, description")
-      .in("key", KEYS.map((k) => k.key));
-
+    const { settings, error } = await callAdminSettings("GET");
     if (error) {
-      toast.error(error.message);
+      toast.error(error);
       setLoading(false);
       return;
     }
-
     const map: Record<string, string> = {};
-    (data as SettingRow[] ?? []).forEach((r) => {
-      map[r.key] = r.value;
-    });
+    (settings ?? []).forEach((r: SettingRow) => { map[r.key] = r.value; });
     KEYS.forEach((k) => {
       if (map[k.key] === undefined) {
         map[k.key] =
@@ -75,20 +69,8 @@ export default function AdminSettings() {
           setSaving(false);
           return;
         }
-
-        const { error } = await (supabase as any)
-          .from("platform_settings")
-          .upsert(
-            {
-              key: k.key,
-              value,
-              description: k.hint,
-              updated_by: user.id,
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: "key" },
-          );
-        if (error) throw error;
+        const { error } = await callAdminSettings("POST", { key: k.key, value });
+        if (error) throw new Error(error);
       }
       toast.success("Platform settings saved");
       load();

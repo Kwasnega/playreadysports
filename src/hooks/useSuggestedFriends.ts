@@ -69,8 +69,8 @@ export function useSuggestedFriends() {
 
       // Same city players
       if (me?.city) {
-        const { data: cityPlayers } = await supabase
-          .from("profiles")
+        const { data: cityPlayers } = await (supabase as any)
+          .from("public_profiles")
           .select("id, username, full_name, avatar_url, city")
           .eq("city", me.city)
           .neq("id", user.id)

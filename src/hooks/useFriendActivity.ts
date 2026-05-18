@@ -69,8 +69,8 @@ export function useFriendActivity() {
       const matchMap = new Map((matchesData ?? []).map((m: any) => [m.id, m]));
 
       // Fetch friend profiles
-      const { data: profiles } = await supabase
-        .from("profiles")
+      const { data: profiles } = await (supabase as any)
+        .from("public_profiles")
         .select("id, full_name, avatar_url")
         .in("id", friendIds);
 

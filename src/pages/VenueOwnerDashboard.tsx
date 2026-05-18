@@ -228,13 +228,8 @@ export default function VenueOwnerDashboard() {
       const venueList = (vens ?? []) as VenueRow[];
       setVenues(venueList);
 
-      const { data: setting } = await (supabase as any)
-        .from("platform_settings")
-        .select("value")
-        .eq("key", "commission_rate")
-        .maybeSingle();
-      const rate = parseFloat(setting?.value ?? "0.05");
-      setCommissionRate(isNaN(rate) ? 0.05 : rate);
+      const { data: rate } = await (supabase as any).rpc("get_commission_rate");
+      setCommissionRate(typeof rate === "number" && !isNaN(rate) ? rate : 0.05);
 
       const verified = venueList.filter((v) => v.status === "verified");
       const venueIds = verified.map((v) => v.id);
