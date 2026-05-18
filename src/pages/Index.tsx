@@ -2,7 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { CityPrompt } from "@/components/CityPrompt";
 import {
-  Home, User, LogIn, Trophy, Zap, UserPlus, CalendarDays, KeyRound, Sparkles, MapPin, Clock, Wallet, Users, Activity, Award,
+  Home, User, LogIn, Trophy, Zap, UserPlus, CalendarDays, KeyRound, Sparkles, MapPin, Clock, Wallet, Users, Award,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NearYou } from "@/components/NearYou";
@@ -361,113 +361,6 @@ const RecommendationsRail = ({ recommendations, loading }: { recommendations: an
   );
 };
 
-/* Friend activity feed */
-const FriendActivityFeed = ({ activities, loading }: { activities: any[]; loading: boolean }) => {
-  const navigate = useNavigate();
-  if (loading) return null;
-  if (activities.length === 0) return null;
-
-  return (
-    <section className="px-5 pt-4 pb-2">
-      <div className="max-w-[680px] mx-auto">
-        <div className="flex items-center gap-2 mb-3">
-          <Activity className="w-4 h-4 text-primary" />
-          <h2 className="text-sm font-bold text-foreground">Friend activity</h2>
-        </div>
-        <div className="space-y-2">
-          {activities.slice(0, 5).map((a) => (
-            <button
-              key={a.id}
-              onClick={() => a.join_code && navigate(`/lobby/${a.join_code}`)}
-              className="w-full flex items-center gap-3 text-left p-3 rounded-2xl bg-card border border-border/60 hover:border-primary/40 transition-all"
-              style={{ boxShadow: "var(--shadow-card)" }}
-            >
-              {a.friend_avatar ? (
-                <img src={a.friend_avatar} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold flex-shrink-0">
-                  {(a.friend_name[0] || "?").toUpperCase()}
-                </div>
-              )}
-              <div className="flex-1 min-w-0">
-                <p className="text-[12px] font-semibold truncate">
-                  <span className="text-foreground">{a.friend_name}</span>{" "}
-                  <span className="text-muted-foreground font-normal">
-                    {a.type === "joined" && "joined a match"}
-                    {a.type === "created" && "hosted a match"}
-                    {a.type === "looking" && "is looking for players"}
-                  </span>
-                </p>
-                {a.venue_name && (
-                  <p className="text-[11px] text-muted-foreground truncate">{a.venue_name}</p>
-                )}
-              </div>
-              <span className="text-[10px] text-muted-foreground flex-shrink-0">
-                {new Date(a.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-};
-
-/* Friends playing rail */
-const FriendsPlayingRail = ({ matches, loading }: { matches: any[]; loading: boolean }) => {
-  const navigate = useNavigate();
-  if (loading) return null;
-  if (matches.length === 0) return null;
-
-  return (
-    <section className="px-5 pt-4 pb-2">
-      <div className="max-w-[680px] mx-auto">
-        <div className="flex items-center gap-2 mb-3">
-          <Users className="w-4 h-4 text-primary" />
-          <h2 className="text-sm font-bold text-foreground">Friends playing</h2>
-        </div>
-        <div className="flex gap-3 overflow-x-auto pb-2 -mx-5 px-5 scrollbar-hide">
-          {matches.map((m) => (
-            <button
-              key={m.id}
-              onClick={() => navigate(`/lobby/${m.join_code}`)}
-              className="flex-shrink-0 w-[260px] bg-card rounded-2xl border border-border/60 p-4 text-left hover:border-primary/40 transition-all"
-              style={{ boxShadow: "var(--shadow-card)" }}
-            >
-              <div className="flex items-center gap-2 mb-2">
-                {m.friend_avatar ? (
-                  <img src={m.friend_avatar} alt="" className="w-5 h-5 rounded-full object-cover" />
-                ) : (
-                  <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-[8px] font-bold">
-                    {(m.friend_name[0] || "?").toUpperCase()}
-                  </div>
-                )}
-                <span className="text-[11px] font-semibold text-muted-foreground">{m.friend_name} joined</span>
-              </div>
-              <p className="font-display font-bold text-sm truncate">{m.venue?.name ?? "Venue"}</p>
-              <p className="text-[11px] text-muted-foreground truncate flex items-center gap-1 mt-0.5">
-                <MapPin className="w-3 h-3" /> {m.venue?.area ?? m.venue?.city ?? ""}
-              </p>
-              <div className="flex items-center gap-3 mt-2.5 text-[11px] text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <Clock className="w-3 h-3" /> {getFormattedTime(m.match_date)}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Wallet className="w-3 h-3" />
-                  {m.entry_fee > 0 ? `₵${m.entry_fee}` : "Free"}
-                </span>
-                <span className="flex items-center gap-1">
-                  <UserPlus className="w-3 h-3" /> {m.core_paid_count}/{m.max_core_players}
-                </span>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-};
-
 const Index = () => {
   const [showCityPrompt, setShowCityPrompt] = useState(false);
 
@@ -483,10 +376,6 @@ const Index = () => {
     friends,
     recommendations,
     recsLoading,
-    friendsPlaying,
-    friendsLoading,
-    activities,
-    activityLoading,
   } = useHomeFeed();
 
   const userLat = location?.lat ?? 5.6037; // Accra default
@@ -524,8 +413,6 @@ const Index = () => {
       <QuickActions />
       <LiveStatsBar matches={stats.matchesToday} players={stats.playersOnline} />
       <RecommendationsRail recommendations={recommendations} loading={recsLoading} />
-      <FriendsPlayingRail matches={friendsPlaying} loading={friendsLoading} />
-      <FriendActivityFeed activities={activities} loading={activityLoading} />
       <div id="near-you">
         <NearYou variant="curated" limit={undefined} items={feedItems} isLoading={matchesLoading} />
         {hasMore && (
