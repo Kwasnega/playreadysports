@@ -112,7 +112,6 @@ export function useBrowseMatches(filters: BrowseFilters) {
           `
           *,
           venue:venues(id, name, city, area, lat, lng),
-          organizer:profiles(id, username, full_name, avatar_url, reputation_score),
           participants:match_participants(id, status, team, slot_type, payment_status)
         `
         )
@@ -140,10 +139,23 @@ export function useBrowseMatches(filters: BrowseFilters) {
         setError(supaErr.message);
         setMatches([]);
       } else {
-        const normalized = (data ?? []).map((row: any) => ({
+        const rows = data ?? [];
+
+        // Two-step: fetch organizer profiles from public_profiles (safe view)
+        const organizerIds = [...new Set(rows.map((r: any) => r.organizer_id).filter(Boolean))];
+        const organizerMap: Record<string, any> = {};
+        if (organizerIds.length > 0) {
+          const { data: profs } = await (supabase as any)
+            .from("public_profiles")
+            .select("id, username, full_name, avatar_url, reputation_score")
+            .in("id", organizerIds);
+          (profs ?? []).forEach((p: any) => { organizerMap[p.id] = p; });
+        }
+
+        const normalized = rows.map((row: any) => ({
           ...row,
           venue: Array.isArray(row.venue) ? row.venue[0] ?? null : row.venue ?? null,
-          organizer: Array.isArray(row.organizer) ? row.organizer[0] ?? null : row.organizer ?? null,
+          organizer: organizerMap[row.organizer_id] ?? null,
           participants: Array.isArray(row.participants) ? row.participants : [],
         })) as BrowseMatch[];
         setMatches(normalized);
