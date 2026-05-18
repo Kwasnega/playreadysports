@@ -64,7 +64,7 @@ const CreateMatch = () => {
 
   // Details
   const [matchDate, setMatchDate] = useState<string>("");
-  const [matchHour, setMatchHour] = useState<number>(18);
+  const [matchHour, setMatchHour] = useState<number>(() => Math.min(new Date().getHours() + 2, 22));
   const [matchMinute, setMatchMinute] = useState<number>(0);
   const [duration, setDuration] = useState<number>(60);
   const [entryFeeEnabled, setEntryFeeEnabled] = useState(false);
@@ -105,6 +105,9 @@ const CreateMatch = () => {
     if (step === 2) {
       if (!matchDate) return false;
       if (mode === "gala" && teamName.trim().length < 2) return false;
+      const d = new Date(matchDate);
+      d.setHours(matchHour, matchMinute, 0, 0);
+      if (d.getTime() <= Date.now()) return false;
       return true;
     }
     return false;
@@ -130,6 +133,11 @@ const CreateMatch = () => {
     const dateObj = new Date(matchDate);
     dateObj.setHours(matchHour, matchMinute, 0, 0);
     const matchDateIso = dateObj.toISOString();
+
+    if (dateObj.getTime() <= Date.now()) {
+      toast.error("Match time must be in the future — pick a later time or date.");
+      return;
+    }
 
     const colorPair = TEAM_COLOR_PRESETS[teamColorIdx];
     const match = await createMatch({

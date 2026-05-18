@@ -28,18 +28,34 @@ CREATE POLICY "profiles: own row select"
 
 -- ─── Step 3: Admin SELECT — all rows (full columns) ──────────
 -- Admin panel (AdminPlayers, AdminOverview) needs unrestricted read.
+--
+-- IMPORTANT: the USING clause must NOT query public.profiles directly —
+-- that causes infinite recursion (the policy triggers itself).
+-- Fix: a SECURITY DEFINER helper runs as the owner (BYPASSRLS) so it
+-- can read profiles without re-entering the RLS check.
+CREATE OR REPLACE FUNCTION public.is_admin_user()
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid()
+      AND (role IN ('admin', 'super_admin') OR is_admin = true)
+  );
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.is_admin_user() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_admin_user() TO authenticated;
+
 DROP POLICY IF EXISTS "profiles: admin select all" ON public.profiles;
 CREATE POLICY "profiles: admin select all"
   ON public.profiles
   FOR SELECT
   TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles p
-      WHERE p.id = auth.uid()
-        AND (p.role IN ('admin', 'super_admin') OR p.is_admin = true)
-    )
-  );
+  USING ( public.is_admin_user() );
 
 -- ─── Step 4: UPDATE policies (already exist, kept for clarity) ─
 -- profiles_update_own_no_role_escalation  — self update, no role change
@@ -71,7 +87,7 @@ CREATE POLICY "profiles: admin select all"
 --   balance / venue_owner_balance         — financial data
 --   is_admin                              — internal flag
 --   updated_at                            — internal
-DROP FUNCTION IF EXISTS public.get_public_profiles();
+DROP FUNCTION IF EXISTS public.get_public_profiles() CASCADE;
 CREATE OR REPLACE FUNCTION public.get_public_profiles()
 RETURNS TABLE (
   id                   uuid,
