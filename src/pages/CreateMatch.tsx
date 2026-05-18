@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft, ArrowRight, Lock, Globe2, Swords, Users, Check, Share2,
@@ -69,11 +69,33 @@ const CreateMatch = () => {
   const [duration, setDuration] = useState<number>(60);
   const [entryFeeEnabled, setEntryFeeEnabled] = useState(false);
   const [entryFee, setEntryFee] = useState<number>(0);
+  const [profitAmount, setProfitAmount] = useState<number>(0);
   const [notes, setNotes] = useState("");
   const [teamName, setTeamName] = useState("");
   const [teamColorIdx, setTeamColorIdx] = useState(0);
 
   const selectedVenue = venues.find((v) => v.id === venueId);
+
+  const basePerPlayer = useMemo(() => {
+    const price = (selectedVenue as any)?.price_per_hour;
+    if (!price || !matchFormat) return 0;
+    const hrs = duration / 60;
+    const total = Number(price) * hrs;
+    const side = parseInt(matchFormat.split("v")[0], 10) || 0;
+    const players = mode === "gala" ? side * 8 : side * 2;
+    return players > 0 ? Math.ceil(total / players) : 0;
+  }, [selectedVenue, duration, matchFormat, mode]);
+
+  useEffect(() => {
+    if (step === 2 && basePerPlayer > 0) {
+      setEntryFeeEnabled(true);
+      setProfitAmount(0);
+    }
+  }, [step, basePerPlayer]);
+
+  useEffect(() => {
+    if (basePerPlayer > 0) setEntryFee(basePerPlayer + profitAmount);
+  }, [basePerPlayer, profitAmount]);
 
   const availableFormats = mode === "gala" ? GALA_FORMATS : TWO_TEAM_FORMATS;
 
@@ -294,6 +316,12 @@ const CreateMatch = () => {
                             {km && <span className="mx-1">·</span>}
                             {km && `${km} km`}
                             <span className="mx-1">·</span> {v.surface ?? "Pitch"}
+                            {v.price_per_hour != null && v.price_per_hour > 0 && (
+                              <>
+                                <span className="mx-1">·</span>
+                                <span className="font-semibold text-foreground">₵{v.price_per_hour}/hr</span>
+                              </>
+                            )}
                           </p>
                         </div>
                         {active ? <Check className="w-5 h-5 shrink-0" /> : <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />}
@@ -464,6 +492,19 @@ const CreateMatch = () => {
 
             {/* Entry fee */}
             <div className="bg-card rounded-3xl p-5" style={{ boxShadow: "var(--shadow-card)" }}>
+              {/* Always-visible hint when venue has a price but toggle is off */}
+              {basePerPlayer > 0 && !entryFeeEnabled && (() => {
+                const playerCount = matchFormat ? parseInt(matchFormat.split("v")[0], 10) * (mode === "gala" ? 8 : 2) : 0;
+                return (
+                  <div className="mb-3 rounded-2xl bg-primary/5 border border-primary/20 px-3 py-2.5">
+                    <p className="text-[11px] text-primary font-semibold">
+                      💡 This venue costs ₵{(selectedVenue as any).price_per_hour}/hr
+                      {playerCount > 0 && <> · suggested <span className="font-bold">₵{basePerPlayer}/player</span> for {playerCount} players</>}
+                      . Enable entry fees to collect it.
+                    </p>
+                  </div>
+                );
+              })()}
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Entry fee</p>
                 <button
@@ -481,53 +522,73 @@ const CreateMatch = () => {
               </div>
               {entryFeeEnabled && (
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Wallet className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm font-semibold">₵</span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={entryFee || ""}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (val === "") { setEntryFee(0); return; }
-                        const num = Number(val);
-                        setEntryFee(isNaN(num) ? 0 : Math.max(0, num));
-                      }}
-                      className="flex-1 bg-secondary rounded-2xl px-4 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground"
-                      placeholder="0"
-                    />
-                    <span className="text-sm text-muted-foreground">/player</span>
-                  </div>
+                  {basePerPlayer > 0 ? (
+                    /* Breakdown card — venue has a price_per_hour */
+                    <div className="rounded-2xl bg-secondary/60 p-3 space-y-2">
+                      <p className="text-[11px] font-semibold text-muted-foreground">Venue cost breakdown</p>
+                      {(() => {
+                        const pricePerHr = Number((selectedVenue as any).price_per_hour) || 0;
+                        const hrs = duration / 60;
+                        const totalCost = pricePerHr * hrs;
+                        const playerCount = matchFormat ? parseInt(matchFormat.split("v")[0], 10) * (mode === "gala" ? 8 : 2) : 0;
+                        return (
+                          <p className="text-[11px] text-foreground">
+                            ₵{pricePerHr}/hr × {hrs}hr = <span className="font-bold">₵{totalCost.toFixed(0)}</span> total for {playerCount} players
+                          </p>
+                        );
+                      })()}
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] text-muted-foreground">Base per player</span>
+                        <span className="text-[11px] font-bold bg-secondary rounded-full px-2.5 py-0.5">₵{basePerPlayer}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-[11px] text-muted-foreground">Your profit</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-semibold text-muted-foreground">+₵</span>
+                          <input
+                            type="number"
+                            min={0}
+                            value={profitAmount || ""}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val === "") { setProfitAmount(0); return; }
+                              const num = Number(val);
+                              setProfitAmount(isNaN(num) ? 0 : Math.max(0, num));
+                            }}
+                            className="w-20 bg-secondary rounded-xl px-3 py-1.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground text-right"
+                            placeholder="0"
+                          />
+                        </div>
+                      </div>
+                      <div className="border-t border-border/60 pt-2 flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-muted-foreground">Players pay</span>
+                        <span className="text-base font-bold text-primary">₵{entryFee}/player</span>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Original free-text input when venue has no price */
+                    <div className="flex items-center gap-2">
+                      <Wallet className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm font-semibold">₵</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={entryFee || ""}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === "") { setEntryFee(0); return; }
+                          const num = Number(val);
+                          setEntryFee(isNaN(num) ? 0 : Math.max(0, num));
+                        }}
+                        className="flex-1 bg-secondary rounded-2xl px-4 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground"
+                        placeholder="0"
+                      />
+                      <span className="text-sm text-muted-foreground">/player</span>
+                    </div>
+                  )}
                   <p className="text-[11px] text-muted-foreground leading-snug">
                     Fees held securely until match day. Players pay to confirm their spot.
                   </p>
-                  {selectedVenue && (selectedVenue as any).price_per_hour > 0 && (() => {
-                    const pricePerHr = Number((selectedVenue as any).price_per_hour) || 0;
-                    const hrs = duration / 60;
-                    const totalCost = pricePerHr * hrs;
-                    const sideSize = matchFormat ? parseInt(matchFormat.split("v")[0], 10) || 0 : 0;
-                    const playerCount = mode === "gala" ? sideSize * 8 : sideSize * 2;
-                    const suggested = playerCount > 0 ? Math.ceil(totalCost / playerCount) : 0;
-                    return (
-                      <div className="rounded-2xl bg-secondary/60 p-3 space-y-1">
-                        <p className="text-[11px] font-semibold text-muted-foreground">Venue cost reference</p>
-                        <p className="text-[11px] text-foreground">
-                          ₵{pricePerHr}/hr × {hrs}hr = <span className="font-bold">₵{totalCost.toFixed(0)}</span> total for {playerCount} players
-                        </p>
-                        <p className="text-[11px] text-foreground">
-                          Suggested per player: <span className="font-bold text-primary">₵{suggested}</span>
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => setEntryFee(suggested)}
-                          className="text-[10px] font-semibold bg-primary/10 text-primary rounded-full px-3 py-1 mt-1"
-                        >
-                          Use ₵{suggested}
-                        </button>
-                      </div>
-                    );
-                  })()}
                   {selectedVenue && (selectedVenue as any).surge_multiplier > 1 && (selectedVenue as any).surge_peak_start_hour != null && matchHour >= (selectedVenue as any).surge_peak_start_hour && matchHour < ((selectedVenue as any).surge_peak_end_hour ?? 23) && (
                     <p className="text-[11px] text-amber-600 font-semibold mt-1.5">
                       ⚡ Surge pricing active ({(selectedVenue as any).surge_multiplier}×) for this time slot at {selectedVenue.name}
@@ -581,7 +642,7 @@ const CreateMatch = () => {
               <SummaryRow label="Venue" value={selectedVenue ? `${selectedVenue.name}` : "—"} />
               <SummaryRow label="When" value={matchDate ? `${matchDate} @ ${String(matchHour).padStart(2, "0")}:${String(matchMinute).padStart(2, "0")}` : "—"} />
               <SummaryRow label="Duration" value={`${duration} min`} />
-              <SummaryRow label="Entry fee" value={entryFeeEnabled ? `₵${entryFee}/player` : "Free"} />
+              <SummaryRow label="Entry fee" value={entryFeeEnabled ? (profitAmount > 0 ? `₵${entryFee}/player (₵${basePerPlayer} base + ₵${profitAmount} profit)` : `₵${entryFee}/player`) : "Free"} />
               {mode === "gala" && teamName && <SummaryRow label="Your team" value={teamName} />}
             </div>
           </div>
