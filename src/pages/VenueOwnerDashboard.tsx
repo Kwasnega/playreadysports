@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  ArrowLeft, MapPin, Trophy, Wallet, Calendar, ChevronRight, QrCode, Users,
-  TrendingUp, Sparkles, Clock, Building2, Plus, X, Upload, ImageIcon,
+  ArrowLeft, MapPin, Wallet, Calendar,
+  TrendingUp, Clock, Building2, Plus, X, Upload,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,12 +29,16 @@ interface VenueRow {
   id: string;
   name: string;
   status: string;
+  city?: string | null;
+  area?: string | null;
+  price_per_hour?: number | null;
+  capacity?: number | null;
+  opening_hours?: string | null;
+  contact_phone?: string | null;
+  amenities?: string[];
   surge_peak_start_hour: number | null;
   surge_peak_end_hour: number | null;
   surge_multiplier: number;
-  early_bird_hours_before: number;
-  early_bird_discount_pct: number;
-  student_discount_pct: number;
 }
 
 interface TodayMatch {
@@ -217,7 +221,7 @@ export default function VenueOwnerDashboard() {
       const { data: vens } = await supabase
         .from("venues")
         .select(
-          "id, name, status, surge_peak_start_hour, surge_peak_end_hour, surge_multiplier, early_bird_hours_before, early_bird_discount_pct, student_discount_pct",
+          "id, name, status, city, area, price_per_hour, capacity, opening_hours, contact_phone, amenities, surge_peak_start_hour, surge_peak_end_hour, surge_multiplier",
         )
         .eq("owner_email", user.email);
 
@@ -314,6 +318,7 @@ export default function VenueOwnerDashboard() {
   const netEarnings = totalGross - platformFees;
 
   const pendingVenues = useMemo(() => venues.filter((v) => v.status === "pending"), [venues]);
+  const verifiedVenues = useMemo(() => venues.filter((v) => v.status === "verified"), [venues]);
 
   const openQr = async (m: TodayMatch) => {
     setQrMatch(m);
@@ -379,9 +384,6 @@ export default function VenueOwnerDashboard() {
         surge_peak_start_hour: v.surge_peak_start_hour,
         surge_peak_end_hour: v.surge_peak_end_hour,
         surge_multiplier: v.surge_multiplier,
-        early_bird_hours_before: v.early_bird_hours_before,
-        early_bird_discount_pct: v.early_bird_discount_pct,
-        student_discount_pct: v.student_discount_pct,
       })
       .eq("id", v.id);
     if (error) {
@@ -544,6 +546,25 @@ export default function VenueOwnerDashboard() {
       </header>
 
       <div className="max-w-[680px] mx-auto px-5 py-5 space-y-5">
+        {/* Venue identity header */}
+        {verifiedVenues.length > 0 && (
+          <section className="bg-card rounded-2xl border border-border/60 p-5 flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center shrink-0">
+              <Building2 className="w-7 h-7 text-emerald-500" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="font-display font-bold text-2xl tracking-tight truncate">{verifiedVenues[0].name}</h2>
+              <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1.5">
+                <MapPin className="w-3 h-3" />
+                {verifiedVenues[0].city}{verifiedVenues[0].area ? `, ${verifiedVenues[0].area}` : ""}
+                <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600">
+                  Verified
+                </span>
+              </p>
+            </div>
+          </section>
+        )}
+
         {isTurfOwner && (
           <p className="text-[11px] text-muted-foreground bg-secondary/40 rounded-full px-3 py-1 inline-block">
             Turf owner role
@@ -570,42 +591,76 @@ export default function VenueOwnerDashboard() {
           <Plus className="w-4 h-4" /> Register a new venue
         </button>
 
-        <section className="rounded-3xl tile-cool p-6 text-white">
+        {/* Earnings card */}
+        <section className="bg-card rounded-2xl border border-border/60 p-5">
           <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-xs opacity-80 uppercase tracking-wider font-semibold">Withdrawable balance</p>
-              <p className="font-display font-bold text-3xl mt-1">₵{venueBalance.toFixed(2)}</p>
-              <button
-                onClick={() => setWithdrawOpen(true)}
-                disabled={venueBalance < 10}
-                className="mt-3 text-xs font-bold bg-white/20 hover:bg-white/30 rounded-full px-4 py-2 transition-colors disabled:opacity-40"
-              >
-                Request Withdrawal
-              </button>
+            <div className="flex-1">
+              <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Net Earnings</p>
+              <p className="font-display font-bold text-3xl mt-1 text-emerald-600">₵{netEarnings.toFixed(0)}</p>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Gross ₵{totalGross.toFixed(0)} · Platform fee ₵{platformFees.toFixed(0)} ({(commissionRate * 100).toFixed(0)}%)
+              </p>
+              <div className="flex items-center gap-3 mt-3">
+                <button
+                  onClick={() => setWithdrawOpen(true)}
+                  disabled={venueBalance < 10}
+                  className="text-xs font-bold bg-foreground text-background rounded-full px-4 py-2 transition-colors disabled:opacity-40"
+                >
+                  Withdraw
+                </button>
+                <span className="text-[11px] text-muted-foreground">
+                  Available: ₵{venueBalance.toFixed(2)}
+                </span>
+              </div>
             </div>
-            <div className="w-12 h-12 rounded-2xl bg-white/15 flex items-center justify-center shrink-0">
-              <Wallet className="w-6 h-6" />
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center shrink-0">
+              <Wallet className="w-6 h-6 text-emerald-500" />
             </div>
           </div>
         </section>
 
-        <div className="grid grid-cols-3 gap-3">
-          <div className="bg-card rounded-2xl p-4 border border-border/60 text-center">
-            <Trophy className="w-4 h-4 text-muted-foreground mx-auto mb-1" />
-            <p className="font-display font-bold text-lg">₵{totalGross.toFixed(0)}</p>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Gross</p>
-          </div>
-          <div className="bg-card rounded-2xl p-4 border border-border/60 text-center">
-            <TrendingUp className="w-4 h-4 text-muted-foreground mx-auto mb-1" />
-            <p className="font-display font-bold text-lg">₵{platformFees.toFixed(0)}</p>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Platform</p>
-          </div>
-          <div className="bg-card rounded-2xl p-4 border border-border/60 text-center">
-            <Sparkles className="w-4 h-4 text-emerald-500 mx-auto mb-1" />
-            <p className="font-display font-bold text-lg text-emerald-600">₵{netEarnings.toFixed(0)}</p>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Net</p>
-          </div>
-        </div>
+        {/* Today's matches */}
+        <section className="bg-card rounded-2xl border border-border/60 p-5">
+          <h2 className="font-display font-bold text-base mb-3 flex items-center gap-2">
+            <Calendar className="w-4 h-4" /> Today at your venue
+          </h2>
+          {todayMatches.length === 0 ? (
+            <div className="text-center py-6">
+              <p className="text-sm text-muted-foreground">No matches scheduled today.</p>
+              <p className="text-[11px] text-muted-foreground mt-1">Your pitch is free — time to promote it.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {todayMatches.map((m) => (
+                <div key={m.id} className="flex items-center gap-3 rounded-xl border border-border/60 p-3">
+                  <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <span className="text-[10px] font-bold">{m.join_code.slice(0, 2).toUpperCase()}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold truncate">{m.join_code}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {getFormattedTime(m.match_date)} · {m.format} · {m.core_paid_count} paid
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      onClick={() => openRoster(m)}
+                      className="text-[10px] font-bold bg-secondary rounded-full px-2.5 py-1.5 hover:bg-secondary/80 transition-colors"
+                    >
+                      Roster
+                    </button>
+                    <button
+                      onClick={() => openQr(m)}
+                      className="text-[10px] font-bold bg-foreground text-background rounded-full px-2.5 py-1.5 hover:bg-foreground/90 transition-colors"
+                    >
+                      QR
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
 
         <VenueOwnerCalendar
           venueIds={venueIds}
@@ -643,112 +698,75 @@ export default function VenueOwnerDashboard() {
               Peak window uses the hour of day in each player&apos;s browser when they schedule — good enough for a first pass.
             </p>
 
-            {/* Venue quick details */}
-            <div className="grid grid-cols-2 gap-2 text-[11px]">
-              {v.price_per_hour != null && (
-                <div className="bg-secondary/50 rounded-lg px-2.5 py-1.5">
-                  <span className="text-muted-foreground block">Price / hour</span>
-                  <span className="font-semibold">₵{v.price_per_hour.toFixed(0)}</span>
+            {/* Pricing — simplified */}
+            <div className="space-y-4">
+              {/* Base price */}
+              <div>
+                <label className="text-[11px] font-semibold text-muted-foreground block mb-1.5">Base price per hour (₵)</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground">₵</span>
+                  <input
+                    type="number"
+                    min={0}
+                    step={1}
+                    className="w-full rounded-xl border border-border bg-background pl-8 pr-3 py-2.5 text-sm"
+                    value={v.price_per_hour ?? ""}
+                    placeholder="0"
+                    onChange={(e) => patchVenue(v.id, { price_per_hour: e.target.value === "" ? null : Number(e.target.value) })}
+                  />
                 </div>
-              )}
-              {v.capacity != null && (
-                <div className="bg-secondary/50 rounded-lg px-2.5 py-1.5">
-                  <span className="text-muted-foreground block">Capacity</span>
-                  <span className="font-semibold">{v.capacity} players</span>
-                </div>
-              )}
-              {v.opening_hours && (
-                <div className="bg-secondary/50 rounded-lg px-2.5 py-1.5">
-                  <span className="text-muted-foreground block">Opening hours</span>
-                  <span className="font-semibold">{v.opening_hours}</span>
-                </div>
-              )}
-              {v.contact_phone && (
-                <div className="bg-secondary/50 rounded-lg px-2.5 py-1.5">
-                  <span className="text-muted-foreground block">Contact</span>
-                  <span className="font-semibold">{v.contact_phone}</span>
-                </div>
-              )}
-            </div>
-            {v.amenities && v.amenities.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {v.amenities.map((a) => (
-                  <span key={a} className="text-[10px] font-semibold bg-secondary rounded-full px-2 py-0.5 text-muted-foreground">{a}</span>
-                ))}
               </div>
-            )}
 
-            <div className="grid grid-cols-2 gap-3">
-              <label className="text-[11px] font-semibold text-muted-foreground col-span-2">Surge · start hour (0–23)</label>
-              <input
-                type="number"
-                min={0}
-                max={23}
-                className="rounded-lg border border-border bg-background px-2 py-2 text-sm"
-                value={v.surge_peak_start_hour ?? ""}
-                placeholder="off"
-                onChange={(e) =>
-                  patchVenue(v.id, {
-                    surge_peak_start_hour: e.target.value === "" ? null : Number(e.target.value),
-                  })
-                }
-              />
-              <input
-                type="number"
-                min={0}
-                max={23}
-                className="rounded-lg border border-border bg-background px-2 py-2 text-sm"
-                value={v.surge_peak_end_hour ?? ""}
-                placeholder="off"
-                onChange={(e) =>
-                  patchVenue(v.id, {
-                    surge_peak_end_hour: e.target.value === "" ? null : Number(e.target.value),
-                  })
-                }
-              />
-              <label className="text-[11px] font-semibold text-muted-foreground col-span-2">Surge multiplier (≥1)</label>
-              <input
-                type="number"
-                step={0.05}
-                min={1}
-                className="rounded-lg border border-border bg-background px-2 py-2 text-sm col-span-2"
-                value={v.surge_multiplier}
-                onChange={(e) => patchVenue(v.id, { surge_multiplier: Number(e.target.value) || 1 })}
-              />
-              <label className="text-[11px] font-semibold text-muted-foreground col-span-2">Early bird · hours before kickoff</label>
-              <input
-                type="number"
-                min={0}
-                className="rounded-lg border border-border bg-background px-2 py-2 text-sm"
-                value={v.early_bird_hours_before}
-                onChange={(e) => patchVenue(v.id, { early_bird_hours_before: Number(e.target.value) || 0 })}
-              />
-              <input
-                type="number"
-                step={1}
-                min={0}
-                max={100}
-                className="rounded-lg border border-border bg-background px-2 py-2 text-sm"
-                value={v.early_bird_discount_pct}
-                onChange={(e) => patchVenue(v.id, { early_bird_discount_pct: Number(e.target.value) || 0 })}
-              />
-              <label className="text-[11px] font-semibold text-muted-foreground col-span-2">Student discount %</label>
-              <input
-                type="number"
-                step={1}
-                min={0}
-                max={100}
-                className="rounded-lg border border-border bg-background px-2 py-2 text-sm col-span-2"
-                value={v.student_discount_pct}
-                onChange={(e) => patchVenue(v.id, { student_discount_pct: Number(e.target.value) || 0 })}
-              />
+              {/* Peak hours */}
+              <div>
+                <label className="text-[11px] font-semibold text-muted-foreground block mb-1.5">Peak hours</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={0} max={23}
+                    className="flex-1 rounded-xl border border-border bg-background px-3 py-2.5 text-sm"
+                    value={v.surge_peak_start_hour ?? ""}
+                    placeholder="Start"
+                    onChange={(e) => patchVenue(v.id, { surge_peak_start_hour: e.target.value === "" ? null : Number(e.target.value) })}
+                  />
+                  <span className="text-muted-foreground text-sm">—</span>
+                  <input
+                    type="number"
+                    min={0} max={23}
+                    className="flex-1 rounded-xl border border-border bg-background px-3 py-2.5 text-sm"
+                    value={v.surge_peak_end_hour ?? ""}
+                    placeholder="End"
+                    onChange={(e) => patchVenue(v.id, { surge_peak_end_hour: e.target.value === "" ? null : Number(e.target.value) })}
+                  />
+                </div>
+              </div>
+
+              {/* Surge multiplier */}
+              <div>
+                <label className="text-[11px] font-semibold text-muted-foreground block mb-1.5">Surge multiplier</label>
+                <input
+                  type="number"
+                  step={0.1}
+                  min={1}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm"
+                  value={v.surge_multiplier}
+                  onChange={(e) => patchVenue(v.id, { surge_multiplier: Number(e.target.value) || 1 })}
+                />
+                <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
+                  During peak hours, players pay the multiplied rate.
+                  {v.price_per_hour && v.surge_multiplier > 1 ? (
+                    <> Example: ₵{v.price_per_hour} × {v.surge_multiplier} = <span className="font-semibold text-emerald-600">₵{(v.price_per_hour * v.surge_multiplier).toFixed(0)}/hr</span>.</>
+                  ) : null}
+                </p>
+              </div>
             </div>
+
             <button
               type="button"
               onClick={() => saveVenuePricing(v)}
               className="w-full rounded-full bg-foreground text-background text-xs font-semibold py-2.5"
             >
-              Save pricing for {v.name}
+              Save pricing
             </button>
           </section>
         ))}
@@ -818,14 +836,6 @@ export default function VenueOwnerDashboard() {
           ))
         )}
 
-        {earnings.length > 0 && (
-          <div className="bg-amber-500/10 rounded-2xl p-4 border border-amber-500/20">
-            <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">Payouts</p>
-            <p className="text-[11px] text-amber-700 dark:text-amber-300/90 mt-1 leading-relaxed">
-              Platform fee is {(commissionRate * 100).toFixed(1)}%. Request withdrawals from the wallet flow once enabled for owners.
-            </p>
-          </div>
-        )}
       </div>
 
       <Dialog open={qrOpen} onOpenChange={setQrOpen}>
