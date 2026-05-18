@@ -6,6 +6,13 @@ const PAYSTACK_SECRET = Deno.env.get("PAYSTACK_SECRET_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+// Startup diagnostic — visible in Supabase Edge Function logs
+if (!PAYSTACK_SECRET) {
+  console.warn("[paystack-webhook] PAYSTACK_SECRET_KEY is not set — webhook signature verification will fail. Register webhook at https://dashboard.paystack.com/#/settings/webhooks");
+} else {
+  console.log("[paystack-webhook] Initialized. Expecting events: charge.success, charge.failed, refund.processed");
+}
+
 /** Timing-safe hex-string comparison to prevent timing attacks. */
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;

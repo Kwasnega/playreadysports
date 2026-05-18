@@ -1,5 +1,5 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { getgetCorsHeaders() } from "../_shared/cors.ts";
+import { getCorsHeaders } from "../_shared/cors.ts";
 
 /**
  * cleanup-chat — Scheduled edge function (invoke via cron or pg_cron)

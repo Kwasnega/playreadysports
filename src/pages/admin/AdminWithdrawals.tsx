@@ -32,9 +32,13 @@ interface VenuePayout {
   provider: string | null;
   notes: string | null;
   admin_note: string | null;
+  approved_by: string | null;
+  approved_at: string | null;
+  failure_reason: string | null;
   created_at: string;
   owner?: { full_name: string | null; username: string | null };
   venue?: { name: string | null } | null;
+  approver?: { full_name: string | null; username: string | null } | null;
 }
 
 export default function AdminWithdrawals() {
@@ -52,6 +56,7 @@ export default function AdminWithdrawals() {
   const [venueLoading, setVenueLoading] = useState(true);
   const [venueProcessing, setVenueProcessing] = useState<Record<string, boolean>>({});
   const [venueFilter, setVenueFilter] = useState<"pending" | "all">("pending");
+  const [venueNotes, setVenueNotes] = useState<Record<string, string>>({});
 
   const loadVenuePayouts = async () => {
     setVenueLoading(true);
@@ -66,7 +71,9 @@ export default function AdminWithdrawals() {
       if (error) throw error;
       const rows = (data ?? []) as VenuePayout[];
       const ownerIds = [...new Set(rows.map((r) => r.owner_id))];
+      const approverIds = [...new Set(rows.filter((r) => r.approved_by).map((r) => r.approved_by!))];
       let ownerMap: Record<string, { full_name: string | null; username: string | null }> = {};
+      let approverMap: Record<string, { full_name: string | null; username: string | null }> = {};
       if (ownerIds.length) {
         const { data: profiles } = await (supabase as any)
           .from("profiles")
@@ -74,7 +81,18 @@ export default function AdminWithdrawals() {
           .in("id", ownerIds);
         (profiles ?? []).forEach((p: any) => { ownerMap[p.id] = p; });
       }
-      setVenuePayouts(rows.map((r) => ({ ...r, owner: ownerMap[r.owner_id] ?? null })));
+      if (approverIds.length) {
+        const { data: profiles } = await (supabase as any)
+          .from("profiles")
+          .select("id, full_name, username")
+          .in("id", approverIds);
+        (profiles ?? []).forEach((p: any) => { approverMap[p.id] = p; });
+      }
+      setVenuePayouts(rows.map((r) => ({
+        ...r,
+        owner: ownerMap[r.owner_id] ?? null,
+        approver: r.approved_by ? (approverMap[r.approved_by] ?? null) : null,
+      })));
     } catch (err: any) {
       toast.error(err.message || "Failed to load venue payouts");
     } finally {
@@ -85,10 +103,11 @@ export default function AdminWithdrawals() {
   const handleVenuePayout = async (req: VenuePayout, approve: boolean) => {
     setVenueProcessing((p) => ({ ...p, [req.id]: true }));
     try {
+      const customNote = venueNotes[req.id]?.trim();
       const { data, error } = await (supabase as any).rpc("finalize_venue_withdrawal", {
         p_request_id: req.id,
         p_approve: approve,
-        p_admin_note: approve ? "Approved by admin" : "Rejected by admin",
+        p_admin_note: customNote || (approve ? "Approved by admin" : "Rejected by admin"),
       });
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || "Failed");
@@ -298,6 +317,23 @@ export default function AdminWithdrawals() {
                       </p>
                       <p className="text-slate-500 text-[11px] mt-0.5">{new Date(req.created_at).toLocaleString()}</p>
                       {req.notes && <p className="text-slate-500 text-[11px] italic mt-0.5">{req.notes}</p>}
+                      {req.status !== "pending" && (
+                        <div className="text-slate-500 text-[11px] mt-1">
+                          {req.approver && (
+                            <span className="inline-block mr-2">
+                              By {req.approver.full_name || req.approver.username || "Admin"}
+                            </span>
+                          )}
+                          {req.approved_at && (
+                            <span className="inline-block">
+                              {new Date(req.approved_at).toLocaleString()}
+                            </span>
+                          )}
+                          {req.admin_note && (
+                            <span className="block mt-0.5 text-slate-400">“{req.admin_note}”</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-white font-bold text-lg">₵{req.amount.toFixed(2)}</p>
@@ -308,26 +344,35 @@ export default function AdminWithdrawals() {
                       }`}>{req.status}</span>
                     </div>
                     {req.status === "pending" && (
-                      <div className="w-full flex items-center gap-2 pt-1">
-                        <button
-                          onClick={() => handleVenuePayout(req, true)}
-                          disabled={venueProcessing[req.id]}
-                          className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 text-xs font-bold disabled:opacity-50"
-                        >
-                          {venueProcessing[req.id] ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                          Approve & mark paid
-                        </button>
-                        <button
-                          onClick={() => handleVenuePayout(req, false)}
-                          disabled={venueProcessing[req.id]}
-                          className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 text-xs font-bold disabled:opacity-50"
-                        >
-                          {venueProcessing[req.id] ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <X className="w-3.5 h-3.5" />}
-                          Reject & refund
-                        </button>
-                        <p className="text-[11px] text-slate-500 ml-auto hidden sm:block">
-                          Pay manually via {req.provider?.toUpperCase()} to {req.phone_number}
-                        </p>
+                      <div className="w-full flex flex-col gap-2 pt-1">
+                        <textarea
+                          value={venueNotes[req.id] || ""}
+                          onChange={(e) => setVenueNotes((n) => ({ ...n, [req.id]: e.target.value }))}
+                          placeholder="Admin note (optional)"
+                          rows={2}
+                          className="w-full bg-white/[0.03] text-slate-300 placeholder-slate-600 rounded-lg px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-emerald-500/30 resize-none"
+                        />
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleVenuePayout(req, true)}
+                            disabled={venueProcessing[req.id]}
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 text-xs font-bold disabled:opacity-50"
+                          >
+                            {venueProcessing[req.id] ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                            Approve & mark paid
+                          </button>
+                          <button
+                            onClick={() => handleVenuePayout(req, false)}
+                            disabled={venueProcessing[req.id]}
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 text-xs font-bold disabled:opacity-50"
+                          >
+                            {venueProcessing[req.id] ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <X className="w-3.5 h-3.5" />}
+                            Reject & refund
+                          </button>
+                          <p className="text-[11px] text-slate-500 ml-auto hidden sm:block">
+                            Pay manually via {req.provider?.toUpperCase()} to {req.phone_number}
+                          </p>
+                        </div>
                       </div>
                     )}
                   </div>

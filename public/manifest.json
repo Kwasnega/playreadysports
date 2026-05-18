@@ -1,0 +1,38 @@
+{
+  "name": "PlayReady Sports",
+  "short_name": "PlayReady",
+  "description": "Find pickup football matches near you. Join, create, and compete.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/prs-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/prs-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["sports", "social"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Join a match",
+      "url": "/join",
+      "description": "Browse matches near you"
+    },
+    {
+      "name": "Create a match",
+      "url": "/create",
+      "description": "Organise a new football match"
+    }
+  ]
+}

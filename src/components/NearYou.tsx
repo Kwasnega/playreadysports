@@ -1,5 +1,15 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Radio, Repeat, Users as UsersIcon, ArrowRight, Sparkles } from "lucide-react";
+import { Radio, Repeat, Users as UsersIcon, ArrowRight, Sparkles, Link2 } from "lucide-react";
+import { toast } from "sonner";
+
+const copyJoinLink = (e: React.MouseEvent, code: string, venue: string, fee: number) => {
+  e.preventDefault(); e.stopPropagation();
+  const url = `${window.location.origin}/lobby/${code}`;
+  const msg = fee > 0
+    ? `Join my football match at ${venue}! Use code: ${code} or link: ${url} (₵${fee} entry)`
+    : `Join my free football match at ${venue}! Use code: ${code} or link: ${url}`;
+  navigator.clipboard?.writeText(msg).then(() => toast.success("Join link copied!")).catch(() => toast.error("Copy failed"));
+};
 
 type GalaOpening = {
   kind: "gala";
@@ -322,7 +332,16 @@ const GalaRow = ({ s }: { s: GalaOpening }) => {
             ) : null}
           </div>
         </div>
-        {s.joined ? <JoinedCTA /> : <JoinCTA onClick={onJoin} />}
+        <div className="flex items-center gap-2">
+          {s.joined ? <JoinedCTA /> : <JoinCTA onClick={onJoin} />}
+          <button
+            onClick={(e) => copyJoinLink(e, s.code, s.venue, s.pricePerPlayer)}
+            className="shrink-0 w-10 h-10 rounded-full bg-secondary hover:bg-secondary/70 flex items-center justify-center transition-colors"
+            title="Copy join link"
+          >
+            <Link2 className="w-4 h-4 text-muted-foreground" />
+          </button>
+        </div>
       </div>
     </RowShell>
   );
@@ -356,7 +375,16 @@ const TwoTeamRow = ({ s }: { s: TwoTeamOpening }) => {
             ) : null}
           </div>
         </div>
-        {s.joined ? <JoinedCTA /> : <JoinCTA onClick={onJoin} />}
+        <div className="flex items-center gap-2">
+          {s.joined ? <JoinedCTA /> : <JoinCTA onClick={onJoin} />}
+          <button
+            onClick={(e) => copyJoinLink(e, s.code, s.venue, s.pricePerPlayer)}
+            className="shrink-0 w-10 h-10 rounded-full bg-secondary hover:bg-secondary/70 flex items-center justify-center transition-colors"
+            title="Copy join link"
+          >
+            <Link2 className="w-4 h-4 text-muted-foreground" />
+          </button>
+        </div>
       </div>
     </RowShell>
   );

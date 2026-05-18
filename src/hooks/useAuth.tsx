@@ -118,7 +118,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           toast.error("Turf owners must sign in through the venue dashboard.");
           return;
         }
-        if (pendingActionRef.current) {
+        // Only execute the pending guarded action if the user is verified.
+        // Unverified users must complete email verification first — runPending()
+        // will be called by checkVerification() once they confirm their email.
+        if (pendingActionRef.current && isVerified(u)) {
           const pending = pendingActionRef.current;
           pendingActionRef.current = null;
           setTimeout(pending, 100);

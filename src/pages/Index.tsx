@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { CityPrompt } from "@/components/CityPrompt";
 import {
   Home, User, LogIn, Trophy, Zap, UserPlus, CalendarDays, KeyRound, Sparkles, MapPin, Clock, Wallet, Users, Activity, Award,
 } from "lucide-react";
@@ -7,6 +8,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { NearYou } from "@/components/NearYou";
 import { ProfileSheet } from "@/components/ProfileSheet";
 import { useAuth } from "@/hooks/useAuth";
+import { useFriends } from "@/hooks/useFriends";
 import { useEnter } from "@/hooks/useReveal";
 import { NotificationsBell } from "@/components/NotificationsBell";
 import { FriendsSheet } from "@/components/FriendsSheet";
@@ -467,6 +469,8 @@ const FriendsPlayingRail = ({ matches, loading }: { matches: any[]; loading: boo
 };
 
 const Index = () => {
+  const [showCityPrompt, setShowCityPrompt] = useState(false);
+
   const {
     user,
     matches,
@@ -488,6 +492,21 @@ const Index = () => {
   const userLat = location?.lat ?? 5.6037; // Accra default
   const userLng = location?.lng ?? -0.187;
 
+  useEffect(() => {
+    if (!user) return;
+    const key = `prs_city_prompted_${user.id}`;
+    if (sessionStorage.getItem(key)) return;
+    supabase.from("profiles").select("city").eq("id", user.id).single()
+      .then(({ data }) => {
+        if (!data?.city) setShowCityPrompt(true);
+      });
+  }, [user]);
+
+  const dismissCityPrompt = useCallback(() => {
+    if (user) sessionStorage.setItem(`prs_city_prompted_${user.id}`, "1");
+    setShowCityPrompt(false);
+  }, [user]);
+
   const liveCount = matches.filter((m) => {
     if (m.status !== "live") return false;
     const venue = m.venue;
@@ -499,6 +518,7 @@ const Index = () => {
 
   return (
     <main className="min-h-screen bg-background pb-20">
+      {showCityPrompt && <CityPrompt onDone={dismissCityPrompt} onSkip={dismissCityPrompt} />}
       <Nav />
       <Hero liveCount={liveCount} />
       <QuickActions />

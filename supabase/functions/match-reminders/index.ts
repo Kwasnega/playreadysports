@@ -1,5 +1,5 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { getgetCorsHeaders() } from "../_shared/cors.ts";
+import { getCorsHeaders } from "../_shared/cors.ts";
 
 /**
  * match-reminders — Scheduled edge function (invoke via cron every 10 minutes)
