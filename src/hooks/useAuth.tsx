@@ -98,7 +98,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
     document.addEventListener("visibilitychange", handleVisibility);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       const u = session?.user ?? null;
       setSbUser(u);
       setLoading(false);
@@ -110,22 +110,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         _qc?.invalidateQueries();
       }
       if (event === 'SIGNED_IN' && u) {
-        // Turf-owner guard for OAuth
-        const { data: prof } = await supabase.from("profiles").select("role").eq("id", u.id).maybeSingle();
-        const role = (prof as any)?.role;
-        if (role === "turf_owner") {
-          await supabase.auth.signOut();
-          toast.error("Turf owners must sign in through the venue dashboard.");
-          return;
-        }
-        // Only execute the pending guarded action if the user is verified.
-        // Unverified users must complete email verification first — runPending()
-        // will be called by checkVerification() once they confirm their email.
-        if (pendingActionRef.current && isVerified(u)) {
-          const pending = pendingActionRef.current;
-          pendingActionRef.current = null;
-          setTimeout(pending, 100);
-        }
+        // Turf-owner guard — MUST be fire-and-forget; onAuthStateChange
+        // callbacks must not be async (Supabase deadlock risk).
+        (async () => {
+          try {
+            const { data: prof } = await supabase.from("profiles").select("role").eq("id", u.id).maybeSingle();
+            const role = (prof as any)?.role;
+            if (role === "turf_owner") {
+              await supabase.auth.signOut();
+              toast.error("Turf owners must sign in through the venue dashboard.");
+              return;
+            }
+            if (pendingActionRef.current && isVerified(u)) {
+              const pending = pendingActionRef.current;
+              pendingActionRef.current = null;
+              setTimeout(pending, 100);
+            }
+          } catch {
+            /* ignore profile lookup errors during auth transition */
+          }
+        })();
       }
     });
     return () => {
@@ -238,12 +242,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signInWithEmail = async (email: string, password: string) => {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      // 10-second safety timeout so the spinner can never get stuck forever
+      const signInPromise = supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       });
+      const timeoutPromise = new Promise<{ data: { user: null }; error: Error }>((_, reject) =>
+        setTimeout(() => reject(new Error("Connection timed out. Please check your network and try again.")), 10000)
+      );
+      const { data, error } = await Promise.race([signInPromise, timeoutPromise]);
+
       if (error) {
-        const msg = ((error.message ?? "") + " " + (error.code ?? "")).toLowerCase();
+        const msg = ((error.message ?? "") + " " + ((error as any).code ?? "")).toLowerCase();
         if (msg.includes("email not confirmed") || msg.includes("email_not_confirmed")) {
           setPendingVerifyEmail(email.trim());
           return { error: null };

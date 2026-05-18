@@ -69,7 +69,11 @@ async function fetchHomeMatches(cursor?: string): Promise<HomeMatch[]> {
 
   if (cursor) q = q.gt("match_date", cursor);
 
-  const { data, error } = await q;
+  const timeout = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error("Match feed timed out. Please check your connection and refresh.")), 10000)
+  );
+
+  const { data, error } = await Promise.race([q, timeout]);
 
   if (error) {
     console.error("useHomeMatches error:", error);
