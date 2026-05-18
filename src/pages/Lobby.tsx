@@ -13,7 +13,7 @@ import { useJoinRequests } from "@/hooks/useJoinRequests";
 import { useMatchReviews } from "@/hooks/useReviews";
 import { useWeather } from "@/hooks/useWeather";
 import { PaymentModal } from "@/components/payment/PaymentModal";
-import { initPaystackPayment, generatePaymentReference } from "@/lib/paystack";
+// Paystack import removed — match join uses wallet-only flow now
 import { getFormattedTime } from "@/lib/matchHelpers";
 import { useWallet } from "@/hooks/useWallet";
 import { supabase } from "@/integrations/supabase/client";
@@ -497,28 +497,6 @@ const Lobby = () => {
           entryFee={sharePerPlayer}
           walletBalance={balance}
           onPayWithWallet={handleWalletPay}
-          onPay={async () => {
-            if (!user?.email || !match?.id) return;
-            setPaying(true);
-            const ref = generatePaymentReference(matchCode, user.id);
-            try {
-              await initPaystackPayment({
-                email: user.email,
-                amount: sharePerPlayer,
-                reference: ref,
-                matchId: match.id,
-                userId: user.id,
-                joinCode: match.join_code,
-                team: userParticipant?.team || resolvedTeam || "unassigned",
-                entryFee: sharePerPlayer,
-                onSuccess: handlePaystackSuccess,
-                onClose: () => setPaying(false),
-              });
-            } catch (err: any) {
-              setPaying(false);
-              toast.error(err?.message || "Payment failed to start. Please try again.");
-            }
-          }}
           onClose={() => { setPaymentModalOpen(false); setPaying(false); }}
         />
       )}

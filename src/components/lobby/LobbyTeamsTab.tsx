@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Users, Wallet, Zap, X, UserCheck, Check } from "lucide-react";
-import { SlotRow, buildPlayerList, type LobbyParticipant, type Player } from "./LobbyShared";
+import { SlotRow, buildPlayerList, buildSpareList, type LobbyParticipant, type Player } from "./LobbyShared";
 
 interface LobbyTeamsTabProps {
   match: any;

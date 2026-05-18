@@ -1,5 +1,6 @@
-import { X, Shield, Lock, Wallet, CreditCard, RotateCcw } from "lucide-react";
+import { X, Lock, Wallet, RotateCcw } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 interface PaymentModalProps {
   open: boolean;
@@ -7,23 +8,17 @@ interface PaymentModalProps {
   matchCode: string;
   entryFee: number;
   walletBalance?: number;
-  onPay: () => void;
   onPayWithWallet?: () => void;
   onClose: () => void;
 }
 
-export function PaymentModal({ open, matchName, matchCode, entryFee, walletBalance = 0, onPay, onPayWithWallet, onClose }: PaymentModalProps) {
+export function PaymentModal({ open, matchName, matchCode, entryFee, walletBalance = 0, onPayWithWallet, onClose }: PaymentModalProps) {
   const [paying, setPaying] = useState(false);
-  const canUseWallet = walletBalance >= entryFee && !!onPayWithWallet;
+  const hasEnough = walletBalance >= entryFee && !!onPayWithWallet;
 
   if (!open) return null;
 
-  const handleCardPay = () => {
-    setPaying(true);
-    onPay();
-  };
-
-  const handleWalletPay = () => {
+  const handlePay = () => {
     setPaying(true);
     onPayWithWallet?.();
   };
@@ -79,34 +74,32 @@ export function PaymentModal({ open, matchName, matchCode, entryFee, walletBalan
           </p>
         </div>
 
-        {/* Paystack badge */}
-        <div className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
-          <Shield className="w-3.5 h-3.5 text-emerald-500" />
-          <span>Secured by Paystack</span>
-        </div>
-
         {/* Actions */}
         <div className="space-y-2.5">
-          {canUseWallet && (
-            <button
-              onClick={handleWalletPay}
-              disabled={paying}
-              className="w-full bg-emerald-500 text-white font-semibold rounded-full px-4 py-3.5 text-sm flex items-center justify-center gap-2 disabled:opacity-60"
-            >
-              <Wallet className="w-4 h-4" />
-              {paying ? "Processing…" : `Pay ₵${entryFee} from wallet`}
-            </button>
-          )}
           <button
-            onClick={handleCardPay}
-            disabled={paying}
-            className={`w-full font-semibold rounded-full px-4 py-3.5 text-sm flex items-center justify-center gap-2 disabled:opacity-60 ${
-              canUseWallet ? "bg-secondary text-foreground" : "bg-foreground text-background"
-            }`}
+            onClick={handlePay}
+            disabled={paying || !hasEnough}
+            className="w-full bg-foreground text-background font-semibold rounded-full px-4 py-3.5 text-sm flex items-center justify-center gap-2 disabled:opacity-60"
           >
-            <CreditCard className="w-4 h-4" />
-            {paying ? "Opening checkout…" : `Pay ₵${entryFee} with card`}
+            <Wallet className="w-4 h-4" />
+            {paying ? "Processing…" : `Pay ₵${entryFee}`}
           </button>
+
+          {!hasEnough && (
+            <div className="text-center space-y-1.5">
+              <p className="text-[11px] text-red-500 font-semibold">
+                Insufficient balance — need ₵{entryFee - walletBalance} more
+              </p>
+              <Link
+                to="/wallet"
+                className="inline-block text-xs font-semibold text-primary hover:underline"
+                onClick={onClose}
+              >
+                Top up wallet →
+              </Link>
+            </div>
+          )}
+
           <button
             onClick={onClose}
             className="w-full bg-secondary text-muted-foreground font-semibold rounded-full px-4 py-3.5 text-sm"
