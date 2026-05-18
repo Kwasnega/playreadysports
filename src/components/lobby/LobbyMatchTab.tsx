@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Check, Clock, MapPin, Wallet, Trophy, Calendar, QrCode, Camera, X,
-  CloudSun, Droplets, Flag, Star,
+  CloudSun, Droplets, Flag, Star, Users,
 } from "lucide-react";
 import { FactRow } from "./LobbyShared";
 import ReportButton from "@/components/ReportButton";
