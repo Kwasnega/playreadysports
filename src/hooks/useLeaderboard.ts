@@ -39,6 +39,7 @@ async function fetchLeaderboard(timeframe: Timeframe, city?: string | null) {
   }
 
   // Use leaderboard_mv for "all" timeframe (materialized view = fast)
+  // Falls back to profiles if the view is empty / stale.
   let q;
   if (timeframe === "all") {
     q = supabase
@@ -57,10 +58,26 @@ async function fetchLeaderboard(timeframe: Timeframe, city?: string | null) {
     q = q.order("reputation_score", { ascending: false }).limit(50);
   }
 
-  const { data, error } = await q;
+  let { data, error } = await q;
   if (error) throw new Error(error.message);
 
-  const list = (data ?? []) as LeaderboardPlayer[];
+  let list = (data ?? []) as LeaderboardPlayer[];
+
+  // Fallback: if leaderboard_mv is empty, query profiles directly
+  if (timeframe === "all" && list.length === 0) {
+    let fb = supabase
+      .from("profiles")
+      .select("id, username, full_name, avatar_url, reputation_score, total_matches_played, total_wins, city")
+      .gt("reputation_score", 0)
+      .or("role.is.null,role.neq.turf_owner")
+      .order("reputation_score", { ascending: false })
+      .limit(50);
+    if (city) fb = fb.eq("city", city);
+    const { data: fbData, error: fbErr } = await fb;
+    if (!fbErr && fbData) {
+      list = fbData as LeaderboardPlayer[];
+    }
+  }
 
   // Fetch distinct cities
   const { data: cityData } = await supabase

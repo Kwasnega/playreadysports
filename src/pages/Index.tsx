@@ -363,6 +363,15 @@ const RecommendationsRail = ({ recommendations, loading }: { recommendations: an
 
 const Index = () => {
   const [showCityPrompt, setShowCityPrompt] = useState(false);
+  const navigate = useNavigate();
+  const { isTurfOwner } = useAuth();
+
+  // Redirect turf owners straight to their dashboard
+  useEffect(() => {
+    if (isTurfOwner) {
+      navigate("/venue/dashboard", { replace: true });
+    }
+  }, [isTurfOwner, navigate]);
 
   const {
     user,

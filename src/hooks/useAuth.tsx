@@ -109,27 +109,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // re-fetch with the new access token instead of showing stale/empty data.
         _qc?.invalidateQueries();
       }
-      if (event === 'SIGNED_IN' && u) {
-        // Turf-owner guard — MUST be fire-and-forget; onAuthStateChange
-        // callbacks must not be async (Supabase deadlock risk).
-        (async () => {
-          try {
-            const { data: prof } = await supabase.from("profiles").select("role").eq("id", u.id).maybeSingle();
-            const role = (prof as any)?.role;
-            if (role === "turf_owner") {
-              await supabase.auth.signOut();
-              toast.error("Turf owners must sign in through the venue dashboard.");
-              return;
-            }
-            if (pendingActionRef.current && isVerified(u)) {
-              const pending = pendingActionRef.current;
-              pendingActionRef.current = null;
-              setTimeout(pending, 100);
-            }
-          } catch {
-            /* ignore profile lookup errors during auth transition */
-          }
-        })();
+      if (event === 'SIGNED_IN' && u && isVerified(u)) {
+        if (pendingActionRef.current) {
+          const pending = pendingActionRef.current;
+          pendingActionRef.current = null;
+          setTimeout(pending, 100);
+        }
       }
     });
     return () => {
@@ -262,13 +247,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       const u = data.user;
       if (!u) return { error: "Login failed." };
-      // Check role — turf owners must use the venue dashboard
-      const { data: prof } = await supabase.from("profiles").select("role").eq("id", u.id).maybeSingle();
-      const role = (prof as any)?.role;
-      if (role === "turf_owner") {
-        await supabase.auth.signOut();
-        return { error: "Turf owners must sign in through the venue dashboard." };
-      }
       if (!isVerified(u)) {
         setSbUser(u);
         setAuthOpen(false);
