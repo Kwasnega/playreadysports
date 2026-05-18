@@ -376,6 +376,7 @@ export default function VenueOwnerDashboard() {
     const { error } = await supabase
       .from("venues")
       .update({
+        price_per_hour: v.price_per_hour ?? null,
         surge_peak_start_hour: v.surge_peak_start_hour,
         surge_peak_end_hour: v.surge_peak_end_hour,
         surge_multiplier: v.surge_multiplier,
