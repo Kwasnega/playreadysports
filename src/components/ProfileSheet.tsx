@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, ReactNode } from "react";
-import { LogOut, User, Mail, Moon, Sun, ChevronRight, Pencil, Star, Trophy, Wallet } from "lucide-react";
+import { LogOut, User, Mail, Moon, Sun, ChevronRight, Pencil, Star, Trophy, Wallet, Calendar } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/components/ThemeToggle";
@@ -89,6 +89,11 @@ export const ProfileSheet = ({ trigger }: Props) => {
     nav("/wallet");
   };
 
+  const goToMyMatches = () => {
+    close();
+    nav("/my-matches");
+  };
+
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>{trigger}</SheetTrigger>
@@ -155,6 +160,8 @@ export const ProfileSheet = ({ trigger }: Props) => {
             <Row icon={theme === "dark" ? Moon : Sun} label="Appearance" value={theme === "dark" ? "Dark" : "Light"} onClick={toggleTheme} />
             {user && (
               <>
+                <div className="border-t border-border" />
+                <Row icon={Calendar} label="My matches" value="View organized" onClick={goToMyMatches} />
                 <div className="border-t border-border" />
                 <Row icon={Wallet} label="Wallet" value="View balance" onClick={goToWallet} />
               </>

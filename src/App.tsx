@@ -24,6 +24,7 @@ const PlayerProfile = lazy(() => import("./pages/PlayerProfile.tsx"));
 const EditProfile = lazy(() => import("./pages/EditProfile.tsx"));
 const WalletPage = lazy(() => import("./pages/Wallet.tsx"));
 const VenueOwnerDashboard = lazy(() => import("./pages/VenueOwnerDashboard.tsx"));
+const MyMatches = lazy(() => import("./pages/MyMatches.tsx"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard.tsx"));
 const AdminLayout = lazy(() => import("@/components/admin/AdminLayout"));
 const AdminOverview = lazy(() => import("@/pages/admin/AdminOverview"));
@@ -120,6 +121,7 @@ const App = () => {
                 <Route path="/player/:username" element={<PlayerProfile />} />
                 <Route path="/profile/edit" element={<EditProfile />} />
                 <Route path="/wallet" element={<WalletPage />} />
+                <Route path="/my-matches" element={<MyMatches />} />
                 <Route path="/venue/earnings" element={<VenueOwnerDashboard />} />
                 <Route path="/venue/dashboard" element={<VenueOwnerDashboard />} />
                 <Route path="/turf/owner" element={<Navigate to="/venue/dashboard" replace />} />

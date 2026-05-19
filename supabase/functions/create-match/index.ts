@@ -25,6 +25,7 @@ Deno.serve(async (req) => {
     // Create a Supabase client with the user's JWT so RLS applies
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -259,6 +260,57 @@ Deno.serve(async (req) => {
     if (participantErr) {
       console.error("Insert participant error:", participantErr);
       // Best-effort: don't fail the whole request, just log it
+    }
+
+    // ------------------------------------------------------------------
+    // 8a. Charge organizer entry fee (auto-pay on creation)
+    // ------------------------------------------------------------------
+    const svc = createClient(supabaseUrl, serviceKey);
+
+    if (entryFee > 0) {
+      const { data: walletRow } = await svc
+        .from("wallet_balances")
+        .select("balance")
+        .eq("user_id", user.id)
+        .single();
+
+      const currentBalance = Number(walletRow?.balance ?? 0);
+      if (currentBalance < entryFee) {
+        // Rollback: remove match and participant so the user isn't left with an unpaid match
+        await svc.from("match_participants").delete().eq("match_id", match.id).eq("user_id", user.id);
+        await svc.from("matches").delete().eq("id", match.id);
+        return new Response(
+          JSON.stringify({ error: `Insufficient wallet balance. You need ₵${entryFee} to create this match. Please top up your wallet.` }),
+          { status: 402, headers: { ...getCorsHeaders(), "Content-Type": "application/json" } },
+        );
+      }
+
+      // Deduct fee
+      await svc
+        .from("wallet_balances")
+        .update({ balance: currentBalance - entryFee })
+        .eq("user_id", user.id);
+
+      // Log spend transaction
+      await svc.from("wallet_transactions").insert({
+        user_id: user.id,
+        amount: -entryFee,
+        type: "spend" as any,
+        reference: `create_match_${match.id}_${Date.now()}`,
+        status: "completed" as any,
+      });
+
+      // Mark organizer as paid and increment paid count
+      await svc
+        .from("match_participants")
+        .update({ payment_status: "paid" as any })
+        .eq("match_id", match.id)
+        .eq("user_id", user.id);
+
+      await svc
+        .from("matches")
+        .update({ core_paid_count: 1 })
+        .eq("id", match.id);
     }
 
     // ------------------------------------------------------------------
