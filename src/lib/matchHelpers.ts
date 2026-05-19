@@ -131,3 +131,98 @@ export function getGalaMaxTeams(match: HomeMatch): number {
   const max = match.max_core_players ?? side * 2;
   return Math.max(2, Math.floor(max / side));
 }
+
+/* ──────────── Venue operating hours helpers ──────────── */
+
+/** Parse a "HH:MM" or "HH:MM:SS" string into total minutes since midnight. */
+function timeToMinutes(t: string): number {
+  const [h, m] = t.split(":").map(Number);
+  return (h ?? 0) * 60 + (m ?? 0);
+}
+
+/** Format a "HH:MM:SS" time string to "6:00 AM" style for display. */
+function formatTimeStr(t: string): string {
+  const [h, m] = t.split(":").map(Number);
+  const suffix = (h ?? 0) >= 12 ? "PM" : "AM";
+  const h12 = (h ?? 0) % 12 || 12;
+  return `${h12}:${String(m ?? 0).padStart(2, "0")} ${suffix}`;
+}
+
+/**
+ * Determine whether a venue is currently open based on its
+ * structured `open_time` and `close_time` fields.
+ *
+ * Returns { isOpen, label } where label is e.g.
+ * "Open · until 11:00 PM" or "Closed · opens 6:00 AM".
+ * If the venue has no hours set we assume always open.
+ */
+export function isVenueOpen(
+  venue: { open_time?: string | null; close_time?: string | null },
+  now = new Date(),
+): { isOpen: boolean; label: string } {
+  if (!venue.open_time || !venue.close_time) {
+    return { isOpen: true, label: "Open" };
+  }
+
+  const openMin = timeToMinutes(venue.open_time);
+  const closeMin = timeToMinutes(venue.close_time);
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+
+  const openLabel = formatTimeStr(venue.open_time);
+  const closeLabel = formatTimeStr(venue.close_time);
+
+  // Normal range (e.g. 06:00 – 23:00)
+  if (openMin <= closeMin) {
+    const isOpen = nowMin >= openMin && nowMin < closeMin;
+    return {
+      isOpen,
+      label: isOpen ? `Open · until ${closeLabel}` : `Closed · opens ${openLabel}`,
+    };
+  }
+
+  // Overnight range (e.g. 22:00 – 06:00)
+  const isOpen = nowMin >= openMin || nowMin < closeMin;
+  return {
+    isOpen,
+    label: isOpen ? `Open · until ${closeLabel}` : `Closed · opens ${openLabel}`,
+  };
+}
+
+/**
+ * Format venue hours into a display string like "6:00 AM – 11:00 PM".
+ * Falls back to the free-text opening_hours if no structured times.
+ */
+export function formatVenueHours(
+  venue: { open_time?: string | null; close_time?: string | null; opening_hours?: string | null },
+): string | null {
+  if (venue.open_time && venue.close_time) {
+    return `${formatTimeStr(venue.open_time)} – ${formatTimeStr(venue.close_time)}`;
+  }
+  return venue.opening_hours ?? null;
+}
+
+/**
+ * Return the array of valid kickoff hours constrained to a venue's operating window.
+ * If no venue hours, returns 0-23 (all hours).
+ */
+export function getVenueHours(
+  venue?: { open_time?: string | null; close_time?: string | null } | null,
+): number[] {
+  if (!venue?.open_time || !venue?.close_time) {
+    return Array.from({ length: 24 }, (_, i) => i);
+  }
+
+  const openH = parseInt(venue.open_time.split(":")[0], 10);
+  const closeH = parseInt(venue.close_time.split(":")[0], 10);
+
+  // Normal range
+  if (openH <= closeH) {
+    return Array.from({ length: closeH - openH + 1 }, (_, i) => openH + i);
+  }
+
+  // Overnight range (e.g. 22 – 6 → [22,23,0,1,2,3,4,5,6])
+  const hours: number[] = [];
+  for (let h = openH; h < 24; h++) hours.push(h);
+  for (let h = 0; h <= closeH; h++) hours.push(h);
+  return hours;
+}

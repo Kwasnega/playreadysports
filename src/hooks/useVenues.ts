@@ -18,6 +18,8 @@ export type Venue = {
   amenities: string[] | null;
   description: string | null;
   opening_hours: string | null;
+  open_time: string | null;
+  close_time: string | null;
   is_active: boolean;
   image_urls: string[] | null;
 };

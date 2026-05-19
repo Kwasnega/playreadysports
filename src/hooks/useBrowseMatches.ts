@@ -32,6 +32,8 @@ export type BrowseMatch = {
     area: string | null;
     lat: number | null;
     lng: number | null;
+    open_time: string | null;
+    close_time: string | null;
   } | null;
   organizer: {
     id: string;
@@ -114,7 +116,7 @@ export function useBrowseMatches(filters: BrowseFilters) {
         .select(
           `
           *,
-          venue:venues(id, name, city, area, lat, lng),
+          venue:venues(id, name, city, area, lat, lng, open_time, close_time),
           participants:match_participants(id, status, team, slot_type, payment_status)
         `
         )

@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
     // ------------------------------------------------------------------
     const { data: venue, error: venueErr } = await supabase
       .from("venues")
-      .select("city, owner_id, owner_email")
+      .select("city, owner_id, owner_email, open_time, close_time")
       .eq("id", venueId)
       .single();
 
@@ -126,12 +126,39 @@ Deno.serve(async (req) => {
     }
 
     // ------------------------------------------------------------------
-    // 4b. Check for blockout overlap
+    // 4b. Check venue operating hours
+    // ------------------------------------------------------------------
+    if (venue.open_time && venue.close_time) {
+      const kickoffTime = kickoff.toTimeString().slice(0, 8);
+      const matchEnd = new Date(kickoff.getTime() + (durationMinutes ?? 60) * 60_000);
+      const endTime = matchEnd.toTimeString().slice(0, 8);
+
+      const openMin = (venue.open_time.split(":").map(Number)[0] ?? 0) * 60 + (venue.open_time.split(":").map(Number)[1] ?? 0);
+      const closeMin = (venue.close_time.split(":").map(Number)[0] ?? 0) * 60 + (venue.close_time.split(":").map(Number)[1] ?? 0);
+      const startMin = kickoff.getHours() * 60 + kickoff.getMinutes();
+      const endMin = matchEnd.getHours() * 60 + matchEnd.getMinutes();
+
+      const withinHours = openMin <= closeMin
+        ? (startMin >= openMin && endMin <= closeMin)
+        : (startMin >= openMin || endMin <= closeMin);
+
+      if (!withinHours) {
+        return new Response(JSON.stringify({
+          error: `This venue is only open ${venue.open_time.slice(0, 5)} – ${venue.close_time.slice(0, 5)}. Your match (${kickoffTime.slice(0, 5)} – ${endTime.slice(0, 5)}) falls outside these hours.`,
+        }), {
+          status: 409,
+          headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    // ------------------------------------------------------------------
+    // 4c. Check for blockout overlap
     // ------------------------------------------------------------------
     const kickoffDate = kickoff.toISOString().split("T")[0];
-    const kickoffTime = kickoff.toTimeString().slice(0, 8); // HH:MM:SS
-    const matchEnd = new Date(kickoff.getTime() + (durationMinutes ?? 60) * 60_000);
-    const endTime = matchEnd.toTimeString().slice(0, 8);
+    const blockoutKickoffTime = kickoff.toTimeString().slice(0, 8); // HH:MM:SS
+    const blockoutMatchEnd = new Date(kickoff.getTime() + (durationMinutes ?? 60) * 60_000);
+    const blockoutEndTime = blockoutMatchEnd.toTimeString().slice(0, 8);
 
     const { data: blockouts } = await supabase
       .from("venue_blockouts")
@@ -150,7 +177,7 @@ Deno.serve(async (req) => {
         });
       }
       // Partial blockout — check overlap
-      if (kickoffTime < b.end_time && endTime > b.start_time) {
+      if (blockoutKickoffTime < b.end_time && blockoutEndTime > b.start_time) {
         return new Response(JSON.stringify({
           error: `This venue is blocked from ${b.start_time} to ${b.end_time} on ${kickoffDate}${b.reason ? ` — ${b.reason}` : ""}. Please pick another time.`
         }), {

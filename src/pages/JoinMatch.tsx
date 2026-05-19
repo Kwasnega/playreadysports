@@ -15,6 +15,7 @@ import {
   getDistanceKm,
   getSpotsLeft,
   getActiveCoreCount,
+  isVenueOpen,
 } from "@/lib/matchHelpers";
 
 /* Tier-2 Join flow rewrite — now wired to Supabase ---------------------- */
@@ -280,7 +281,17 @@ const FeedRow = ({ m, user, onTap }: { m: BrowseMatch; user: any; onTap: () => v
             </p>
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-base font-semibold truncate leading-tight">{venueName}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-base font-semibold truncate leading-tight">{venueName}</p>
+              {m.venue && (() => {
+                const { isOpen, label } = isVenueOpen(m.venue);
+                return (
+                  <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${isOpen ? "bg-emerald-500/10 text-emerald-600" : "bg-red-500/10 text-red-600"}`}>
+                    {label}
+                  </span>
+                );
+              })()}
+            </div>
             <p className="text-sm text-muted-foreground truncate mt-0.5">
               {area} · {m.format} · ₵{Number(m.entry_fee)}
             </p>
@@ -373,6 +384,14 @@ const JoinSheet = ({
               <SheetTitle className="font-display font-bold text-2xl tracking-tight mt-3">
                 {match.venue?.name ?? "Venue"}
               </SheetTitle>
+              {match.venue && (() => {
+                const { isOpen, label } = isVenueOpen(match.venue);
+                return (
+                  <span className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full mt-1 ${isOpen ? "bg-emerald-500/10 text-emerald-600" : "bg-red-500/10 text-red-600"}`}>
+                    {label}
+                  </span>
+                );
+              })()}
               <div className="grid grid-cols-2 gap-y-2 text-xs text-muted-foreground mt-1">
                 <div className="inline-flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {getFormattedTime(match.match_date)}</div>
                 <div className="inline-flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> {match.venue?.area ?? match.venue?.city ?? ""}</div>

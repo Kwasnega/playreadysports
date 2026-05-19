@@ -9,7 +9,7 @@ import { useVenues } from "@/hooks/useVenues";
 import { useUserLocation } from "@/hooks/useUserLocation";
 import { useCreateMatch } from "@/hooks/useCreateMatch";
 import { useAuth } from "@/hooks/useAuth";
-import { getDistanceKm, getFormattedTime, extractFormatNumber } from "@/lib/matchHelpers";
+import { getDistanceKm, getFormattedTime, extractFormatNumber, getVenueHours, isVenueOpen } from "@/lib/matchHelpers";
 import { format } from "date-fns";
 import { ShareMatchCard, ShareMatchData } from "@/components/matches/ShareMatchCard";
 
@@ -36,7 +36,7 @@ const TEAM_COLOR_PRESETS: { a: string; b: string; labelA: string; labelB: string
 
 const STEP_LABELS = ["Setup", "Venue", "Details"] as const;
 
-const HOURS = Array.from({ length: 14 }, (_, i) => i + 8); // 08–21
+const DEFAULT_HOURS = Array.from({ length: 24 }, (_, i) => i);
 const MINUTES = [0, 15, 30, 45];
 
 const DURATIONS = [60, 90, 120];
@@ -75,6 +75,7 @@ const CreateMatch = () => {
   const [teamColorIdx, setTeamColorIdx] = useState(0);
 
   const selectedVenue = venues.find((v) => v.id === venueId);
+  const hours = useMemo(() => getVenueHours(selectedVenue), [selectedVenue]);
 
   const basePerPlayer = useMemo(() => {
     const price = (selectedVenue as any)?.price_per_hour;
@@ -130,6 +131,17 @@ const CreateMatch = () => {
       const d = new Date(matchDate);
       d.setHours(matchHour, matchMinute, 0, 0);
       if (d.getTime() <= Date.now()) return false;
+      // Ensure match end time does not exceed venue close time
+      if (selectedVenue?.close_time) {
+        const endDate = new Date(d);
+        endDate.setMinutes(endDate.getMinutes() + duration);
+        const closeMin = (() => {
+          const [h, m] = selectedVenue.close_time.split(":").map(Number);
+          return (h ?? 0) * 60 + (m ?? 0);
+        })();
+        const endMin = endDate.getHours() * 60 + endDate.getMinutes();
+        if (endMin > closeMin) return false;
+      }
       return true;
     }
     return false;
@@ -310,7 +322,17 @@ const CreateMatch = () => {
                           </div>
                         )}
                         <div className="min-w-0 flex-1">
-                          <p className="text-base font-semibold truncate">{v.name}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-base font-semibold truncate">{v.name}</p>
+                            {(() => {
+                              const { isOpen, label } = isVenueOpen(v);
+                              return (
+                                <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${isOpen ? "bg-emerald-500/10 text-emerald-600" : "bg-red-500/10 text-red-600"}`}>
+                                  {label}
+                                </span>
+                              );
+                            })()}
+                          </div>
                           <p className="text-xs text-muted-foreground mt-0.5 truncate flex items-center gap-1.5">
                             {v.area ?? v.city ?? ""}
                             {km && <span className="mx-1">·</span>}
@@ -455,7 +477,7 @@ const CreateMatch = () => {
                   onChange={(e) => setMatchHour(Number(e.target.value))}
                   className="flex-1 bg-secondary rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground appearance-none"
                 >
-                  {HOURS.map((h) => (
+                  {hours.map((h) => (
                     <option key={h} value={h}>{String(h).padStart(2, "0")}</option>
                   ))}
                 </select>
@@ -470,6 +492,23 @@ const CreateMatch = () => {
                   ))}
                 </select>
               </div>
+              {selectedVenue?.close_time && (() => {
+                const [h, m] = selectedVenue.close_time.split(":").map(Number);
+                const closeMin = (h ?? 0) * 60 + (m ?? 0);
+                const startMin = matchHour * 60 + matchMinute;
+                const endMin = startMin + duration;
+                if (endMin > closeMin) {
+                  const overrun = endMin - closeMin;
+                  const overrunH = Math.floor(overrun / 60);
+                  const overrunM = overrun % 60;
+                  return (
+                    <p className="text-[11px] text-red-600 font-semibold mt-2">
+                      Match ends {overrunH > 0 ? `${overrunH}h ` : ""}{overrunM > 0 ? `${overrunM}m ` : ""}after closing ({selectedVenue.close_time.slice(0, 5)}). Pick an earlier time or shorter duration.
+                    </p>
+                  );
+                }
+                return null;
+              })()}
             </div>
 
             {/* Duration */}

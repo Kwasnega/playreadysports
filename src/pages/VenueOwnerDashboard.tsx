@@ -34,6 +34,8 @@ interface VenueRow {
   price_per_hour?: number | null;
   capacity?: number | null;
   opening_hours?: string | null;
+  open_time?: string | null;
+  close_time?: string | null;
   contact_phone?: string | null;
   amenities?: string[];
   surge_peak_start_hour: number | null;
@@ -207,6 +209,8 @@ export default function VenueOwnerDashboard() {
     lat: "",
     lng: "",
     opening_hours: "",
+    open_time: "",
+    close_time: "",
     selectedAmenities: [] as string[],
     customAmenities: "",
   });
@@ -298,7 +302,7 @@ export default function VenueOwnerDashboard() {
       const { data: vens } = await supabase
         .from("venues")
         .select(
-          "id, name, status, city, area, price_per_hour, capacity, opening_hours, contact_phone, amenities, surge_peak_start_hour, surge_peak_end_hour, surge_multiplier",
+          "id, name, status, city, area, price_per_hour, capacity, opening_hours, open_time, close_time, contact_phone, amenities, surge_peak_start_hour, surge_peak_end_hour, surge_multiplier",
         )
         .eq("owner_email", user.email);
 
@@ -543,6 +547,8 @@ export default function VenueOwnerDashboard() {
       lat: venueForm.lat ? parseFloat(venueForm.lat) : null,
       lng: venueForm.lng ? parseFloat(venueForm.lng) : null,
       opening_hours: venueForm.opening_hours.trim() || null,
+      open_time: venueForm.open_time.trim() || null,
+      close_time: venueForm.close_time.trim() || null,
       amenities: amenitiesArr.length ? amenitiesArr : null,
       is_active: true,
       status: "pending",
@@ -560,7 +566,7 @@ export default function VenueOwnerDashboard() {
     setVenueForm({
       name: "", city: "", area: "", address: "", surface: "",
       description: "", contact_phone: "", price_per_hour: "", capacity: "",
-      lat: "", lng: "", opening_hours: "", selectedAmenities: [], customAmenities: "",
+      lat: "", lng: "", opening_hours: "", open_time: "", close_time: "", selectedAmenities: [], customAmenities: "",
     });
     setVenueImages([]);
     load();
@@ -770,6 +776,11 @@ export default function VenueOwnerDashboard() {
             <p className="text-[11px] text-muted-foreground">
               Peak window uses the hour of day in each player&apos;s browser when they schedule — good enough for a first pass.
             </p>
+            {v.open_time && v.close_time && (
+              <p className="text-[11px] font-semibold text-foreground">
+                Hours: {v.open_time.slice(0, 5)} – {v.close_time.slice(0, 5)}
+              </p>
+            )}
 
             {/* Pricing — simplified */}
             <div className="space-y-4">
@@ -1198,13 +1209,22 @@ export default function VenueOwnerDashboard() {
                 onChange={(e) => setVenueForm((f) => ({ ...f, contact_phone: e.target.value }))}
                 className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-foreground/20"
               />
-              <input
-                type="text"
-                placeholder="Opening hours (e.g. Mon–Fri 6am–10pm)"
-                value={venueForm.opening_hours}
-                onChange={(e) => setVenueForm((f) => ({ ...f, opening_hours: e.target.value }))}
-                className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-foreground/20"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="time"
+                  placeholder="Opens"
+                  value={venueForm.open_time}
+                  onChange={(e) => setVenueForm((f) => ({ ...f, open_time: e.target.value }))}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-foreground/20"
+                />
+                <input
+                  type="time"
+                  placeholder="Closes"
+                  value={venueForm.close_time}
+                  onChange={(e) => setVenueForm((f) => ({ ...f, close_time: e.target.value }))}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-foreground/20"
+                />
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <input
