@@ -76,6 +76,13 @@ async function fetchHomeMatches(cursor?: string): Promise<HomeMatch[]> {
 
   if (error) {
     console.error("useHomeMatches error:", error);
+    // If the user is logged out and RLS blocks the query, return empty
+    // instead of crashing the entire feed.
+    const code = (error as any).code ?? "";
+    const status = (error as any).status ?? 0;
+    if (status === 401 || status === 403 || code === "PGRST301") {
+      return [];
+    }
     throw new Error(error.message);
   }
 
