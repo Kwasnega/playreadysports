@@ -182,6 +182,9 @@ export default function VenueOwnerCalendar({
           <span className="flex items-center gap-1 text-[10px] text-muted-foreground font-semibold">
             <span className="w-2 h-2 rounded-full bg-blue-500" /> Completed
           </span>
+          <span className="flex items-center gap-1 text-[10px] text-muted-foreground font-semibold">
+            <span className="w-2 h-2 rounded-full bg-red-500" /> Cancelled
+          </span>
         </div>
 
         {/* Weekday headers */}
@@ -198,6 +201,7 @@ export default function VenueOwnerCalendar({
           {calendarDays.map((cell, i) => {
             const hasUpcoming = cell.matches.some((m) => m.status === "upcoming" || m.status === "live");
             const hasCompleted = cell.matches.some((m) => m.status === "completed");
+            const hasCancelled = cell.matches.some((m) => m.status === "cancelled");
             return (
               <button
                 key={i}
@@ -216,6 +220,7 @@ export default function VenueOwnerCalendar({
                 <div className="flex gap-0.5 mt-1">
                   {hasUpcoming && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
                   {hasCompleted && <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
+                  {hasCancelled && <span className="w-1.5 h-1.5 rounded-full bg-red-500" />}
                 </div>
                 {cell.matches.length > 0 && cell.inMonth && (
                   <span className="absolute bottom-0.5 right-1 text-[9px] font-bold text-muted-foreground">
@@ -249,6 +254,7 @@ export default function VenueOwnerCalendar({
               {selectedDay?.matches.map((m) => {
                 const escrow = (Number(m.entry_fee) || 0) * (Number(m.core_paid_count) || 0);
                 const isCompleted = m.status === "completed";
+                const isCancelled = m.status === "cancelled";
                 return (
                   <div key={m.id} className="rounded-xl border border-border/50 p-3 space-y-1.5">
                     <div className="flex items-center justify-between">
@@ -256,6 +262,8 @@ export default function VenueOwnerCalendar({
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                         isCompleted
                           ? "bg-blue-500/10 text-blue-500"
+                          : isCancelled
+                          ? "bg-red-500/10 text-red-500"
                           : m.status === "live"
                           ? "bg-amber-500/10 text-amber-500"
                           : "bg-emerald-500/10 text-emerald-500"
@@ -286,7 +294,7 @@ export default function VenueOwnerCalendar({
                         >
                           Lobby
                         </button>
-                        {!isCompleted && (
+                        {!isCompleted && !isCancelled && (
                           <>
                             <button
                               onClick={() => onOpenRoster(m)}

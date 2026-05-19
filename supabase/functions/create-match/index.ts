@@ -109,11 +109,11 @@ Deno.serve(async (req) => {
     }
 
     // ------------------------------------------------------------------
-    // 4. Fetch venue city for code prefix
+    // 4. Fetch venue details for code prefix, blockout check, and turf owner
     // ------------------------------------------------------------------
     const { data: venue, error: venueErr } = await supabase
       .from("venues")
-      .select("city")
+      .select("city, owner_id, owner_email")
       .eq("id", venueId)
       .single();
 
@@ -122,6 +122,41 @@ Deno.serve(async (req) => {
         status: 404,
         headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
+    }
+
+    // ------------------------------------------------------------------
+    // 4b. Check for blockout overlap
+    // ------------------------------------------------------------------
+    const kickoffDate = kickoff.toISOString().split("T")[0];
+    const kickoffTime = kickoff.toTimeString().slice(0, 8); // HH:MM:SS
+    const matchEnd = new Date(kickoff.getTime() + (durationMinutes ?? 60) * 60_000);
+    const endTime = matchEnd.toTimeString().slice(0, 8);
+
+    const { data: blockouts } = await supabase
+      .from("venue_blockouts")
+      .select("block_date, start_time, end_time, reason")
+      .eq("venue_id", venueId)
+      .eq("block_date", kickoffDate);
+
+    for (const b of blockouts ?? []) {
+      // Full-day blockout (no start/end times)
+      if (!b.start_time || !b.end_time) {
+        return new Response(JSON.stringify({
+          error: `This venue is blocked on ${kickoffDate}${b.reason ? ` — ${b.reason}` : ""}. Please pick another date or time.`
+        }), {
+          status: 409,
+          headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        });
+      }
+      // Partial blockout — check overlap
+      if (kickoffTime < b.end_time && endTime > b.start_time) {
+        return new Response(JSON.stringify({
+          error: `This venue is blocked from ${b.start_time} to ${b.end_time} on ${kickoffDate}${b.reason ? ` — ${b.reason}` : ""}. Please pick another time.`
+        }), {
+          status: 409,
+          headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        });
+      }
     }
 
     const cityPrefixMap: Record<string, string> = {
@@ -224,6 +259,29 @@ Deno.serve(async (req) => {
     if (participantErr) {
       console.error("Insert participant error:", participantErr);
       // Best-effort: don't fail the whole request, just log it
+    }
+
+    // ------------------------------------------------------------------
+    // 8b. Auto-add turf owner as participant (for lobby chat visibility)
+    // ------------------------------------------------------------------
+    let turfOwnerId: string | null = venue.owner_id ?? null;
+    if (!turfOwnerId && venue.owner_email) {
+      const { data: ownerProf } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("email", venue.owner_email.trim())
+        .maybeSingle();
+      turfOwnerId = ownerProf?.id ?? null;
+    }
+    if (turfOwnerId && turfOwnerId !== user.id) {
+      await supabase.from("match_participants").insert({
+        match_id: match.id,
+        user_id: turfOwnerId,
+        slot_type: "turf_owner" as any,
+        team: "unassigned" as any,
+        status: "active" as any,
+        payment_status: "exempt" as any,
+      });
     }
 
     // ------------------------------------------------------------------

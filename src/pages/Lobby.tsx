@@ -442,7 +442,12 @@ const Lobby = () => {
         )}
 
         {tab === "chat" && match && userParticipant && (
-          <LobbyChat matchCode={matchCode} matchId={match.id} isOrganizer={isOrganizer} />
+          <LobbyChat
+            matchCode={matchCode}
+            matchId={match.id}
+            isOrganizer={isOrganizer}
+            turfOwners={useMemo(() => new Set(activeParticipants.filter((p: any) => p.slot_type === "turf_owner").map((p: any) => p.user_id)), [activeParticipants])}
+          />
         )}
       </div>
 

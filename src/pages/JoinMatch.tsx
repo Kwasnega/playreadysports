@@ -208,14 +208,14 @@ const JoinMatch = () => {
                   <div className="flex-1 h-px bg-border/60" />
                 </div>
                 <ul className="space-y-3">
-                  {g.items.map(m => <FeedRow key={m.id} m={m} onTap={() => setActive(m.id)} />)}
+                  {g.items.map(m => <FeedRow key={m.id} m={m} user={user} onTap={() => setActive(m.id)} />)}
                 </ul>
               </section>
             ))}
           </div>
         ) : (
           <ul className="space-y-3">
-            {matches.map(m => <FeedRow key={m.id} m={m} onTap={() => setActive(m.id)} />)}
+            {matches.map(m => <FeedRow key={m.id} m={m} user={user} onTap={() => setActive(m.id)} />)}
           </ul>
         )}
       </div>
@@ -245,7 +245,7 @@ const splitTime = (t: string): { when: string; time: string } => {
   return { when: "", time: t };
 };
 
-const FeedRow = ({ m, onTap }: { m: BrowseMatch; onTap: () => void }) => {
+const FeedRow = ({ m, user, onTap }: { m: BrowseMatch; user: any; onTap: () => void }) => {
   const filled = getActiveCoreCount(m);
   const max = m.max_core_players ?? m.players_per_side ?? 10;
   const left = getSpotsLeft(m);
@@ -264,6 +264,7 @@ const FeedRow = ({ m, onTap }: { m: BrowseMatch; onTap: () => void }) => {
   const organizerAvatar = m.organizer?.avatar_url ?? "";
   const organizerRating = m.organizer?.reputation_score ?? 5.0;
   const isConfirmed = m.core_paid_count >= max;
+  const isOrganizer = user?.id && m.organizer_id === user.id;
 
   return (
     <li>
@@ -288,6 +289,11 @@ const FeedRow = ({ m, onTap }: { m: BrowseMatch; onTap: () => void }) => {
                 <img src={organizerAvatar} alt={organizerName} className="w-5 h-5 rounded-full object-cover ring-1 ring-border/60" />
               )}
               <span className="text-xs font-medium text-foreground/80">{organizerName}</span>
+              {isOrganizer && (
+                <span className="inline-flex items-center gap-0.5 rounded-full bg-primary/10 text-primary px-1.5 py-0.5 text-[10px] font-bold">
+                  You
+                </span>
+              )}
               <span className="text-muted-foreground text-xs">·</span>
               <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
               <span className="text-xs font-semibold text-foreground/80">{organizerRating.toFixed(1)}</span>
@@ -439,24 +445,34 @@ const JoinSheet = ({
             </section>
 
             <div className="sticky bottom-0 bg-background/95 backdrop-blur-md border-t border-border px-5 py-3">
-              <button
-                onClick={() => {
-                  if (match.match_type !== "private" && match.match_mode !== "gala") {
-                    // Public auto-assign: join without team selection
-                    if (!user) { openAuth("signin"); return; }
-                    onJoin("__auto__");
-                  } else {
-                    handleJoin();
-                  }
-                }}
-                disabled={match.match_type === "private" && !picked}
-                className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-full bg-foreground text-background text-sm font-semibold disabled:opacity-40 active:scale-[0.99]"
-              >
-                {match.match_type !== "private" && match.match_mode !== "gala"
-                  ? "Join match"
-                  : picked ? `Join as ${picked === "__bring__" ? "captain" : picked}` : "Pick a team to join"}
-                <ArrowRight className="w-4 h-4" />
-              </button>
+              {user?.id && match.organizer_id === user.id ? (
+                <button
+                  onClick={() => { navigate(`/lobby/${match.join_code}`); }}
+                  className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-full bg-primary text-primary-foreground text-sm font-semibold active:scale-[0.99]"
+                >
+                  Manage match
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    if (!user) { openAuth(); return; }
+                    if (match.match_mode === "gala" || match.match_type === "private") {
+                      if (!picked) return;
+                      onJoin(picked === "__bring__" ? "__bring__" : picked);
+                    } else {
+                      onJoin(resolvedTeam);
+                    }
+                  }}
+                  disabled={busy || (!!picked && false) || (match.match_mode === "gala" || match.match_type === "private" ? !picked : false)}
+                  className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-full bg-foreground text-background text-sm font-semibold disabled:opacity-40 active:scale-[0.99]"
+                >
+                  {match.match_type !== "private" && match.match_mode !== "gala"
+                    ? "Join match"
+                    : picked ? `Join as ${picked === "__bring__" ? "captain" : picked}` : "Pick a team to join"}
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </>
         )}

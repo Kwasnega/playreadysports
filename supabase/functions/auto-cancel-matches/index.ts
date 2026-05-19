@@ -38,14 +38,26 @@ Deno.serve(async (req) => {
     const windowStart = new Date(now.getTime() + (windowMinutes - 1) * 60 * 1000);
 
     // Find upcoming matches kicking off inside the window
-    const { data: candidates } = await svc
+    const { data: windowCandidates } = await svc
       .from("matches")
       .select("id, join_code, match_date, organizer_id, entry_fee, max_core_players, core_paid_count, venue:venues(name, id)")
       .eq("status", "upcoming")
       .gte("match_date", windowStart.toISOString())
       .lte("match_date", windowEnd.toISOString());
 
-    if (!candidates || candidates.length === 0) {
+    // Also find upcoming matches whose kickoff has ALREADY PASSED (expired)
+    const { data: expiredCandidates } = await svc
+      .from("matches")
+      .select("id, join_code, match_date, organizer_id, entry_fee, max_core_players, core_paid_count, venue:venues(name, id)")
+      .eq("status", "upcoming")
+      .lt("match_date", now.toISOString());
+
+    const candidates = [
+      ...(windowCandidates ?? []),
+      ...(expiredCandidates ?? []),
+    ];
+
+    if (candidates.length === 0) {
       return new Response(JSON.stringify({ cancelled: 0, checked: 0 }), {
         headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });

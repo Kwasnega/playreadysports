@@ -26,13 +26,14 @@ const colorFor = (id: string) => {
   return NAME_PALETTE[h % NAME_PALETTE.length];
 };
 
-export const LobbyChat = ({ matchCode, matchId, isOrganizer = true, teamColorA, teamColorB, playerTeams }: {
+export const LobbyChat = ({ matchCode, matchId, isOrganizer = true, teamColorA, teamColorB, playerTeams, turfOwners }: {
   matchCode: string;
   matchId?: string;
   isOrganizer?: boolean;
   teamColorA?: string;
   teamColorB?: string;
   playerTeams?: Record<string, string>;
+  turfOwners?: Set<string>;
 }) => {
   const { user } = useAuth();
   const { messages, loading, loadingMore, hasMore, loadMore, sendMessage, scrollRef } = useLobbyChat(matchId);
@@ -173,6 +174,7 @@ export const LobbyChat = ({ matchCode, matchId, isOrganizer = true, teamColorA, 
               const playerTeam = playerTeams?.[m.sender_id];
               const teamHex = playerTeam ? TEAM_HEX[playerTeam.toLowerCase()] : undefined;
               const nameColor = teamHex ? undefined : colorFor(m.sender_id);
+              const isTurfOwner = turfOwners?.has(m.sender_id) ?? false;
               return (
                 <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                   <div
@@ -189,12 +191,19 @@ export const LobbyChat = ({ matchCode, matchId, isOrganizer = true, teamColorA, 
                     } ${m.id === pinnedId ? "ring-1 ring-primary" : ""}`}
                   >
                     {!mine && (
-                      <p
-                        className={`text-[11px] font-bold mb-0.5 ${nameColor ?? ""}`}
-                        style={teamHex ? { color: teamHex } : undefined}
-                      >
-                        {m.sender_name}
-                      </p>
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <p
+                          className={`text-[11px] font-bold ${nameColor ?? ""}`}
+                          style={teamHex ? { color: teamHex } : undefined}
+                        >
+                          {m.sender_name}
+                        </p>
+                        {isTurfOwner && (
+                          <span className="inline-flex items-center rounded-full bg-amber-500/15 text-amber-600 px-1 py-0 text-[9px] font-bold tracking-wider uppercase">
+                            Turf Owner
+                          </span>
+                        )}
+                      </div>
                     )}
                     <p className="text-sm leading-snug whitespace-pre-wrap break-words">{m.content}</p>
                     {actionFor === m.id && isOrganizer && (

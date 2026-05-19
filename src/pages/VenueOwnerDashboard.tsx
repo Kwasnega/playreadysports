@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowLeft, MapPin, Wallet, Calendar,
-  TrendingUp, Clock, Building2, Plus, X, Upload,
+  TrendingUp, Clock, Building2, Plus, X, Upload, Shield,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -76,6 +76,16 @@ interface RosterPlayer {
   team: string;
   attendance_scanned: boolean;
   profiles: { full_name: string | null; username: string | null; avatar_url: string | null } | null;
+}
+
+interface VenueBlockout {
+  id: string;
+  venue_id: string;
+  block_date: string;
+  start_time: string | null;
+  end_time: string | null;
+  reason: string | null;
+  created_at: string;
 }
 
 function startOfLocalDay(d: Date) {
@@ -203,6 +213,73 @@ export default function VenueOwnerDashboard() {
   const [venueImages, setVenueImages] = useState<string[]>([]);
   const [venueUploading, setVenueUploading] = useState(false);
   const [addingVenue, setAddingVenue] = useState(false);
+
+  /* ─── Blockout management ─── */
+  const [blockoutOpen, setBlockoutOpen] = useState(false);
+  const [blockoutVenueId, setBlockoutVenueId] = useState<string | null>(null);
+  const [blockouts, setBlockouts] = useState<VenueBlockout[]>([]);
+  const [blockoutDate, setBlockoutDate] = useState(() => {
+    const d = new Date();
+    return d.toISOString().split("T")[0];
+  });
+  const [blockoutStart, setBlockoutStart] = useState("06:00");
+  const [blockoutEnd, setBlockoutEnd] = useState("23:00");
+  const [blockoutReason, setBlockoutReason] = useState("");
+  const [blockoutFullDay, setBlockoutFullDay] = useState(true);
+  const [savingBlockout, setSavingBlockout] = useState(false);
+
+  const fetchBlockouts = useCallback(async (venueId: string) => {
+    const { data, error } = await supabase
+      .from("venue_blockouts")
+      .select("id, venue_id, block_date, start_time, end_time, reason, created_at")
+      .eq("venue_id", venueId)
+      .order("block_date", { ascending: true });
+    if (error) {
+      console.error("fetchBlockouts error:", error);
+      return;
+    }
+    setBlockouts((data ?? []) as VenueBlockout[]);
+  }, []);
+
+  const addBlockout = async () => {
+    if (!blockoutVenueId || !blockoutDate) return;
+    setSavingBlockout(true);
+    const { error } = await supabase.from("venue_blockouts").insert({
+      venue_id: blockoutVenueId,
+      block_date: blockoutDate,
+      start_time: blockoutFullDay ? null : blockoutStart,
+      end_time: blockoutFullDay ? null : blockoutEnd,
+      reason: blockoutReason.trim() || null,
+    });
+    setSavingBlockout(false);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success("Blockout added");
+      setBlockoutDate(() => { const d = new Date(); return d.toISOString().split("T")[0]; });
+      setBlockoutStart("06:00");
+      setBlockoutEnd("23:00");
+      setBlockoutReason("");
+      setBlockoutFullDay(true);
+      fetchBlockouts(blockoutVenueId);
+    }
+  };
+
+  const removeBlockout = async (id: string) => {
+    const { error } = await supabase.from("venue_blockouts").delete().eq("id", id);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success("Blockout removed");
+      if (blockoutVenueId) fetchBlockouts(blockoutVenueId);
+    }
+  };
+
+  const openBlockoutModal = (venueId: string) => {
+    setBlockoutVenueId(venueId);
+    fetchBlockouts(venueId);
+    setBlockoutOpen(true);
+  };
 
   const load = useCallback(async () => {
     if (!user?.email) {
@@ -764,6 +841,14 @@ export default function VenueOwnerDashboard() {
             >
               Save pricing
             </button>
+
+            <button
+              type="button"
+              onClick={() => openBlockoutModal(v.id)}
+              className="w-full rounded-full border border-border bg-secondary text-foreground text-xs font-semibold py-2.5 flex items-center justify-center gap-2"
+            >
+              <Shield className="w-3.5 h-3.5" /> Manage blockout dates
+            </button>
           </section>
         ))}
 
@@ -965,6 +1050,97 @@ export default function VenueOwnerDashboard() {
             <p className="text-[10px] text-muted-foreground text-center leading-snug">
               Admin will process within 24 hours via MoMo.
             </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Blockout Modal */}
+      <Dialog open={blockoutOpen} onOpenChange={setBlockoutOpen}>
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-display flex items-center gap-2">
+              <Shield className="w-4 h-4" /> Blockout dates
+            </DialogTitle>
+            <p className="text-xs text-muted-foreground font-normal">
+              Prevent matches from being scheduled on blocked dates. Matches already created won’t be affected.
+            </p>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            {/* Add form */}
+            <div className="bg-secondary/40 rounded-xl p-4 space-y-3">
+              <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Add blockout</label>
+              <input
+                type="date"
+                value={blockoutDate}
+                onChange={(e) => setBlockoutDate(e.target.value)}
+                className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-foreground/20"
+              />
+              <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={blockoutFullDay}
+                  onChange={(e) => setBlockoutFullDay(e.target.checked)}
+                  className="w-4 h-4 accent-foreground"
+                />
+                Full day blockout
+              </label>
+              {!blockoutFullDay && (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="time"
+                    value={blockoutStart}
+                    onChange={(e) => setBlockoutStart(e.target.value)}
+                    className="flex-1 rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-foreground/20"
+                  />
+                  <span className="text-muted-foreground text-sm">—</span>
+                  <input
+                    type="time"
+                    value={blockoutEnd}
+                    onChange={(e) => setBlockoutEnd(e.target.value)}
+                    className="flex-1 rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-foreground/20"
+                  />
+                </div>
+              )}
+              <input
+                placeholder="Reason (optional)"
+                value={blockoutReason}
+                onChange={(e) => setBlockoutReason(e.target.value)}
+                className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-foreground/20"
+              />
+              <button
+                onClick={addBlockout}
+                disabled={savingBlockout || !blockoutDate}
+                className="w-full h-10 rounded-full bg-foreground text-background text-xs font-bold disabled:opacity-40"
+              >
+                {savingBlockout ? "Saving…" : "Add blockout"}
+              </button>
+            </div>
+
+            {/* List */}
+            <div className="space-y-2">
+              {blockouts.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No blockouts set for this venue.</p>
+              ) : (
+                blockouts.map((b) => (
+                  <div key={b.id} className="flex items-center justify-between rounded-xl border border-border/60 px-3 py-2.5">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold">{b.block_date}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {b.start_time && b.end_time ? `${b.start_time} – ${b.end_time}` : "Full day"}
+                        {b.reason ? ` · ${b.reason}` : ""}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => removeBlockout(b.id)}
+                      className="shrink-0 p-1.5 rounded-full hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition-colors"
+                      aria-label="Remove blockout"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </DialogContent>
       </Dialog>

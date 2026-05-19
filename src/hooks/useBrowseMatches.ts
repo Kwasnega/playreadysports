@@ -21,7 +21,10 @@ export type BrowseMatch = {
   entry_fee: number;
   status: string;
   core_paid_count: number;
+  max_spare_players: number;
+  duration_minutes: number;
   notes: string | null;
+  organizer_id: string | null;
   venue: {
     id: string;
     name: string;
