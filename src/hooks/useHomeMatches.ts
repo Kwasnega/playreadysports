@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 export type Venue = {
   id: string;
@@ -109,6 +110,7 @@ async function fetchHomeMatches(cursor?: string): Promise<HomeMatch[]> {
 }
 
 export function useHomeMatches() {
+  const { user } = useAuth();
   const [allMatches, setAllMatches] = useState<HomeMatch[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -120,7 +122,21 @@ export function useHomeMatches() {
     gcTime: 1000 * 60 * 2,
   });
 
+  // Defensive sync: bail out if the arrays are effectively identical
+  // to avoid re-render loops when useQuery data is undefined and the
+  // default [] creates a new reference on every render.
+  const lastSyncedRef = useRef<HomeMatch[] | null>(null);
   useEffect(() => {
+    if (lastSyncedRef.current === initialMatches) return;
+    if (
+      lastSyncedRef.current !== null &&
+      lastSyncedRef.current.length === initialMatches.length &&
+      lastSyncedRef.current.every((m, i) => m.id === initialMatches[i]?.id)
+    ) {
+      lastSyncedRef.current = initialMatches;
+      return;
+    }
+    lastSyncedRef.current = initialMatches;
     setAllMatches(initialMatches);
     setHasMore(initialMatches.length === PAGE_SIZE);
   }, [initialMatches]);
@@ -138,8 +154,10 @@ export function useHomeMatches() {
     }
   }, [allMatches, hasMore]);
 
-  // Realtime subscription — naive reload on match changes
+  // Realtime subscription — only for signed-in users to avoid repeated
+  // failed connection attempts when anon policies block realtime.
   useEffect(() => {
+    if (!user) return;
     const channelName = "home-matches:" + Math.random().toString(36).slice(2) + Date.now().toString(36);
     const channel = supabase
       .channel(channelName)
@@ -156,7 +174,7 @@ export function useHomeMatches() {
       channel.unsubscribe();
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [user]);
 
   const errorMsg = error instanceof Error ? error.message : null;
   return { matches: allMatches, loading, error: errorMsg, hasMore, loadMore, isLoadingMore };

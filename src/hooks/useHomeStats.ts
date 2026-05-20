@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 export type HomeStats = {
   matchesToday: number;
@@ -7,6 +8,7 @@ export type HomeStats = {
 };
 
 export function useHomeStats(refreshMs = 60000) {
+  const { user } = useAuth();
   const [stats, setStats] = useState<HomeStats>({ matchesToday: 0, playersOnline: 0 });
   const [loading, setLoading] = useState(true);
 
@@ -14,6 +16,16 @@ export function useHomeStats(refreshMs = 60000) {
     let cancelled = false;
 
     const load = async () => {
+      // Skip expensive count queries for logged-out users to avoid 401s
+      // and unnecessary network traffic until anon policies are applied.
+      if (!user) {
+        if (!cancelled) {
+          setStats({ matchesToday: 0, playersOnline: 0 });
+          setLoading(false);
+        }
+        return;
+      }
+
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
       const todayEnd = new Date();
@@ -59,7 +71,7 @@ export function useHomeStats(refreshMs = 60000) {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [refreshMs]);
+  }, [refreshMs, user]);
 
   return { stats, loading };
 }
