@@ -344,6 +344,7 @@ const JoinSheet = ({
   openAuth: (mode?: "signin" | "signup") => void;
 }) => {
   const [picked, setPicked] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   // Reset team selection whenever a different match opens
   useEffect(() => { setPicked(null); }, [match?.id]);
@@ -466,7 +467,7 @@ const JoinSheet = ({
             <div className="sticky bottom-0 bg-background/95 backdrop-blur-md border-t border-border px-5 py-3">
               {user?.id && match.organizer_id === user.id ? (
                 <button
-                  onClick={() => { navigate(`/lobby/${match.join_code}`); }}
+                  onClick={() => { onJoin("__auto__"); }}
                   className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-full bg-primary text-primary-foreground text-sm font-semibold active:scale-[0.99]"
                 >
                   Manage match
@@ -476,14 +477,16 @@ const JoinSheet = ({
                 <button
                   onClick={() => {
                     if (!user) { openAuth(); return; }
+                    setBusy(true);
                     if (match.match_mode === "gala" || match.match_type === "private") {
-                      if (!picked) return;
+                      if (!picked) { setBusy(false); return; }
                       onJoin(picked === "__bring__" ? "__bring__" : picked);
                     } else {
-                      onJoin(resolvedTeam);
+                      onJoin("__auto__");
                     }
+                    setBusy(false);
                   }}
-                  disabled={busy || (!!picked && false) || (match.match_mode === "gala" || match.match_type === "private" ? !picked : false)}
+                  disabled={busy || (match.match_mode === "gala" || match.match_type === "private" ? !picked : false)}
                   className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-full bg-foreground text-background text-sm font-semibold disabled:opacity-40 active:scale-[0.99]"
                 >
                   {match.match_type !== "private" && match.match_mode !== "gala"

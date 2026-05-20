@@ -76,13 +76,18 @@ const Lobby = () => {
   const [paying, setPaying] = useState(false);
 
   // Resolve __auto__ to the team with fewer core players
+  // Map display names to valid DB enum values ('reds', 'blues')
   const resolvedTeam = useMemo(() => {
-    if (teamFromUrl && teamFromUrl !== "__auto__") return teamFromUrl;
+    if (teamFromUrl && teamFromUrl !== "__auto__") {
+      return teamFromUrl === "red" ? "reds" : teamFromUrl === "blue" ? "blues" : teamFromUrl;
+    }
     const teamA = (match?.team_color_a ?? "Red").toLowerCase();
     const teamB = (match?.team_color_b ?? "Blue").toLowerCase();
-    const countA = coreList.filter((p: any) => p.team === teamA).length;
-    const countB = coreList.filter((p: any) => p.team === teamB).length;
-    return countA <= countB ? teamA : teamB;
+    const enumA = teamA === "red" ? "reds" : teamA === "blue" ? "blues" : teamA;
+    const enumB = teamB === "red" ? "reds" : teamB === "blue" ? "blues" : teamB;
+    const countA = coreList.filter((p: any) => p.team === enumA).length;
+    const countB = coreList.filter((p: any) => p.team === enumB).length;
+    return countA <= countB ? enumA : enumB;
   }, [teamFromUrl, match?.team_color_a, match?.team_color_b, coreList]);
 
   const matchMode = match?.match_mode === "gala" ? "gala" : "two-team";

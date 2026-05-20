@@ -273,13 +273,14 @@ Deno.serve(async (req) => {
     // ------------------------------------------------------------------
     // 8. Insert organizer as first participant
     // ------------------------------------------------------------------
+    const organizerTeam = Math.random() > 0.5 ? "reds" : "blues";
     const { error: participantErr } = await supabase
       .from("match_participants")
       .insert({
         match_id: match.id,
         user_id: user.id,
         slot_type: "core" as any,
-        team: (teamColorA ?? "reds").toLowerCase() as any,
+        team: organizerTeam as any,
         status: "active" as any,
         payment_status: (entryFee === 0 ? "paid" : "unpaid") as any,
       });
@@ -338,6 +339,12 @@ Deno.serve(async (req) => {
         .from("matches")
         .update({ core_paid_count: 1 })
         .eq("id", match.id);
+    } else {
+      // Free match: organizer still counts as a paid core player
+      await svc
+        .from("matches")
+        .update({ core_paid_count: 1 })
+        .eq("id", match.id);
     }
 
     // ------------------------------------------------------------------
@@ -386,6 +393,13 @@ Deno.serve(async (req) => {
           .from("matches")
           .update({ organizer_venue_fee: organizerVenueFee })
           .eq("id", match.id);
+
+        // Ensure organizer is marked paid for covering venue cost
+        await svc
+          .from("match_participants")
+          .update({ payment_status: "paid" as any })
+          .eq("match_id", match.id)
+          .eq("user_id", user.id);
       }
     }
 

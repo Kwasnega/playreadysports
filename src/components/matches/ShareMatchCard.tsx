@@ -1,6 +1,9 @@
-import { useState, useCallback } from "react";
-import { X, Copy, Share2, MessageCircle, Download, CheckCheck } from "lucide-react";
+import { useState, useCallback, useEffect } from "react";
+import { X, Copy, Share2, MessageCircle, Download, CheckCheck, Users, Loader2, Send } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
+import { useFriends } from "@/hooks/useFriends";
+import { supabase } from "@/integrations/supabase/client";
 
 /* ------------------------------------------------------------
    ShareMatchCard — generates a match card via Canvas 2D API,
@@ -27,9 +30,13 @@ export function ShareMatchCard({
   onClose: () => void;
   data: ShareMatchData;
 }) {
+  const { user } = useAuth();
+  const { friends, loading: friendsLoading } = useFriends();
   const [copied, setCopied] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [sendingTo, setSendingTo] = useState<string | null>(null);
+  const [showFriends, setShowFriends] = useState(false);
 
   const generate = useCallback(() => {
     if (blobUrl) return;
@@ -127,6 +134,25 @@ export function ShareMatchCard({
     // Auto-generate when opened
     setTimeout(generate, 100);
   }
+
+  const sendInvite = async (friendId: string) => {
+    if (!user) return;
+    setSendingTo(friendId);
+    const senderName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Someone";
+    const { error } = await (supabase as any).from("notifications").insert({
+      user_id: friendId,
+      title: `Match invite from ${senderName}`,
+      body: `${data.venueName} · ${data.format} · ${data.matchDate}`,
+      type: "match_share",
+      data: { join_code: data.joinCode },
+    });
+    if (error) {
+      toast.error("Failed to send invite");
+    } else {
+      toast.success("Invite sent");
+    }
+    setSendingTo(null);
+  };
 
   const shareImage = async () => {
     if (!blobUrl) return;
@@ -250,6 +276,60 @@ export function ShareMatchCard({
                 </>
               )}
             </button>
+
+            {/* Invite friends toggle */}
+            {user && (
+              <div className="pt-2 border-t border-border/60">
+                <button
+                  onClick={() => setShowFriends((s) => !s)}
+                  className="w-full flex items-center justify-between py-2 text-sm font-semibold"
+                >
+                  <span className="flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    Invite friends
+                  </span>
+                  <span className="text-xs text-muted-foreground">{friends.length} friends</span>
+                </button>
+
+                {showFriends && (
+                  <div className="mt-2 max-h-48 overflow-y-auto space-y-1">
+                    {friendsLoading ? (
+                      <div className="py-4 flex items-center justify-center">
+                        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : friends.length === 0 ? (
+                      <p className="text-xs text-muted-foreground py-2">No friends yet</p>
+                    ) : (
+                      friends.map((f: any) => (
+                        <div key={f.id} className="flex items-center justify-between py-1.5">
+                          <div className="flex items-center gap-2">
+                            {f.avatar_url ? (
+                              <img src={f.avatar_url} alt="" className="w-7 h-7 rounded-full object-cover" />
+                            ) : (
+                              <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-[10px] font-bold">
+                                {(f.full_name?.[0] || f.username?.[0] || "?").toUpperCase()}
+                              </div>
+                            )}
+                            <span className="text-xs font-medium">{f.full_name || f.username || "Friend"}</span>
+                          </div>
+                          <button
+                            onClick={() => sendInvite(f.id)}
+                            disabled={sendingTo === f.id}
+                            className="p-1.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-50"
+                          >
+                            {sendingTo === f.id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <Send className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
