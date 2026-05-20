@@ -64,6 +64,7 @@ END
 $$;
 
 -- 5. Create process_free_join RPC (used by join-free-match edge function)
+DROP FUNCTION IF EXISTS public.process_free_join(UUID, UUID, TEXT);
 CREATE OR REPLACE FUNCTION public.process_free_join(
     p_match_id UUID,
     p_user_id UUID,
@@ -124,3 +125,65 @@ BEGIN
     RETURN json_build_object('success', true, 'participant_id', v_participant_id);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 6. Grant SELECT to anon role (required for RLS policies to actually work)
+GRANT SELECT ON public.profiles TO anon;
+GRANT SELECT ON public.matches TO anon;
+GRANT SELECT ON public.venues TO anon;
+GRANT SELECT ON public.platform_settings TO anon;
+GRANT SELECT ON public.match_participants TO anon;
+
+-- 7. Fix trigger that references missing is_substitute column — use slot_type = 'core' instead
+DROP TRIGGER IF EXISTS trg_match_participants_core_paid ON public.match_participants;
+DROP FUNCTION IF EXISTS public.update_core_paid_count();
+
+CREATE OR REPLACE FUNCTION public.update_core_paid_count()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.payment_status = 'paid' AND NEW.status = 'active' AND NEW.slot_type = 'core' THEN
+      UPDATE public.matches SET core_paid_count = COALESCE(core_paid_count, 0) + 1
+      WHERE id = NEW.match_id;
+    END IF;
+    RETURN NEW;
+  ELSIF TG_OP = 'UPDATE' THEN
+    -- If payment_status changed to paid, increment
+    IF OLD.payment_status IS DISTINCT FROM NEW.payment_status
+       AND NEW.payment_status = 'paid'
+       AND NEW.status = 'active'
+       AND NEW.slot_type = 'core' THEN
+      UPDATE public.matches SET core_paid_count = COALESCE(core_paid_count, 0) + 1
+      WHERE id = NEW.match_id;
+    -- If payment_status changed away from paid, decrement
+    ELSIF OLD.payment_status IS DISTINCT FROM NEW.payment_status
+       AND OLD.payment_status = 'paid'
+       AND NEW.status = 'active'
+       AND NEW.slot_type = 'core' THEN
+      UPDATE public.matches SET core_paid_count = GREATEST(COALESCE(core_paid_count, 0) - 1, 0)
+      WHERE id = NEW.match_id;
+    -- If status changed away from active, decrement if was paid
+    ELSIF OLD.status IS DISTINCT FROM NEW.status
+       AND NEW.status != 'active'
+       AND OLD.payment_status = 'paid'
+       AND OLD.slot_type = 'core' THEN
+      UPDATE public.matches SET core_paid_count = GREATEST(COALESCE(core_paid_count, 0) - 1, 0)
+      WHERE id = NEW.match_id;
+    END IF;
+    RETURN NEW;
+  ELSIF TG_OP = 'DELETE' THEN
+    IF OLD.payment_status = 'paid' AND OLD.status = 'active' AND OLD.slot_type = 'core' THEN
+      UPDATE public.matches SET core_paid_count = GREATEST(COALESCE(core_paid_count, 0) - 1, 0)
+      WHERE id = OLD.match_id;
+    END IF;
+    RETURN OLD;
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+CREATE TRIGGER trg_match_participants_core_paid
+  AFTER INSERT OR UPDATE OR DELETE ON public.match_participants
+  FOR EACH ROW EXECUTE FUNCTION public.update_core_paid_count();
