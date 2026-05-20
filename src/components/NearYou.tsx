@@ -24,6 +24,7 @@ type GalaOpening = {
   pricePerPlayer: number;
   km: number;
   joined?: boolean;
+  isOrganizer?: boolean;
   friendCount?: number;
   friendAvatars?: string[];
 };
@@ -41,6 +42,7 @@ type TwoTeamOpening = {
   pricePerPlayer: number;
   km: number;
   joined?: boolean;
+  isOrganizer?: boolean;
   friendCount?: number;
   friendAvatars?: string[];
 };
@@ -295,6 +297,16 @@ const FriendAvatarStack = ({ count, avatars }: { count?: number; avatars?: strin
   );
 };
 
+const ManageCTA = ({ onClick }: { onClick?: (e: React.MouseEvent) => void }) => (
+  <button
+    onClick={onClick}
+    className="shrink-0 inline-flex items-center gap-1 bg-emerald-600 text-white rounded-full pl-4 pr-3 h-10 text-sm font-bold transition-all hover:bg-emerald-700 active:scale-95"
+  >
+    Manage
+    <ArrowRight className="w-4 h-4" strokeWidth={2.4} />
+  </button>
+);
+
 const JoinedCTA = () => (
   <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full pl-3 pr-3 h-10 text-sm font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
     <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
@@ -333,7 +345,7 @@ const GalaRow = ({ s }: { s: GalaOpening }) => {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {s.joined ? <JoinedCTA /> : <JoinCTA onClick={onJoin} />}
+          {s.isOrganizer ? <ManageCTA onClick={onJoin} /> : s.joined ? <JoinedCTA /> : <JoinCTA onClick={onJoin} />}
           <button
             onClick={(e) => copyJoinLink(e, s.code, s.venue, s.pricePerPlayer)}
             className="shrink-0 w-10 h-10 rounded-full bg-secondary hover:bg-secondary/70 flex items-center justify-center transition-colors"
@@ -376,7 +388,7 @@ const TwoTeamRow = ({ s }: { s: TwoTeamOpening }) => {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {s.joined ? <JoinedCTA /> : <JoinCTA onClick={onJoin} />}
+          {s.isOrganizer ? <ManageCTA onClick={onJoin} /> : s.joined ? <JoinedCTA /> : <JoinCTA onClick={onJoin} />}
           <button
             onClick={(e) => copyJoinLink(e, s.code, s.venue, s.pricePerPlayer)}
             className="shrink-0 w-10 h-10 rounded-full bg-secondary hover:bg-secondary/70 flex items-center justify-center transition-colors"

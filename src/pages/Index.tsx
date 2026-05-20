@@ -272,6 +272,7 @@ function transformMatches(
           pricePerPlayer: Number(m.entry_fee),
           km,
           joined,
+          isOrganizer: m.organizer_id === userId,
           friendCount,
           friendAvatars,
         };
@@ -290,6 +291,7 @@ function transformMatches(
         pricePerPlayer: Number(m.entry_fee),
         km,
         joined,
+        isOrganizer: m.organizer_id === userId,
         friendCount,
         friendAvatars,
       };

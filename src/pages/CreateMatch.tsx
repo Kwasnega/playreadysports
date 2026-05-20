@@ -87,6 +87,12 @@ const CreateMatch = () => {
     return players > 0 ? Math.ceil(total / players) : 0;
   }, [selectedVenue, duration, matchFormat, mode]);
 
+  const venueCost = useMemo(() => {
+    const price = (selectedVenue as any)?.price_per_hour;
+    if (!price) return 0;
+    return Number(price) * (duration / 60);
+  }, [selectedVenue, duration]);
+
   useEffect(() => {
     if (step === 2 && basePerPlayer > 0) {
       setEntryFeeEnabled(true);
@@ -544,6 +550,13 @@ const CreateMatch = () => {
                   </div>
                 );
               })()}
+              {venueCost > 0 && !entryFeeEnabled && (
+                <div className="mb-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 px-3 py-2.5">
+                  <p className="text-[11px] text-amber-700 font-semibold">
+                    Since this match is free for players, you will pay ₵{venueCost.toFixed(0)} from your wallet to cover the venue booking.
+                  </p>
+                </div>
+              )}
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Entry fee</p>
                 <button
@@ -681,7 +694,7 @@ const CreateMatch = () => {
               <SummaryRow label="Venue" value={selectedVenue ? `${selectedVenue.name}` : "—"} />
               <SummaryRow label="When" value={matchDate ? `${matchDate} @ ${String(matchHour).padStart(2, "0")}:${String(matchMinute).padStart(2, "0")}` : "—"} />
               <SummaryRow label="Duration" value={`${duration} min`} />
-              <SummaryRow label="Entry fee" value={entryFeeEnabled ? (profitAmount > 0 ? `₵${entryFee}/player (₵${basePerPlayer} base + ₵${profitAmount} profit)` : `₵${entryFee}/player`) : "Free"} />
+              <SummaryRow label="Entry fee" value={entryFeeEnabled ? (profitAmount > 0 ? `₵${entryFee}/player (₵${basePerPlayer} base + ₵${profitAmount} profit)` : `₵${entryFee}/player`) : venueCost > 0 ? `Free (you pay ₵${venueCost.toFixed(0)} venue cost)` : "Free"} />
               {mode === "gala" && teamName && <SummaryRow label="Your team" value={teamName} />}
             </div>
           </div>

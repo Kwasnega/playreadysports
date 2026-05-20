@@ -44,6 +44,7 @@ export type HomeMatch = {
   status: string;
   core_paid_count: number;
   notes: string | null;
+  organizer_id: string | null;
   venue: Venue | null;
   organizer: Organizer | null;
   participants: Participant[];

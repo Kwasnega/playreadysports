@@ -116,7 +116,7 @@ export function useBrowseMatches(filters: BrowseFilters) {
         .select(
           `
           *,
-          venue:venues(id, name, city, area, lat, lng, open_time, close_time),
+          venue:venues(id, name, city, area, lat, lng),
           participants:match_participants(id, status, team, slot_type, payment_status)
         `
         )

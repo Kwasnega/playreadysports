@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
     // ------------------------------------------------------------------
     const { data: venue, error: venueErr } = await supabase
       .from("venues")
-      .select("city, owner_id, owner_email, open_time, close_time")
+      .select("city, owner_id, owner_email, open_time, close_time, price_per_hour")
       .eq("id", venueId)
       .single();
 
@@ -338,6 +338,55 @@ Deno.serve(async (req) => {
         .from("matches")
         .update({ core_paid_count: 1 })
         .eq("id", match.id);
+    }
+
+    // ------------------------------------------------------------------
+    // 8c. If match is free but venue has a price, organizer pays venue cost
+    // ------------------------------------------------------------------
+    if (entryFee === 0) {
+      const pricePerHour = Number(venue?.price_per_hour ?? 0);
+      if (pricePerHour > 0) {
+        const hrs = (durationMinutes ?? 60) / 60;
+        const organizerVenueFee = pricePerHour * hrs;
+
+        const { data: walletRow } = await svc
+          .from("wallet_balances")
+          .select("balance")
+          .eq("user_id", user.id)
+          .single();
+
+        const currentBalance = Number(walletRow?.balance ?? 0);
+        if (currentBalance < organizerVenueFee) {
+          // Rollback: remove match and participant
+          await svc.from("match_participants").delete().eq("match_id", match.id).eq("user_id", user.id);
+          await svc.from("matches").delete().eq("id", match.id);
+          return new Response(
+            JSON.stringify({ error: `Insufficient wallet balance. You need ₵${organizerVenueFee.toFixed(2)} to cover the venue cost for this free match.` }),
+            { status: 402, headers: { ...getCorsHeaders(), "Content-Type": "application/json" } },
+          );
+        }
+
+        // Deduct venue cost
+        await svc
+          .from("wallet_balances")
+          .update({ balance: currentBalance - organizerVenueFee })
+          .eq("user_id", user.id);
+
+        // Log spend transaction
+        await svc.from("wallet_transactions").insert({
+          user_id: user.id,
+          amount: -organizerVenueFee,
+          type: "spend" as any,
+          reference: `venue_cost_${match.id}_${Date.now()}`,
+          status: "completed" as any,
+        });
+
+        // Update match with organizer_venue_fee
+        await svc
+          .from("matches")
+          .update({ organizer_venue_fee: organizerVenueFee })
+          .eq("id", match.id);
+      }
     }
 
     // ------------------------------------------------------------------

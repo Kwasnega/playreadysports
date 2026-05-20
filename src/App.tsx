@@ -4,12 +4,14 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useTheme } from "@/components/ThemeToggle";
-import { AuthProvider, setAuthQueryClient } from "@/hooks/useAuth";
+import { AuthProvider, setAuthQueryClient, useAuth } from "@/hooks/useAuth";
 import { AuthModal } from "@/components/AuthModal";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { SplashScreen } from "@/components/SplashScreen";
 import { ConfirmProvider } from "@/components/ui/ConfirmProvider";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { MaintenanceScreen } from "@/components/MaintenanceScreen";
+import { usePlatformSettings } from "@/hooks/usePlatformSettings";
 import { useEffect, useRef, useState, ReactNode, lazy, Suspense } from "react";
 
 const Index = lazy(() => import("./pages/Index.tsx"));
@@ -82,6 +84,59 @@ const RouteFade = ({ children }: { children: ReactNode }) => {
   return <div ref={ref}>{children}</div>;
 };
 
+function AppRoutes() {
+  const { maintenanceMode } = usePlatformSettings();
+  const { isAdmin } = useAuth();
+  const location = useLocation();
+
+  if (maintenanceMode && !isAdmin && !location.pathname.startsWith("/admin")) {
+    return <MaintenanceScreen />;
+  }
+
+  return (
+    <Routes>
+      {/* Public homepage — main screen visible on first load */}
+      <Route path="/" element={<Index />} />
+      <Route path="/home" element={<Navigate to="/" replace />} />
+      <Route path="/welcome" element={<Navigate to="/" replace />} />
+      <Route path="/login" element={<Navigate to="/" replace />} />
+      <Route path="/terms" element={<Terms />} />
+      {/* Restricted actions — modal triggers on entry */}
+      {/* Browseable without auth — actions inside gate via requireAuth */}
+      <Route path="/join" element={<JoinMatch />} />
+      <Route path="/code" element={<HaveCode />} />
+      <Route path="/create" element={<CreateMatch />} />
+      <Route path="/schedule" element={<Schedule />} />
+      <Route path="/lobby/:code" element={<Lobby />} />
+      <Route path="/player/:username" element={<PlayerProfile />} />
+      <Route path="/profile/edit" element={<EditProfile />} />
+      <Route path="/wallet" element={<WalletPage />} />
+      <Route path="/my-matches" element={<MyMatches />} />
+      <Route path="/venue/earnings" element={<VenueOwnerDashboard />} />
+      <Route path="/venue/dashboard" element={<VenueOwnerDashboard />} />
+      <Route path="/turf/owner" element={<Navigate to="/venue/dashboard" replace />} />
+      <Route path="/leaderboard" element={<Leaderboard />} />
+      {/* Admin dashboard */}
+      <Route path="/admin" element={<ProtectedRoute roles={["admin", "super_admin"]}><AdminLayout /></ProtectedRoute>}>
+        <Route index element={<AdminOverview />} />
+        <Route path="live" element={<AdminLiveMonitor />} />
+        <Route path="players" element={<AdminPlayers />} />
+        <Route path="matches" element={<AdminMatches />} />
+        <Route path="venues" element={<AdminVenues />} />
+        <Route path="venues/:id" element={<AdminVenueDetail />} />
+        <Route path="revenue" element={<AdminRevenue />} />
+        <Route path="calendar" element={<AdminCalendar />} />
+        <Route path="reports" element={<AdminReports />} />
+        <Route path="broadcast" element={<AdminBroadcast />} />
+        <Route path="withdrawals" element={<AdminWithdrawals />} />
+        <Route path="settings" element={<AdminSettings />} />
+        <Route path="owners" element={<AdminCreateOwner />} />
+      </Route>
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+}
+
 const App = () => {
   useTheme();
   const [splashDone, setSplashDone] = useState(() => {
@@ -104,46 +159,7 @@ const App = () => {
               <ErrorBoundary>
               <Suspense fallback={<PageSpinner />}>
               <RouteFade>
-              <Routes>
-                {/* Public homepage — main screen visible on first load */}
-                <Route path="/" element={<Index />} />
-                <Route path="/home" element={<Navigate to="/" replace />} />
-                <Route path="/welcome" element={<Navigate to="/" replace />} />
-                <Route path="/login" element={<Navigate to="/" replace />} />
-                <Route path="/terms" element={<Terms />} />
-                {/* Restricted actions — modal triggers on entry */}
-                {/* Browseable without auth — actions inside gate via requireAuth */}
-                <Route path="/join" element={<JoinMatch />} />
-                <Route path="/code" element={<HaveCode />} />
-                <Route path="/create" element={<CreateMatch />} />
-                <Route path="/schedule" element={<Schedule />} />
-                <Route path="/lobby/:code" element={<Lobby />} />
-                <Route path="/player/:username" element={<PlayerProfile />} />
-                <Route path="/profile/edit" element={<EditProfile />} />
-                <Route path="/wallet" element={<WalletPage />} />
-                <Route path="/my-matches" element={<MyMatches />} />
-                <Route path="/venue/earnings" element={<VenueOwnerDashboard />} />
-                <Route path="/venue/dashboard" element={<VenueOwnerDashboard />} />
-                <Route path="/turf/owner" element={<Navigate to="/venue/dashboard" replace />} />
-                <Route path="/leaderboard" element={<Leaderboard />} />
-                {/* Admin dashboard */}
-                <Route path="/admin" element={<ProtectedRoute roles={["admin", "super_admin"]}><AdminLayout /></ProtectedRoute>}>
-                  <Route index element={<AdminOverview />} />
-                  <Route path="live" element={<AdminLiveMonitor />} />
-                  <Route path="players" element={<AdminPlayers />} />
-                  <Route path="matches" element={<AdminMatches />} />
-                  <Route path="venues" element={<AdminVenues />} />
-                  <Route path="venues/:id" element={<AdminVenueDetail />} />
-                  <Route path="revenue" element={<AdminRevenue />} />
-                  <Route path="calendar" element={<AdminCalendar />} />
-                  <Route path="reports" element={<AdminReports />} />
-                  <Route path="broadcast" element={<AdminBroadcast />} />
-                  <Route path="withdrawals" element={<AdminWithdrawals />} />
-                  <Route path="settings" element={<AdminSettings />} />
-                  <Route path="owners" element={<AdminCreateOwner />} />
-                </Route>
-                <Route path="*" element={<NotFound />} />
-              </Routes>
+              <AppRoutes />
               </RouteFade>
               </Suspense>
               </ErrorBoundary>

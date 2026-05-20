@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Calendar, MapPin, Users, Clock,
-  ChevronRight, Trophy, AlertTriangle, PlayCircle, CheckCircle2, XCircle,
+  ChevronRight, Trophy, AlertTriangle, PlayCircle, CheckCircle2, XCircle, User,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { getFormattedTime } from "@/lib/matchHelpers";
 
 type Tab = "upcoming" | "live" | "completed" | "cancelled";
+type View = "organized" | "joined";
 
 interface MyMatch {
   id: string;
@@ -49,26 +50,53 @@ export default function MyMatches() {
   const nav = useNavigate();
   const { user } = useAuth();
   const [tab, setTab] = useState<Tab>("upcoming");
+  const [view, setView] = useState<View>("organized");
   const [matches, setMatches] = useState<MyMatch[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user?.id) { setLoading(false); return; }
     setLoading(true);
-    supabase
-      .from("matches")
-      .select("id, join_code, match_date, format, match_mode, entry_fee, status, core_paid_count, max_core_players, venue:venues(name, city)")
-      .eq("organizer_id", user.id)
-      .order("match_date", { ascending: false })
-      .then(({ data, error }) => {
-        if (error) { console.error(error); }
-        setMatches((data ?? []).map((row: any) => {
-          const v = Array.isArray(row.venue) ? row.venue[0] ?? null : row.venue ?? null;
-          return { ...row, venue: v };
-        }));
-        setLoading(false);
-      });
-  }, [user?.id]);
+
+    const fetchOrganized = async () => {
+      const { data, error } = await supabase
+        .from("matches")
+        .select("id, join_code, match_date, format, match_mode, entry_fee, status, core_paid_count, max_core_players, venue:venues(name, city)")
+        .eq("organizer_id", user.id)
+        .order("match_date", { ascending: false });
+      if (error) console.error(error);
+      setMatches((data ?? []).map((row: any) => {
+        const v = Array.isArray(row.venue) ? row.venue[0] ?? null : row.venue ?? null;
+        return { ...row, venue: v };
+      }));
+      setLoading(false);
+    };
+
+    const fetchJoined = async () => {
+      const { data: pData, error: pErr } = await supabase
+        .from("match_participants")
+        .select("match_id")
+        .eq("user_id", user.id)
+        .eq("status", "active");
+      if (pErr) { console.error(pErr); setLoading(false); return; }
+      const matchIds = (pData ?? []).map((p: any) => p.match_id);
+      if (matchIds.length === 0) { setMatches([]); setLoading(false); return; }
+      const { data, error } = await supabase
+        .from("matches")
+        .select("id, join_code, match_date, format, match_mode, entry_fee, status, core_paid_count, max_core_players, venue:venues(name, city)")
+        .in("id", matchIds)
+        .order("match_date", { ascending: false });
+      if (error) console.error(error);
+      setMatches((data ?? []).map((row: any) => {
+        const v = Array.isArray(row.venue) ? row.venue[0] ?? null : row.venue ?? null;
+        return { ...row, venue: v };
+      }));
+      setLoading(false);
+    };
+
+    if (view === "organized") fetchOrganized();
+    else fetchJoined();
+  }, [user?.id, view]);
 
   const filtered = matches.filter((m) => m.status === tab);
 
@@ -84,6 +112,26 @@ export default function MyMatches() {
       </header>
 
       <div className="max-w-[680px] mx-auto px-5 py-4 space-y-4">
+        {/* View toggle */}
+        <div className="flex bg-secondary rounded-full p-1">
+          {(["organized", "joined"] as View[]).map((v) => {
+            const active = view === v;
+            const Icon = v === "organized" ? User : Users;
+            return (
+              <button
+                key={v}
+                onClick={() => setView(v)}
+                className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-full py-1.5 text-xs font-bold transition-colors ${
+                  active ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                {v === "organized" ? "Organized" : "Joined"}
+              </button>
+            );
+          })}
+        </div>
+
         {/* Tabs */}
         <div className="flex gap-2 overflow-x-auto scrollbar-none -mx-1 px-1">
           {(Object.keys(TAB_META) as Tab[]).map((t) => {
@@ -115,8 +163,18 @@ export default function MyMatches() {
         ) : filtered.length === 0 ? (
           <div className="text-center py-12">
             <Calendar className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-            <p className="text-sm font-semibold">{TAB_META[tab].empty}</p>
-            {tab === "upcoming" && (
+            <p className="text-sm font-semibold">
+              {view === "joined"
+                ? tab === "upcoming"
+                  ? "No upcoming matches you've joined. Browse the feed to find one!"
+                  : tab === "live"
+                  ? "No live matches you're in right now."
+                  : tab === "completed"
+                  ? "No completed matches you've joined yet."
+                  : "No cancelled matches."
+                : TAB_META[tab].empty}
+            </p>
+            {tab === "upcoming" && view === "organized" && (
               <button
                 onClick={() => nav("/create")}
                 className="mt-4 inline-flex items-center gap-1.5 bg-foreground text-background rounded-full px-4 py-2 text-xs font-bold"

@@ -63,6 +63,8 @@ export default function AdminOverview() {
   const [commissionRate, setCommissionRate] = useState(0.05);
   const [savingRate, setSavingRate] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [savingMaintenance, setSavingMaintenance] = useState(false);
 
   const handleReset = async () => {
     if (confirmText !== "RESET") {
@@ -98,7 +100,7 @@ export default function AdminOverview() {
     (async () => {
       setLoading(true);
       try {
-        const [{ count: players }, { count: matches }, { data: txns }, { data: walletTxns }, { data: chart }, { data: recent }, { data: setting }] = await Promise.all([
+        const [{ count: players }, { count: matches }, { data: txns }, { data: walletTxns }, { data: chart }, { data: recent }, { data: setting }, { data: maintenanceSetting }] = await Promise.all([
           supabase.from("profiles").select("*", { count: "exact", head: true }),
           supabase.from("matches").select("*", { count: "exact", head: true }).eq("status", "upcoming"),
           supabase.from("transactions").select("amount").eq("type", "entry_fee").eq("status", "completed"),
@@ -106,9 +108,11 @@ export default function AdminOverview() {
           (supabase as any).rpc("matches_per_day", { days: 14 }),
           supabase.from("transactions").select("id, amount, type, status, created_at, user:profiles(full_name, username), match:matches(join_code)").order("created_at", { ascending: false }).limit(10),
           (supabase as any).from("platform_settings").select("value").eq("key", "commission_rate").single(),
+          (supabase as any).from("platform_settings").select("value").eq("key", "maintenance_mode").single(),
         ]);
         const rate = parseFloat(setting?.value ?? "0.05");
         setCommissionRate(isNaN(rate) ? 0.05 : rate);
+        setMaintenanceMode(maintenanceSetting?.value === "true");
         const gatewayRevenue = (txns ?? []).reduce((s, t) => s + (Number(t.amount) || 0), 0);
         const walletRevenue = (walletTxns ?? []).reduce((s, t) => s + (Math.abs(Number(t.amount)) || 0), 0);
         const revenue = gatewayRevenue + walletRevenue;
@@ -145,6 +149,23 @@ export default function AdminOverview() {
       setSettingsOpen(false);
       // Recalculate fees with new rate
       setMetrics((m) => ({ ...m, fees: Math.round(m.revenue * commissionRate * 100) / 100 }));
+    }
+  };
+
+  const toggleMaintenance = async () => {
+    setSavingMaintenance(true);
+    const next = !maintenanceMode;
+    const { error } = await (supabase as any).from("platform_settings").upsert({
+      key: "maintenance_mode",
+      value: next ? "true" : "false",
+      updated_at: new Date().toISOString(),
+    });
+    setSavingMaintenance(false);
+    if (error) {
+      toast.error(error.message || "Failed to toggle maintenance mode");
+    } else {
+      setMaintenanceMode(next);
+      toast.success(next ? "Maintenance mode ENABLED" : "Maintenance mode DISABLED");
     }
   };
 
@@ -197,6 +218,27 @@ export default function AdminOverview() {
           ))}
         </div>
       )}
+
+      {/* Maintenance mode toggle */}
+      <div className={`relative bg-white/[0.03] backdrop-blur-sm border rounded-2xl p-6 transition-all ${maintenanceMode ? "border-rose-500/30" : "border-white/[0.06] hover:border-white/[0.12]"}`}>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className={`text-lg font-semibold ${maintenanceMode ? "text-rose-400" : "text-white"}`}>Maintenance Mode</h2>
+            <p className="text-xs text-slate-400 mt-0.5">
+              {maintenanceMode ? "Site is locked for all non-admin visitors." : "Visitors can browse and use the platform normally."}
+            </p>
+          </div>
+          <button
+            onClick={toggleMaintenance}
+            disabled={savingMaintenance}
+            className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${maintenanceMode ? "bg-rose-500" : "bg-slate-600"}`}
+          >
+            <span
+              className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${maintenanceMode ? "translate-x-6" : "translate-x-1"}`}
+            />
+          </button>
+        </div>
+      </div>
 
       {/* Chart */}
       <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.06] rounded-2xl p-6 hover:border-white/[0.12] transition-all">

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import {
   ArrowLeft, MapPin, Wallet, Calendar,
   TrendingUp, Clock, Building2, Plus, X, Upload, Shield,
+  ChevronLeft, ChevronRight, Images, Phone, Users, DollarSign,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,6 +39,7 @@ interface VenueRow {
   close_time?: string | null;
   contact_phone?: string | null;
   amenities?: string[];
+  image_urls?: string[];
   surge_peak_start_hour: number | null;
   surge_peak_end_hour: number | null;
   surge_multiplier: number;
@@ -302,7 +304,7 @@ export default function VenueOwnerDashboard() {
       const { data: vens } = await supabase
         .from("venues")
         .select(
-          "id, name, status, city, area, price_per_hour, capacity, opening_hours, open_time, close_time, contact_phone, amenities, surge_peak_start_hour, surge_peak_end_hour, surge_multiplier",
+          "id, name, status, city, area, price_per_hour, capacity, opening_hours, open_time, close_time, contact_phone, amenities, image_urls, surge_peak_start_hour, surge_peak_end_hour, surge_multiplier",
         )
         .eq("owner_email", user.email);
 
@@ -624,32 +626,187 @@ export default function VenueOwnerDashboard() {
         </div>
       </header>
 
-      <div className="max-w-[680px] mx-auto px-5 py-5 space-y-5">
-        {/* Venue identity header */}
+      <div className="max-w-[680px] mx-auto px-5 py-5 space-y-6">
+        {/* 1. Personalized welcome */}
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Owner Dashboard</p>
+          <h1 className="font-display font-bold text-3xl tracking-tight mt-0.5">
+            Welcome back, Mr. {user?.user_metadata?.full_name || "Owner"}
+          </h1>
+        </div>
+
+        {/* 2. Venue hero with swipeable gallery */}
         {verifiedVenues.length > 0 && (
-          <section className="bg-card rounded-2xl border border-border/60 p-5 flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center shrink-0">
-              <Building2 className="w-7 h-7 text-emerald-500" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h2 className="font-display font-bold text-2xl tracking-tight truncate">{verifiedVenues[0].name}</h2>
-              <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1.5">
-                <MapPin className="w-3 h-3" />
-                {verifiedVenues[0].city}{verifiedVenues[0].area ? `, ${verifiedVenues[0].area}` : ""}
-                <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600">
-                  Verified
-                </span>
-              </p>
+          <section className="bg-card rounded-2xl border border-border/60 overflow-hidden">
+            {/* Swipeable image gallery */}
+            {verifiedVenues[0].image_urls && verifiedVenues[0].image_urls.length > 0 ? (
+              <div className="relative">
+                <div
+                  id="venue-gallery"
+                  className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
+                  style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+                >
+                  {verifiedVenues[0].image_urls.map((url, i) => (
+                    <div key={i} className="snap-center shrink-0 w-full">
+                      <img src={url} alt={`${verifiedVenues[0].name} ${i + 1}`} className="w-full h-56 object-cover" />
+                    </div>
+                  ))}
+                </div>
+                {verifiedVenues[0].image_urls.length > 1 && (
+                  <>
+                    <button
+                      onClick={() => {
+                        const el = document.getElementById("venue-gallery");
+                        if (el) el.scrollBy({ left: -el.clientWidth, behavior: "smooth" });
+                      }}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60 transition-colors"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        const el = document.getElementById("venue-gallery");
+                        if (el) el.scrollBy({ left: el.clientWidth, behavior: "smooth" });
+                      }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60 transition-colors"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                    <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
+                      {verifiedVenues[0].image_urls.map((_, i) => (
+                        <div key={i} className="w-1.5 h-1.5 rounded-full bg-white/80" />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <div className="h-48 flex items-center justify-center bg-emerald-500/5">
+                <Images className="w-12 h-12 text-emerald-500/30" />
+              </div>
+            )}
+            <div className="p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <h2 className="font-display font-bold text-2xl tracking-tight truncate">{verifiedVenues[0].name}</h2>
+                  <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1.5">
+                    <MapPin className="w-3 h-3 shrink-0" />
+                    {verifiedVenues[0].city}{verifiedVenues[0].area ? `, ${verifiedVenues[0].area}` : ""}
+                    <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600">
+                      Verified
+                    </span>
+                  </p>
+                </div>
+              </div>
             </div>
           </section>
         )}
 
-        {isTurfOwner && (
-          <p className="text-[11px] text-muted-foreground bg-secondary/40 rounded-full px-3 py-1 inline-block">
-            Turf owner role
-          </p>
+        {/* 3. Prominent Net Earnings */}
+        <section className="bg-emerald-500/[0.06] border border-emerald-500/20 rounded-2xl p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700/70">Net Earnings</p>
+              <p className="font-display font-bold text-5xl mt-1 text-emerald-600">₵{netEarnings.toFixed(0)}</p>
+              <div className="flex items-center gap-4 mt-3">
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase">Gross</p>
+                  <p className="text-sm font-bold">₵{totalGross.toFixed(0)}</p>
+                </div>
+                <div className="w-px h-6 bg-border/60" />
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase">Platform fee</p>
+                  <p className="text-sm font-bold">₵{platformFees.toFixed(0)}</p>
+                </div>
+                <div className="w-px h-6 bg-border/60" />
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase">Rate</p>
+                  <p className="text-sm font-bold">{(commissionRate * 100).toFixed(0)}%</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 mt-5">
+                <button
+                  onClick={() => setWithdrawOpen(true)}
+                  disabled={venueBalance < 10}
+                  className="text-sm font-bold bg-emerald-600 text-white rounded-full px-6 py-2.5 transition-colors hover:bg-emerald-500 disabled:opacity-40 shadow-sm"
+                >
+                  Withdraw
+                </button>
+                <span className="text-xs text-muted-foreground">
+                  Available: ₵{venueBalance.toFixed(2)}
+                </span>
+              </div>
+            </div>
+            <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center shrink-0">
+              <Wallet className="w-7 h-7 text-emerald-500" />
+            </div>
+          </div>
+        </section>
+
+        {/* 4. Venue details summary */}
+        {verifiedVenues.length > 0 && (
+          <section className="bg-card rounded-2xl border border-border/60 p-5 space-y-4">
+            <h3 className="font-display font-bold text-sm flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-muted-foreground" /> Venue Details
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+              {verifiedVenues[0].price_per_hour !== null && (
+                <div className="space-y-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                    <DollarSign className="w-3 h-3" /> Price / hour
+                  </p>
+                  <p className="text-base font-bold">₵{verifiedVenues[0].price_per_hour}</p>
+                </div>
+              )}
+              {verifiedVenues[0].capacity !== null && (
+                <div className="space-y-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                    <Users className="w-3 h-3" /> Capacity
+                  </p>
+                  <p className="text-base font-bold">{verifiedVenues[0].capacity} players</p>
+                </div>
+              )}
+              {verifiedVenues[0].open_time && verifiedVenues[0].close_time && (
+                <div className="space-y-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                    <Clock className="w-3 h-3" /> Hours
+                  </p>
+                  <p className="text-base font-bold">{verifiedVenues[0].open_time.slice(0, 5)} – {verifiedVenues[0].close_time.slice(0, 5)}</p>
+                </div>
+              )}
+              {verifiedVenues[0].contact_phone && (
+                <div className="space-y-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                    <Phone className="w-3 h-3" /> Contact
+                  </p>
+                  <p className="text-base font-bold">{verifiedVenues[0].contact_phone}</p>
+                </div>
+              )}
+            </div>
+            {verifiedVenues[0].amenities && verifiedVenues[0].amenities.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Amenities</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {verifiedVenues[0].amenities.map((a) => (
+                    <span key={a} className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-secondary/60 border border-border/50">
+                      {a}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {(verifiedVenues[0].surge_peak_start_hour !== null || verifiedVenues[0].surge_peak_end_hour !== null) && (
+              <div className="space-y-1">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Surge Pricing</p>
+                <p className="text-sm font-medium">
+                  Peak: {verifiedVenues[0].surge_peak_start_hour}:00 – {verifiedVenues[0].surge_peak_end_hour}:00 · {verifiedVenues[0].surge_multiplier}x multiplier
+                </p>
+              </div>
+            )}
+          </section>
         )}
 
+        {/* 5. Pending venues */}
         {pendingVenues.length > 0 && (
           <section className="rounded-3xl bg-amber-500/10 border border-amber-500/20 p-4 flex items-start gap-3">
             <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
@@ -662,43 +819,7 @@ export default function VenueOwnerDashboard() {
           </section>
         )}
 
-        {/* Add venue CTA */}
-        <button
-          onClick={() => setAddVenueOpen(true)}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border border-dashed border-border bg-secondary/40 text-sm font-semibold text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
-        >
-          <Plus className="w-4 h-4" /> Register a new venue
-        </button>
-
-        {/* Earnings card */}
-        <section className="bg-card rounded-2xl border border-border/60 p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1">
-              <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Net Earnings</p>
-              <p className="font-display font-bold text-3xl mt-1 text-emerald-600">₵{netEarnings.toFixed(0)}</p>
-              <p className="text-[11px] text-muted-foreground mt-1">
-                Gross ₵{totalGross.toFixed(0)} · Platform fee ₵{platformFees.toFixed(0)} ({(commissionRate * 100).toFixed(0)}%)
-              </p>
-              <div className="flex items-center gap-3 mt-3">
-                <button
-                  onClick={() => setWithdrawOpen(true)}
-                  disabled={venueBalance < 10}
-                  className="text-xs font-bold bg-foreground text-background rounded-full px-4 py-2 transition-colors disabled:opacity-40"
-                >
-                  Withdraw
-                </button>
-                <span className="text-[11px] text-muted-foreground">
-                  Available: ₵{venueBalance.toFixed(2)}
-                </span>
-              </div>
-            </div>
-            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center shrink-0">
-              <Wallet className="w-6 h-6 text-emerald-500" />
-            </div>
-          </div>
-        </section>
-
-        {/* Today's matches */}
+        {/* 6. Today's matches */}
         <section className="bg-card rounded-2xl border border-border/60 p-5">
           <h2 className="font-display font-bold text-base mb-3 flex items-center gap-2">
             <Calendar className="w-4 h-4" /> Today at your venue
@@ -741,6 +862,7 @@ export default function VenueOwnerDashboard() {
           )}
         </section>
 
+        {/* 7. Calendar */}
         <VenueOwnerCalendar
           venueIds={venueIds}
           venueMap={venueMap}
@@ -748,6 +870,7 @@ export default function VenueOwnerDashboard() {
           onOpenQr={(m) => openQr(m as TodayMatch)}
         />
 
+        {/* 8. Popular kickoff hours */}
         <section className="bg-card rounded-2xl border border-border/60 p-5">
           <h2 className="font-display font-bold text-base mb-1 flex items-center gap-2">
             <TrendingUp className="w-4 h-4" /> Popular kickoff hours
@@ -765,6 +888,7 @@ export default function VenueOwnerDashboard() {
           </div>
         </section>
 
+        {/* 9. Per-venue pricing & blockout */}
         {venues.filter((v) => v.status === "verified").map((v) => (
           <section key={v.id} className="bg-card rounded-2xl border border-border/60 p-5 space-y-4">
             <div className="flex items-center justify-between">
@@ -782,9 +906,7 @@ export default function VenueOwnerDashboard() {
               </p>
             )}
 
-            {/* Pricing — simplified */}
             <div className="space-y-4">
-              {/* Base price */}
               <div>
                 <label className="text-[11px] font-semibold text-muted-foreground block mb-1.5">Base price per hour (₵)</label>
                 <div className="relative">
@@ -800,8 +922,6 @@ export default function VenueOwnerDashboard() {
                   />
                 </div>
               </div>
-
-              {/* Peak hours */}
               <div>
                 <label className="text-[11px] font-semibold text-muted-foreground block mb-1.5">Peak hours</label>
                 <div className="flex items-center gap-2">
@@ -824,8 +944,6 @@ export default function VenueOwnerDashboard() {
                   />
                 </div>
               </div>
-
-              {/* Surge multiplier */}
               <div>
                 <label className="text-[11px] font-semibold text-muted-foreground block mb-1.5">Surge multiplier</label>
                 <input
@@ -863,6 +981,7 @@ export default function VenueOwnerDashboard() {
           </section>
         ))}
 
+        {/* 10. Earnings breakdown */}
         {loading ? (
           <div className="space-y-4 animate-pulse">
             {[1, 2].map((i) => (
@@ -928,6 +1047,13 @@ export default function VenueOwnerDashboard() {
           ))
         )}
 
+        {/* Register new venue — subtle footer CTA */}
+        <button
+          onClick={() => setAddVenueOpen(true)}
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border border-dashed border-border bg-secondary/40 text-sm font-semibold text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+        >
+          <Plus className="w-4 h-4" /> Register a new venue
+        </button>
       </div>
 
       <Dialog open={qrOpen} onOpenChange={setQrOpen}>
@@ -1209,21 +1335,28 @@ export default function VenueOwnerDashboard() {
                 onChange={(e) => setVenueForm((f) => ({ ...f, contact_phone: e.target.value }))}
                 className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-foreground/20"
               />
-              <div className="flex gap-2">
-                <input
-                  type="time"
-                  placeholder="Opens"
-                  value={venueForm.open_time}
-                  onChange={(e) => setVenueForm((f) => ({ ...f, open_time: e.target.value }))}
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-foreground/20"
-                />
-                <input
-                  type="time"
-                  placeholder="Closes"
-                  value={venueForm.close_time}
-                  onChange={(e) => setVenueForm((f) => ({ ...f, close_time: e.target.value }))}
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-foreground/20"
-                />
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground mb-1.5">Operating hours</p>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <p className="text-[10px] text-muted-foreground mb-0.5 ml-0.5">Opens</p>
+                    <input
+                      type="time"
+                      value={venueForm.open_time}
+                      onChange={(e) => setVenueForm((f) => ({ ...f, open_time: e.target.value }))}
+                      className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-foreground/20"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[10px] text-muted-foreground mb-0.5 ml-0.5">Closes</p>
+                    <input
+                      type="time"
+                      value={venueForm.close_time}
+                      onChange={(e) => setVenueForm((f) => ({ ...f, close_time: e.target.value }))}
+                      className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-foreground/20"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
