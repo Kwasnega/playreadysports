@@ -328,6 +328,8 @@ const Lobby = () => {
   const countdownMain = isLive ? "Live now" : totalSec < 3600 ? `${m}m ${String(s).padStart(2, "0")}s` : `${h}h ${String(m).padStart(2, "0")}m`;
   const countdownSub = isLive ? "Match in progress" : `${String(s).padStart(2, "0")}s`;
 
+  const turfOwners = useMemo(() => new Set(activeParticipants.filter((p: any) => p.slot_type === "turf_owner").map((p: any) => p.user_id)), [activeParticipants]);
+
   return (
     <main className="min-h-screen bg-background pb-28">
       <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md">
@@ -451,7 +453,7 @@ const Lobby = () => {
             matchCode={matchCode}
             matchId={match.id}
             isOrganizer={isOrganizer}
-            turfOwners={useMemo(() => new Set(activeParticipants.filter((p: any) => p.slot_type === "turf_owner").map((p: any) => p.user_id)), [activeParticipants])}
+            turfOwners={turfOwners}
           />
         )}
       </div>
