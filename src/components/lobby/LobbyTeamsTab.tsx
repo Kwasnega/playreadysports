@@ -126,10 +126,9 @@ export const LobbyTeamsTab = (props: LobbyTeamsTabProps) => {
   /* ---- TWO-TEAM VIEW ---- */
   const colorA = (match?.team_color_a ?? "Red");
   const colorB = (match?.team_color_b ?? "Blue");
-  const keyA = colorA.toLowerCase();
-  const keyB = colorB.toLowerCase();
-  const teamAList = coreList.filter((p) => p.team === keyA);
-  const teamBList = coreList.filter((p) => p.team === keyB);
+  // DB stores team as enum 'reds'/'blues', not the display colour name
+  const teamAList = coreList.filter((p) => p.team === "reds");
+  const teamBList = coreList.filter((p) => p.team === "blues");
   const teamAPlayers = buildPlayerList(teamAList);
   const teamBPlayers = buildPlayerList(teamBList);
 
