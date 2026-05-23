@@ -48,10 +48,18 @@ BEGIN
   WHERE id = p_user_id;
 
   -- Log to wallet_transactions
+  IF NOT EXISTS (
+    SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'wallet_transactions'
+  ) THEN
+    RAISE EXCEPTION 'wallet_transactions table missing';
+  END IF;
+
   BEGIN
     INSERT INTO public.wallet_transactions (user_id, amount, type, status, reference)
     VALUES (p_user_id, p_amount, v_type_enum, 'completed', p_reference);
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+  EXCEPTION WHEN undefined_table THEN
+    RAISE EXCEPTION 'wallet_transactions table does not exist. Run migrations first.';
+  END;
 
   RETURN jsonb_build_object('success', true, 'new_balance', v_current + p_amount);
 END;

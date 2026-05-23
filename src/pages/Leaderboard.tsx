@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   Award, Trophy, Medal, User, TrendingUp, ArrowLeft, ChevronDown, ChevronUp,
@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLeaderboard, type Timeframe } from "@/hooks/useLeaderboard";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 function initials(name: string | null) {
@@ -31,8 +32,26 @@ export default function Leaderboard() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
 
-  const { players, cities, topVenue, loading, userRank, userEntry } =
+  const { players, cities, topVenue, loading, userRank, userEntry, refetch } =
     useLeaderboard(timeframe, city || null);
+
+  // Realtime subscription: refetch leaderboard when new vote results are recorded
+  useEffect(() => {
+    const channel = supabase
+      .channel("leaderboard-updates")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "match_vote_results" },
+        () => {
+          refetch();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [refetch]);
 
   const top3 = players.slice(0, 3);
   const rest = players.slice(3);

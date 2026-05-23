@@ -1,6 +1,37 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
 
+async function logVotePoints(svc: any, matchId: string, result: any) {
+  const { data: matchRow } = await svc
+    .from("matches")
+    .select("title")
+    .eq("id", matchId)
+    .maybeSingle();
+  const matchTitle = matchRow?.title ?? "Match";
+
+  const king = result?.king_of_match;
+  if (king?.winner_id) {
+    await svc.from("wallet_transactions").insert({
+      user_id: king.winner_id,
+      amount: 5,
+      type: "leaderboard_points" as any,
+      reference: `King of the Match — ${matchTitle}`,
+      status: "completed" as any,
+    });
+  }
+
+  const second = result?.second_king_of_match;
+  if (second?.winner_id) {
+    await svc.from("wallet_transactions").insert({
+      user_id: second.winner_id,
+      amount: 3,
+      type: "leaderboard_points" as any,
+      reference: `2nd King of the Match — ${matchTitle}`,
+      status: "completed" as any,
+    });
+  }
+}
+
 Deno.serve(async (req) => {
   const corsHeaders = getCorsHeaders();
   if (req.method === "OPTIONS") {
@@ -63,6 +94,9 @@ Deno.serve(async (req) => {
         });
       }
 
+      // Log leaderboard points into wallet_transactions
+      await logVotePoints(svc, match_id, data);
+
       return new Response(JSON.stringify(data), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -78,6 +112,16 @@ Deno.serve(async (req) => {
         });
       }
 
+      // Log points for every resolved match
+      const results = data?.results ?? [];
+      for (const item of results) {
+        const mid = item?.match_id;
+        const res = item?.result;
+        if (mid && res?.success) {
+          await logVotePoints(svc, mid, res);
+        }
+      }
+
       return new Response(JSON.stringify(data), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -85,7 +129,6 @@ Deno.serve(async (req) => {
     }
 
   } catch (err: any) {
-    console.error("Resolve match votes edge function error:", err);
     return new Response(JSON.stringify({ error: err.message ?? "Internal error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

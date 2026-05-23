@@ -51,6 +51,8 @@ Deno.serve(async (req) => {
     // ------------------------------------------------------------------
     const body = await req.json();
     const {
+      title,
+      sportType,
       venueId,
       matchType,
       matchMode,
@@ -58,31 +60,88 @@ Deno.serve(async (req) => {
       matchDate,
       durationMinutes,
       entryFee,
+      maxCore,
+      profitAmount,
       notes,
       teamColorA,
       teamColorB,
     } = body;
 
     if (!venueId || !matchType || !matchMode || !format || !matchDate) {
-      return new Response(JSON.stringify({ error: "Missing required fields" }), {
+      return new Response(JSON.stringify({ error: "VALIDATION_ERROR", field: "required", message: "Missing required fields" }), {
         status: 400,
         headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
-    // matchDate must be in the future
+    // Title
+    if (!title || typeof title !== "string") {
+      return new Response(JSON.stringify({ error: "VALIDATION_ERROR", field: "title", message: "Match title is required" }), {
+        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+      });
+    }
+    if (title.trim().length < 3) {
+      return new Response(JSON.stringify({ error: "VALIDATION_ERROR", field: "title", message: "Title must be at least 3 characters" }), {
+        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+      });
+    }
+    if (title.trim().length > 60) {
+      return new Response(JSON.stringify({ error: "VALIDATION_ERROR", field: "title", message: "Title must be 60 characters or less" }), {
+        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+      });
+    }
+
+    // Sport
+    if (!sportType || typeof sportType !== "string") {
+      return new Response(JSON.stringify({ error: "VALIDATION_ERROR", field: "sportType", message: "Please select a sport" }), {
+        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+      });
+    }
+
+    // Entry fee
+    const feeNum = Number(entryFee);
+    if (isNaN(feeNum) || feeNum < 0) {
+      return new Response(JSON.stringify({ error: "VALIDATION_ERROR", field: "entryFee", message: "Entry fee must be a number >= 0" }), {
+        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+      });
+    }
+    if (feeNum > 10000) {
+      return new Response(JSON.stringify({ error: "VALIDATION_ERROR", field: "entryFee", message: "Entry fee cannot exceed 10000" }), {
+        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+      });
+    }
+
+    // Max players
+    const maxCoreNum = Number(maxCore);
+    if (!Number.isInteger(maxCoreNum) || maxCoreNum < 2) {
+      return new Response(JSON.stringify({ error: "VALIDATION_ERROR", field: "maxCore", message: "Max players must be at least 2" }), {
+        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+      });
+    }
+    if (maxCoreNum > 100) {
+      return new Response(JSON.stringify({ error: "VALIDATION_ERROR", field: "maxCore", message: "Max players cannot exceed 100" }), {
+        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+      });
+    }
+
+    // Profit
+    const profitNum = Number(profitAmount ?? 0);
+    if (profitNum < 0) {
+      return new Response(JSON.stringify({ error: "VALIDATION_ERROR", field: "profitAmount", message: "Profit cannot be negative" }), {
+        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+      });
+    }
+    if (profitNum >= feeNum * maxCoreNum) {
+      return new Response(JSON.stringify({ error: "VALIDATION_ERROR", field: "profitAmount", message: "Profit must be less than total pot (entry fee × max players)" }), {
+        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+      });
+    }
+
+    // Date — must be at least 30 minutes in the future
     const kickoff = new Date(matchDate);
-    if (isNaN(kickoff.getTime()) || kickoff.getTime() <= Date.now()) {
-      return new Response(JSON.stringify({ error: "Match date must be in the future" }), {
-        status: 400,
-        headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
-      });
-    }
-
-    if (typeof entryFee !== "number" || entryFee < 0) {
-      return new Response(JSON.stringify({ error: "Entry fee must be >= 0" }), {
-        status: 400,
-        headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+    if (isNaN(kickoff.getTime()) || kickoff.getTime() <= Date.now() + 30 * 60 * 1000) {
+      return new Response(JSON.stringify({ error: "VALIDATION_ERROR", field: "matchDate", message: "Match must be scheduled at least 30 minutes from now" }), {
+        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
@@ -228,7 +287,6 @@ Deno.serve(async (req) => {
     // ------------------------------------------------------------------
     const formatStr: string = format;
     const playersPerSide = parseInt(formatStr.split("v")[0] || "6", 10);
-    const maxCore = playersPerSide * 2;
 
     const qrSecret = [...crypto.getRandomValues(new Uint8Array(24))]
       .map((b) => b.toString(16).padStart(2, "0"))
@@ -240,6 +298,8 @@ Deno.serve(async (req) => {
     const { data: match, error: insertErr } = await supabase
       .from("matches")
       .insert({
+        title: title.trim(),
+        sport_id: sportType,
         join_code: joinCode,
         organizer_id: user.id,
         venue_id: venueId,
@@ -247,10 +307,11 @@ Deno.serve(async (req) => {
         match_mode: matchMode as any,
         format: formatStr as any,
         players_per_side: playersPerSide,
-        max_core_players: maxCore,
+        max_core_players: maxCoreNum,
         match_date: matchDate,
         duration_minutes: durationMinutes ?? 60,
-        entry_fee: entryFee ?? 0,
+        entry_fee: feeNum,
+        organizer_profit_amount: profitNum,
         notes: notes ?? null,
         status: "upcoming" as any,
         escrow_status: "none" as any,
@@ -263,7 +324,6 @@ Deno.serve(async (req) => {
       .single();
 
     if (insertErr || !match) {
-      console.error("Insert match error:", insertErr);
       return new Response(JSON.stringify({ error: insertErr?.message ?? "Failed to create match" }), {
         status: 500,
         headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
@@ -282,12 +342,11 @@ Deno.serve(async (req) => {
         slot_type: "core" as any,
         team: organizerTeam as any,
         status: "active" as any,
-        payment_status: (entryFee === 0 ? "paid" : "unpaid") as any,
+        payment_status: (feeNum === 0 ? "paid" : "unpaid") as any,
       });
 
     if (participantErr) {
-      console.error("Insert participant error:", participantErr);
-      // Best-effort: don't fail the whole request, just log it
+      // Best-effort: don't fail the whole request, silently continue
     }
 
     // ------------------------------------------------------------------
@@ -295,7 +354,7 @@ Deno.serve(async (req) => {
     // ------------------------------------------------------------------
     const svc = createClient(supabaseUrl, serviceKey);
 
-    if (entryFee > 0) {
+    if (feeNum > 0) {
       const { data: walletRow } = await svc
         .from("wallet_balances")
         .select("balance")
@@ -303,12 +362,12 @@ Deno.serve(async (req) => {
         .single();
 
       const currentBalance = Number(walletRow?.balance ?? 0);
-      if (currentBalance < entryFee) {
+      if (currentBalance < feeNum) {
         // Rollback: remove match and participant so the user isn't left with an unpaid match
         await svc.from("match_participants").delete().eq("match_id", match.id).eq("user_id", user.id);
         await svc.from("matches").delete().eq("id", match.id);
         return new Response(
-          JSON.stringify({ error: `Insufficient wallet balance. You need ₵${entryFee} to create this match. Please top up your wallet.` }),
+          JSON.stringify({ error: `Insufficient wallet balance. You need ₵${feeNum} to create this match. Please top up your wallet.` }),
           { status: 402, headers: { ...getCorsHeaders(), "Content-Type": "application/json" } },
         );
       }
@@ -316,13 +375,13 @@ Deno.serve(async (req) => {
       // Deduct fee
       await svc
         .from("wallet_balances")
-        .update({ balance: currentBalance - entryFee })
+        .update({ balance: currentBalance - feeNum })
         .eq("user_id", user.id);
 
       // Log spend transaction
       await svc.from("wallet_transactions").insert({
         user_id: user.id,
-        amount: -entryFee,
+        amount: -feeNum,
         type: "spend" as any,
         reference: `create_match_${match.id}_${Date.now()}`,
         status: "completed" as any,
@@ -350,7 +409,7 @@ Deno.serve(async (req) => {
     // ------------------------------------------------------------------
     // 8c. If match is free but venue has a price, organizer pays venue cost
     // ------------------------------------------------------------------
-    if (entryFee === 0) {
+    if (feeNum === 0) {
       const pricePerHour = Number(venue?.price_per_hour ?? 0);
       if (pricePerHour > 0) {
         const hrs = (durationMinutes ?? 60) / 60;
@@ -434,7 +493,6 @@ Deno.serve(async (req) => {
       headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
     });
   } catch (err: any) {
-    console.error("Edge function error:", err);
     return new Response(JSON.stringify({ error: err.message ?? "Internal error" }), {
       status: 500,
       headers: { ...getCorsHeaders(), "Content-Type": "application/json" },

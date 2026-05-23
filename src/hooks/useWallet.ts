@@ -44,7 +44,7 @@ export function useWallet() {
         throw balanceErr;
       }
 
-      setBalance(balanceData ? Number(balanceData.balance) : 0);
+      setBalance(balanceData ? Number(balanceData.balance) || 0 : 0);
 
       // Fetch transactions
       const { data: txData, error: txErr } = await (supabase as any)
@@ -58,7 +58,6 @@ export function useWallet() {
 
       setTransactions((txData ?? []) as WalletTransaction[]);
     } catch (err: any) {
-      console.error("Error fetching wallet:", err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -106,7 +105,6 @@ export function useWallet() {
               setToppingUp(false);
               resolve(true);
             } else {
-              console.error("Top-up verification failed:", data);
               setToppingUp(false);
               resolve(false);
             }
@@ -118,7 +116,6 @@ export function useWallet() {
         });
         handler.openIframe();
       } catch (err) {
-        console.error("Paystack top-up error:", err);
         setToppingUp(false);
         resolve(false);
       }
@@ -158,7 +155,6 @@ export function useWallet() {
         return { success: false, error: data.error || "Withdrawal failed" };
       }
     } catch (err: any) {
-      console.error("Withdraw error:", err);
       setError(err.message || "Withdrawal failed");
       setWithdrawing(false);
       return { success: false, error: err.message || "Withdrawal failed" };
@@ -182,7 +178,6 @@ export function useWallet() {
       setPaying(false);
       return { success: true, participantId: (data as any)?.participant_id };
     } catch (err: any) {
-      console.error("Wallet match payment error:", err);
       setPaying(false);
       return { success: false, error: err.message };
     }

@@ -154,7 +154,7 @@ export default function AdminRevenue() {
             Trend
           </div>
           <p className={`text-2xl font-display font-bold ${totals.trend >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-            {totals.trend >= 0 ? "+" : ""}{totals.trend.toFixed(1)}%
+            {totals.trend >= 0 ? "+" : ""}{Number(totals.trend || 0).toFixed(1)}%
           </p>
         </div>
       </div>
@@ -178,7 +178,7 @@ export default function AdminRevenue() {
                       style={{ height: `${Math.max(h, 2)}%` }}
                     />
                     <div className="absolute bottom-full mb-1 hidden group-hover:block bg-slate-800 text-white text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-10">
-                      ₵{d.net.toFixed(2)}<br />
+                      ₵{Number(d.net || 0).toFixed(2)}<br />
                       <span className="text-slate-400">{d.date}</span>
                     </div>
                   </div>

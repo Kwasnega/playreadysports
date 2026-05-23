@@ -94,7 +94,6 @@ export const useNotifications = () => {
         .limit(PAGE);
 
       if (error) {
-        console.error("[useNotifications] load error:", error.message);
         if (mountedRef.current) setLoading(false);
         return;
       }
@@ -131,9 +130,7 @@ export const useNotifications = () => {
         )
         .subscribe((status, err) => {
           if (err) {
-            console.error("[useNotifications] subscription error:", err.message);
-          } else if (status === "SUBSCRIBED") {
-            console.log("[useNotifications] subscribed to", `notifications:${userId}`);
+            // Realtime subscription error — silently ignore in production
           }
         });
     };
@@ -142,7 +139,6 @@ export const useNotifications = () => {
     // Mobile: reconnect when app comes back from background
     const onVisible = () => {
       if (document.visibilityState === "visible") {
-        console.log("[useNotifications] page visible, reloading…");
         load();
         supabase.removeChannel(channel);
         subscribe();
@@ -151,7 +147,6 @@ export const useNotifications = () => {
     document.addEventListener("visibilitychange", onVisible);
 
     const onOnline = () => {
-      console.log("[useNotifications] back online, reloading…");
       load();
       supabase.removeChannel(channel);
       subscribe();

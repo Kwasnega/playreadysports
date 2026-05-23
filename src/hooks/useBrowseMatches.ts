@@ -140,7 +140,6 @@ export function useBrowseMatches(filters: BrowseFilters) {
       if (cancelled) return;
 
       if (supaErr) {
-        console.error("useBrowseMatches error:", supaErr);
         setError(supaErr.message);
         setMatches([]);
       } else {

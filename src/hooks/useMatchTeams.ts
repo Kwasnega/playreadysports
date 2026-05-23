@@ -37,7 +37,6 @@ export function useMatchTeams(matchId?: string) {
       if (cancelled) return;
 
       if (error) {
-        console.error("useMatchTeams error:", error);
         setTeams(null);
       } else {
         const list = (data ?? []) as { team: string; status: string; slot_type: string }[];

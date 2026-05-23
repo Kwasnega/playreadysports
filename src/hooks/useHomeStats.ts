@@ -54,8 +54,7 @@ export function useHomeStats(refreshMs = 60000) {
       // Suppress 401/403 errors for logged-out users — RLS blocks these queries
       // until the anon policies are applied in the database.
       const isAuthErr = (e: any) => (e?.status === 401 || e?.status === 403 || e?.code === 'PGRST301');
-      if (matchErr && !isAuthErr(matchErr)) console.error("stats matches error:", matchErr);
-      if (playerErr && !isAuthErr(playerErr)) console.error("stats players error:", playerErr);
+      // Suppress non-auth errors silently in production
 
       setStats({
         matchesToday: matchCount ?? 0,

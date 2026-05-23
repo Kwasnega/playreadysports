@@ -42,9 +42,10 @@ async function fetchLeaderboard(timeframe: Timeframe, city?: string | null) {
   // Falls back to profiles if the view is empty / stale.
   let q;
   if (timeframe === "all") {
-    q = supabase
+    q = (supabase as any)
       .from("leaderboard_mv")
       .select("*")
+      .order("reputation_score", { ascending: false })
       .limit(50);
     if (city) q = q.eq("city", city);
   } else {
@@ -147,7 +148,7 @@ async function fetchLeaderboard(timeframe: Timeframe, city?: string | null) {
 export const useLeaderboard = (timeframe: Timeframe = "all", city?: string | null) => {
   const { user } = useAuth();
 
-  const { data, isLoading: loading, error } = useQuery({
+  const { data, isLoading: loading, error, refetch } = useQuery({
     queryKey: ["leaderboard", timeframe, city],
     queryFn: () => fetchLeaderboard(timeframe, city),
     staleTime: 1000 * 60 * 5,
@@ -163,7 +164,5 @@ export const useLeaderboard = (timeframe: Timeframe = "all", city?: string | nul
   const userRank = user ? players.findIndex((p) => p.id === user.id) + 1 || null : null;
   const userEntry = userRank ? players[userRank - 1] ?? null : null;
 
-  if (error) console.error("useLeaderboard error:", error);
-
-  return { players, cities, topVenue, risingStar, loading, userRank, userEntry };
+  return { players, cities, topVenue, risingStar, loading, userRank, userEntry, refetch };
 };

@@ -27,7 +27,6 @@ export function useUserLocation() {
         setLoading(false);
       },
       (err) => {
-        console.warn("Geolocation error:", err.message);
         // Default to Accra
         setLocation({
           lat: 5.6037,

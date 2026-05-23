@@ -68,7 +68,7 @@ export function useLobbyChat(matchId: string | undefined) {
       if (cancelled) return;
 
       if (error) {
-        console.error("useLobbyChat load error:", error);
+        // Loading error — silently handled
       } else {
         const rows = (data ?? []).reverse();
         const senderIds = [...new Set(rows.map((r: any) => r.sender_id))];
@@ -140,7 +140,7 @@ export function useLobbyChat(matchId: string | undefined) {
       .order("created_at", { ascending: false })
       .limit(PAGE_SIZE);
     setLoadingMore(false);
-    if (error) { console.error("useLobbyChat loadMore error:", error); return; }
+    if (error) { return; }
     const rows = (data ?? []).reverse();
     const senderIds = [...new Set(rows.map((r: any) => r.sender_id))];
     if (senderIds.length > 0) {
@@ -166,7 +166,6 @@ export function useLobbyChat(matchId: string | undefined) {
     const trimmed = content.trim().slice(0, 500);
 
     if (containsPoachingContent(trimmed)) {
-      console.warn("[useLobbyChat] Message blocked by anti-poaching filter");
       return { blocked: true };
     }
 
@@ -176,7 +175,6 @@ export function useLobbyChat(matchId: string | undefined) {
       content: trimmed,
       message_type: "text" as any,
     });
-    if (error) console.error("sendMessage error:", error);
     return { blocked: false };
   }, [matchId]);
 

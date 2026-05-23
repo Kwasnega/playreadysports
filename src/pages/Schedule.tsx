@@ -50,7 +50,7 @@ function useDayMatches(date: Date) {
       .lte("match_date", dayEnd.toISOString())
       .order("match_date", { ascending: true })
       .then(({ data, error }) => {
-        if (error) { console.error(error); setMatches([]); }
+        if (error) { setMatches([]); }
         else {
           setMatches((data ?? []).map((row: any) => {
             const v = Array.isArray(row.venue) ? row.venue[0] ?? {} : row.venue ?? {};

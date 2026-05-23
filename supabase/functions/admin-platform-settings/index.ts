@@ -14,8 +14,34 @@ const ALLOWED_KEYS = new Set([
 function validateValue(key: string, value: string): string | null {
   const num = parseFloat(value);
   if (isNaN(num) || num < 0) return `${key} must be a positive number`;
-  if (key === "commission_rate" && num > 1) return "commission_rate must be between 0 and 1";
-  return null;
+  switch (key) {
+    case "commission_rate": {
+      if (num > 1) return "commission_rate must be between 0 and 1";
+      return null;
+    }
+    case "organizer_incentive_amount": {
+      if (num > 10000) return "organizer_incentive_amount must be ≤ 10,000";
+      return null;
+    }
+    case "cancel_cutoff_minutes": {
+      if (!Number.isInteger(num)) return "cancel_cutoff_minutes must be a whole number";
+      if (num < 5) return "cancel_cutoff_minutes must be at least 5";
+      if (num > 10080) return "cancel_cutoff_minutes must be ≤ 10,080";
+      return null;
+    }
+    case "auto_cancel_window_minutes": {
+      if (!Number.isInteger(num)) return "auto_cancel_window_minutes must be a whole number";
+      if (num < 5) return "auto_cancel_window_minutes must be at least 5";
+      if (num > 1440) return "auto_cancel_window_minutes must be ≤ 1,440";
+      return null;
+    }
+    case "auto_cancel_min_paid_pct": {
+      if (num > 1) return "auto_cancel_min_paid_pct must be between 0 and 1";
+      return null;
+    }
+    default:
+      return null;
+  }
 }
 
 // ── Shared admin identity check ──────────────────────────────────────────

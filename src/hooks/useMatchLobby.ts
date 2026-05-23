@@ -72,7 +72,6 @@ export function useMatchLobby(joinCode: string) {
       .order("joined_at", { ascending: true });
 
     if (pErr) {
-      console.error("loadParticipants error:", pErr);
       return;
     }
 
@@ -235,6 +234,37 @@ export function useMatchLobby(joinCode: string) {
             );
             return;
           }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+      supabase.removeChannel(channel);
+    };
+  }, [matchId]);
+
+  // Realtime: watch match status changes (e.g. upcoming -> completed)
+  useEffect(() => {
+    if (!matchId) return;
+
+    const channel = supabase
+      .channel(`lobby-match:${matchId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "matches",
+          filter: `id=eq.${matchId}`,
+        } as any,
+        (payload: any) => {
+          const newRow = payload.new;
+          if (!newRow) return;
+          setMatch((prev) => {
+            if (!prev) return prev;
+            return { ...prev, status: newRow.status ?? prev.status } as LobbyMatch;
+          });
         }
       )
       .subscribe();

@@ -43,7 +43,6 @@ export function useMySchedule(userId: string | undefined) {
       if (cancelled) return;
 
       if (error) {
-        console.error("useMySchedule error:", error);
         setMatches([]);
       } else {
         const normalized = (data ?? []).map((row: any) => {

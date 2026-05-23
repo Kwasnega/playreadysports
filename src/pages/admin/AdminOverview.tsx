@@ -18,7 +18,7 @@ const cardGradients = [
 function StatCard({ label, value, icon: Icon, index, trend }: { label: string; value: string | number; icon: any; index: number; trend?: number | null }) {
   const g = cardGradients[index % cardGradients.length];
   const trendPos = trend != null && trend >= 0;
-  const trendStr = trend == null ? null : `${trendPos ? "+" : ""}${trend.toFixed(0)}%`;
+  const trendStr = trend == null ? null : `${trendPos ? "+" : ""}${Number(trend || 0).toFixed(0)}%`;
   return (
     <div className="relative group">
       <div className={`absolute inset-0 bg-gradient-to-br ${g.from} ${g.to} rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
@@ -85,7 +85,9 @@ export default function AdminOverview() {
       ];
       for (const table of tables) {
         const { error } = await (supabase as any).from(table).delete().neq("id", "00000000-0000-0000-0000-000000000000");
-        if (error) console.error(`Failed to clear ${table}:`, error.message);
+        if (error) {
+          // Table clear failed — silently continue
+        }
       }
       toast.success("Platform wiped clean. Reloading…");
       setTimeout(() => window.location.reload(), 1500);
@@ -145,7 +147,7 @@ export default function AdminOverview() {
     setSavingRate(false);
     if (error) toast.error(error);
     else {
-      toast.success(`Commission rate saved: ${(commissionRate * 100).toFixed(1)}%`);
+      toast.success(`Commission rate saved: ${Number((commissionRate || 0) * 100).toFixed(1)}%`);
       setSettingsOpen(false);
       // Recalculate fees with new rate
       setMetrics((m) => ({ ...m, fees: Math.round(m.revenue * commissionRate * 100) / 100 }));
@@ -383,7 +385,7 @@ export default function AdminOverview() {
             <div className="mb-6">
               <div className="flex items-center justify-between mb-2">
                 <label className="text-xs text-slate-500">Commission rate</label>
-                <span className="text-sm font-bold text-white">{(commissionRate * 100).toFixed(1)}%</span>
+                <span className="text-sm font-bold text-white">{Number((commissionRate || 0) * 100).toFixed(1)}%</span>
               </div>
               <input
                 type="range"

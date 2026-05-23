@@ -175,7 +175,7 @@ export const LobbyMatchTab = (props: LobbyMatchTabProps) => {
       )}
 
       {/* Organizer actions */}
-      {isOrganizer && (
+      {isOrganizer && match?.status !== 'completed' && match?.status !== 'cancelled' && (
         <div className="space-y-2">
           <button onClick={endMatch} disabled={ending} className="w-full bg-success/10 text-success font-semibold rounded-full px-4 py-3.5 text-sm flex items-center justify-center gap-2 disabled:opacity-60">
             <Flag className="w-4 h-4" /> {ending ? "Completing…" : "Mark match as complete"}

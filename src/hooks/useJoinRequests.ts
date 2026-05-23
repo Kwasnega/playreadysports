@@ -27,7 +27,6 @@ export function useJoinRequests(matchId: string | undefined) {
         .single();
 
       if (error) {
-        console.error("acceptRequest error:", error);
         toast.error("Failed to accept request");
         return false;
       }
@@ -77,7 +76,6 @@ export function useJoinRequests(matchId: string | undefined) {
         .single();
 
       if (error) {
-        console.error("rejectRequest error:", error);
         toast.error("Failed to remove player");
         return false;
       }

@@ -31,7 +31,6 @@ export async function initPaystackPayment(config: {
 }): Promise<void> {
   const key = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY as string | undefined;
   if (!key) {
-    console.error("Paystack public key missing. Set VITE_PAYSTACK_PUBLIC_KEY in .env");
     config.onClose();
     throw new Error("Paystack public key not configured");
   }
@@ -39,7 +38,6 @@ export async function initPaystackPayment(config: {
   try {
     await loadPaystackScript();
   } catch (e) {
-    console.error("Paystack script failed to load:", e);
     config.onClose();
     throw new Error("Payment provider unavailable. Check your connection.");
   }
@@ -70,14 +68,12 @@ export async function initPaystackPayment(config: {
     onSuccess: (transaction: any) => {
       config.onSuccess(transaction.reference);
     },
-    onLoad: (response: any) => {
-      console.log("Paystack onLoad:", response);
-    },
+    onLoad: () => {},
+    // No-op: Paystack loaded successfully
     onCancel: () => {
       config.onClose();
     },
-    onError: (error: any) => {
-      console.error("Paystack error:", error);
+    onError: () => {
       config.onClose();
     },
   });

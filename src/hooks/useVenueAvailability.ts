@@ -42,7 +42,6 @@ export function useVenueAvailability(venueId: string | null, monthDate: Date) {
       if (cancelled) return;
 
       if (error) {
-        console.error("useVenueAvailability error:", error);
         setMatches([]);
       } else {
         setMatches((data ?? []) as MatchSlot[]);

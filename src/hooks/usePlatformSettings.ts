@@ -18,7 +18,7 @@ export function usePlatformSettings() {
         const status = (error as any)?.status ?? 0;
         const code = (error as any)?.code ?? "";
         if (status !== 401 && status !== 403 && code !== "PGRST301") {
-          console.error("[usePlatformSettings] load error:", error.message);
+          // Non-auth errors silently ignored in production
         }
         setMaintenanceMode(false);
         setLoading(false);

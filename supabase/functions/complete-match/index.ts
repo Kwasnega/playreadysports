@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { matchId } = body;
+    const { matchId, winningTeam } = body;
     if (!matchId) {
       return new Response(JSON.stringify({ error: "Missing matchId" }), {
         status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
@@ -56,6 +56,7 @@ Deno.serve(async (req) => {
     const { data: rpcResult, error: rpcErr } = await svc.rpc("complete_match_atomic", {
       p_match_id: matchId,
       p_caller_id: user.id,
+      p_winning_team: winningTeam ?? null,
     });
 
     if (rpcErr) {

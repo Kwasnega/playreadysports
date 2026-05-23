@@ -64,7 +64,6 @@ export default function MyMatches() {
         .select("id, join_code, match_date, format, match_mode, entry_fee, status, core_paid_count, max_core_players, venue:venues(name, city)")
         .eq("organizer_id", user.id)
         .order("match_date", { ascending: false });
-      if (error) console.error(error);
       setMatches((data ?? []).map((row: any) => {
         const v = Array.isArray(row.venue) ? row.venue[0] ?? null : row.venue ?? null;
         return { ...row, venue: v };
@@ -78,7 +77,7 @@ export default function MyMatches() {
         .select("match_id")
         .eq("user_id", user.id)
         .eq("status", "active");
-      if (pErr) { console.error(pErr); setLoading(false); return; }
+      if (pErr) { setLoading(false); return; }
       const matchIds = (pData ?? []).map((p: any) => p.match_id);
       if (matchIds.length === 0) { setMatches([]); setLoading(false); return; }
       const { data, error } = await supabase
@@ -86,7 +85,6 @@ export default function MyMatches() {
         .select("id, join_code, match_date, format, match_mode, entry_fee, status, core_paid_count, max_core_players, venue:venues(name, city)")
         .in("id", matchIds)
         .order("match_date", { ascending: false });
-      if (error) console.error(error);
       setMatches((data ?? []).map((row: any) => {
         const v = Array.isArray(row.venue) ? row.venue[0] ?? null : row.venue ?? null;
         return { ...row, venue: v };

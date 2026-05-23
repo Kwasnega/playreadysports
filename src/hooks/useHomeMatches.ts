@@ -77,7 +77,6 @@ async function fetchHomeMatches(cursor?: string): Promise<HomeMatch[]> {
   const { data, error } = await Promise.race([q, timeout]);
 
   if (error) {
-    console.error("useHomeMatches error:", error);
     // If the user is logged out and RLS blocks the query, return empty
     // instead of crashing the entire feed.
     const code = (error as any).code ?? "";

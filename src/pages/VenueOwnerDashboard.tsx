@@ -241,7 +241,6 @@ export default function VenueOwnerDashboard() {
       .eq("venue_id", venueId)
       .order("block_date", { ascending: true });
     if (error) {
-      console.error("fetchBlockouts error:", error);
       return;
     }
     setBlockouts((data ?? []) as VenueBlockout[]);
@@ -390,6 +389,51 @@ export default function VenueOwnerDashboard() {
     const id = setInterval(load, 30000);
     return () => clearInterval(id);
   }, [load]);
+
+  // Realtime subscriptions for balance and withdrawal status
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const channel = supabase
+      .channel("venue-owner-balance")
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "profiles",
+          filter: `id=eq.${user.id}`,
+        },
+        (payload) => {
+          const newBal = Number((payload.new as any)?.venue_owner_balance);
+          const oldBal = Number((payload.old as any)?.venue_owner_balance);
+          if (!isNaN(newBal) && newBal !== oldBal) {
+            setVenueBalance(newBal || 0);
+            toast.success("Your earnings have been updated!");
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "venue_payout_requests",
+          filter: `owner_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const status = (payload.new as any)?.status;
+          if (status === "approved") toast.success("Withdrawal approved!");
+          if (status === "rejected") toast.error("Withdrawal rejected");
+          load();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, load]);
 
   const totalGross = earnings.reduce((s, v) => s + v.totalGross, 0);
   const platformFees = totalGross * commissionRate;
@@ -707,21 +751,21 @@ export default function VenueOwnerDashboard() {
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700/70">Net Earnings</p>
-              <p className="font-display font-bold text-5xl mt-1 text-emerald-600">₵{netEarnings.toFixed(0)}</p>
+              <p className="font-display font-bold text-5xl mt-1 text-emerald-600">₵{Number(netEarnings || 0).toFixed(0)}</p>
               <div className="flex items-center gap-4 mt-3">
                 <div>
                   <p className="text-[10px] text-muted-foreground uppercase">Gross</p>
-                  <p className="text-sm font-bold">₵{totalGross.toFixed(0)}</p>
+                  <p className="text-sm font-bold">₵{Number(totalGross || 0).toFixed(0)}</p>
                 </div>
                 <div className="w-px h-6 bg-border/60" />
                 <div>
                   <p className="text-[10px] text-muted-foreground uppercase">Platform fee</p>
-                  <p className="text-sm font-bold">₵{platformFees.toFixed(0)}</p>
+                  <p className="text-sm font-bold">₵{Number(platformFees || 0).toFixed(0)}</p>
                 </div>
                 <div className="w-px h-6 bg-border/60" />
                 <div>
                   <p className="text-[10px] text-muted-foreground uppercase">Rate</p>
-                  <p className="text-sm font-bold">{(commissionRate * 100).toFixed(0)}%</p>
+                  <p className="text-sm font-bold">{Number((commissionRate || 0) * 100).toFixed(0)}%</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 mt-5">
@@ -733,7 +777,7 @@ export default function VenueOwnerDashboard() {
                   Withdraw
                 </button>
                 <span className="text-xs text-muted-foreground">
-                  Available: ₵{venueBalance.toFixed(2)}
+                  Available: ₵{Number(venueBalance || 0).toFixed(2)}
                 </span>
               </div>
             </div>
@@ -957,7 +1001,7 @@ export default function VenueOwnerDashboard() {
                 <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
                   During peak hours, players pay the multiplied rate.
                   {v.price_per_hour && v.surge_multiplier > 1 ? (
-                    <> Example: ₵{v.price_per_hour} × {v.surge_multiplier} = <span className="font-semibold text-emerald-600">₵{(v.price_per_hour * v.surge_multiplier).toFixed(0)}/hr</span>.</>
+                    <> Example: ₵{v.price_per_hour} × {v.surge_multiplier} = <span className="font-semibold text-emerald-600">₵{Number((v.price_per_hour || 0) * v.surge_multiplier).toFixed(0)}/hr</span>.</>
                   ) : null}
                 </p>
               </div>
@@ -1012,11 +1056,11 @@ export default function VenueOwnerDashboard() {
                 <div>
                   <h2 className="font-display font-bold text-base">{venue.venueName}</h2>
                   <p className="text-[11px] text-muted-foreground">
-                    {venue.matches.length} completed match{venue.matches.length !== 1 ? "es" : ""} · ₵{venue.totalGross.toFixed(0)} gross
+                    {venue.matches.length} completed match{venue.matches.length !== 1 ? "es" : ""} · ₵{Number(venue.totalGross || 0).toFixed(0)} gross
                   </p>
                 </div>
                 <span className="text-xs font-bold text-emerald-600">
-                  ₵{(venue.totalGross * (1 - commissionRate)).toFixed(0)} net
+                  ₵{Number((venue.totalGross || 0) * (1 - (commissionRate || 0))).toFixed(0)} net
                 </span>
               </div>
               <div className="divide-y divide-border/60">
@@ -1032,7 +1076,7 @@ export default function VenueOwnerDashboard() {
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-bold">₵{m.gross.toFixed(0)}</p>
+                      <p className="text-sm font-bold">₵{Number(m.gross || 0).toFixed(0)}</p>
                       <p className="text-[10px] text-muted-foreground">{m.core_paid_count} paid</p>
                     </div>
                   </div>
@@ -1124,7 +1168,7 @@ export default function VenueOwnerDashboard() {
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle className="font-display">Request Withdrawal</DialogTitle>
-            <p className="text-xs text-muted-foreground font-normal">Available: ₵{venueBalance.toFixed(2)}</p>
+            <p className="text-xs text-muted-foreground font-normal">Available: ₵{Number(venueBalance || 0).toFixed(2)}</p>
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div>

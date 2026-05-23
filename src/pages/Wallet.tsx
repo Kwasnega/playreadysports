@@ -73,7 +73,7 @@ const WalletPage = () => {
           <div className="flex items-end gap-1">
             <span className="text-3xl font-display font-bold leading-none mb-1">₵</span>
             <span className="text-[54px] font-display font-extrabold leading-none tracking-tight">
-              {loading ? "--" : balance.toFixed(2)}
+              {loading ? "--" : Number(balance || 0).toFixed(2)}
             </span>
           </div>
           
@@ -167,7 +167,7 @@ const WalletPage = () => {
                     </p>
                   </div>
                   <div className={`font-bold tabular-nums ${tx.amount > 0 ? "text-emerald-500" : "text-foreground"}`}>
-                    {tx.amount > 0 ? "+" : ""}₵{Math.abs(tx.amount).toFixed(2)}
+                    {tx.amount > 0 ? "+" : ""}₵{Math.abs(Number(tx.amount || 0)).toFixed(2)}
                   </div>
                 </li>
               ))}

@@ -12,14 +12,17 @@ type SettingRow = {
 };
 
 const KEYS = [
+  { key: "commission_rate", label: "Platform commission (decimal)", hint: "Enter as decimal (e.g. 0.15 for 15%)" },
   { key: "organizer_incentive_amount", label: "Organizer incentive (GHS)", hint: "Flat Play wallet credit per completed match" },
-  { key: "commission_rate", label: "Platform commission (decimal)", hint: "e.g. 0.05 = 5% taken from gross before venue cut" },
   { key: "cancel_cutoff_minutes", label: "Cancel cutoff (minutes)", hint: "Organizer cannot cancel within this window before kickoff" },
+  { key: "auto_cancel_window_minutes", label: "Auto-cancel window (minutes)", hint: "Match auto-cancels if not enough players pay within this window" },
+  { key: "auto_cancel_min_paid_pct", label: "Auto-cancel min paid %", hint: "Minimum % of players that must pay before match auto-cancels" },
 ] as const;
 
 export default function AdminSettings() {
   const { user } = useAuth();
   const [rows, setRows] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<string, string | null>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -36,7 +39,11 @@ export default function AdminSettings() {
     KEYS.forEach((k) => {
       if (map[k.key] === undefined) {
         map[k.key] =
-          k.key === "commission_rate" ? "0.05" : k.key === "cancel_cutoff_minutes" ? "60" : "5.00";
+          k.key === "commission_rate" ? "0.05"
+          : k.key === "cancel_cutoff_minutes" ? "60"
+          : k.key === "auto_cancel_window_minutes" ? "120"
+          : k.key === "auto_cancel_min_paid_pct" ? "0.5"
+          : "5.00";
       }
     });
     setRows(map);
@@ -47,28 +54,75 @@ export default function AdminSettings() {
     load();
   }, [load]);
 
+  const validate = useCallback((key: string, raw: string): string | null => {
+    const value = raw.trim();
+    if (!value) return `${key} cannot be empty`;
+
+    const num = parseFloat(value);
+    if (isNaN(num) || num < 0) return `${key} must be a positive number`;
+
+    switch (key) {
+      case "commission_rate": {
+        if (num > 1) return "Commission rate must be between 0 and 1";
+        return null;
+      }
+      case "organizer_incentive_amount": {
+        if (num > 10000) return "Organizer incentive must be ≤ 10,000";
+        return null;
+      }
+      case "cancel_cutoff_minutes": {
+        if (!Number.isInteger(num)) return "Cancel cutoff must be a whole number";
+        if (num < 5) return "Cancel cutoff must be at least 5 minutes";
+        if (num > 10080) return "Cancel cutoff must be ≤ 10,080 minutes (1 week)";
+        return null;
+      }
+      case "auto_cancel_window_minutes": {
+        if (!Number.isInteger(num)) return "Auto-cancel window must be a whole number";
+        if (num < 5) return "Auto-cancel window must be at least 5 minutes";
+        if (num > 1440) return "Auto-cancel window must be ≤ 1,440 minutes (24 hours)";
+        return null;
+      }
+      case "auto_cancel_min_paid_pct": {
+        if (num > 1) return "Auto-cancel min paid % must be between 0 and 1";
+        return null;
+      }
+      default:
+        return null;
+    }
+  }, []);
+
+  const updateRow = (key: string, raw: string) => {
+    let value = raw;
+    // Auto-convert commission_rate if user enters whole-number percent
+    if (key === "commission_rate") {
+      const num = parseFloat(value);
+      if (!isNaN(num) && num > 1) {
+        value = (num / 100).toString();
+      }
+    }
+    setRows((prev) => ({ ...prev, [key]: value }));
+    setErrors((prev) => ({ ...prev, [key]: validate(key, value) }));
+  };
+
   const save = async () => {
     if (!user) return;
+    const nextErrors: Record<string, string | null> = {};
+    let hasError = false;
+    for (const k of KEYS) {
+      const err = validate(k.key, rows[k.key] ?? "");
+      nextErrors[k.key] = err;
+      if (err) hasError = true;
+    }
+    setErrors(nextErrors);
+    if (hasError) {
+      toast.error("Please fix the highlighted errors before saving");
+      return;
+    }
+
     setSaving(true);
     try {
       for (const k of KEYS) {
         const value = rows[k.key]?.trim() ?? "";
-        if (!value) {
-          toast.error(`${k.label} cannot be empty`);
-          setSaving(false);
-          return;
-        }
-        const num = parseFloat(value);
-        if (k.key === "commission_rate" && (isNaN(num) || num < 0 || num > 1)) {
-          toast.error("Commission rate must be between 0 and 1");
-          setSaving(false);
-          return;
-        }
-        if (k.key !== "commission_rate" && (isNaN(num) || num < 0)) {
-          toast.error(`${k.label} must be a positive number`);
-          setSaving(false);
-          return;
-        }
         const { error } = await callAdminSettings("POST", { key: k.key, value });
         if (error) throw new Error(error);
       }
@@ -105,10 +159,16 @@ export default function AdminSettings() {
                 type="text"
                 inputMode="decimal"
                 value={rows[k.key] ?? ""}
-                onChange={(e) => setRows((prev) => ({ ...prev, [k.key]: e.target.value }))}
-                className="w-full rounded-xl bg-white/[0.04] border border-white/[0.08] px-3 py-2.5 text-sm text-white outline-none focus:border-emerald-500/40"
+                onChange={(e) => updateRow(k.key, e.target.value)}
+                className={`w-full rounded-xl bg-white/[0.04] border px-3 py-2.5 text-sm text-white outline-none ${errors[k.key] ? "border-red-500/60 focus:border-red-500" : "border-white/[0.08] focus:border-emerald-500/40"}`}
               />
-              <p className="text-[11px] text-slate-500 mt-1">{k.hint}</p>
+              {errors[k.key] ? (
+                <p className="text-[11px] text-red-400 mt-1">{errors[k.key]}</p>
+              ) : k.key === "commission_rate" && parseFloat(rows[k.key] || "0") > 0.5 ? (
+                <p className="text-[11px] text-amber-400 mt-1">High commission rate — are you sure?</p>
+              ) : (
+                <p className="text-[11px] text-slate-500 mt-1">{k.hint}</p>
+              )}
             </div>
           ))
         )}

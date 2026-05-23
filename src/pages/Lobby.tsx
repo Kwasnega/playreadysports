@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft, Wallet, Check, Share2, X, UserCheck,
-  Calendar, MessageCircle, Hourglass,
+  Calendar, MessageCircle, Hourglass, Flag,
 } from "lucide-react";
 import { LobbyChat } from "@/components/LobbyChat";
 import { ShareMatchCard } from "@/components/matches/ShareMatchCard";
@@ -21,6 +21,8 @@ import { toast } from "sonner";
 import { LobbyMatchTab } from "@/components/lobby/LobbyMatchTab";
 import { LobbyTeamsTab } from "@/components/lobby/LobbyTeamsTab";
 import { useCountdown, buildPlayerList, buildSpareList } from "@/components/lobby/LobbyShared";
+import { MatchVotingModal, type PublicProfile } from "@/components/matches/MatchVotingModal";
+import { SubmitMatchResult } from "@/components/matches/SubmitMatchResult";
 
 /* Tier-3 Lobby — wired to Supabase --------------------------------------- */
 
@@ -75,6 +77,139 @@ const Lobby = () => {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paying, setPaying] = useState(false);
 
+  /* ---- voting modal ---- */
+  const [votingOpen, setVotingOpen] = useState(false);
+  const [votingClosesAt, setVotingClosesAt] = useState<Date | null>(null);
+
+  const getVotingDismissed = useCallback(() => {
+    if (!match?.id || !user?.id) return false;
+    return sessionStorage.getItem(`voted:${match.id}:${user.id}`) === 'true';
+  }, [match?.id, user?.id]);
+
+  const markVotingDismissed = useCallback(() => {
+    if (!match?.id || !user?.id) return;
+    sessionStorage.setItem(`voted:${match.id}:${user.id}`, 'true');
+  }, [match?.id, user?.id]);
+
+  // Check and show voting modal when match becomes completed
+  useEffect(() => {
+    if (!match?.id || !user?.id) {
+      setVotingOpen(false);
+      setVotingClosesAt(null);
+      return;
+    }
+
+    // Only for completed matches
+    if (match.status !== 'completed') {
+      setVotingOpen(false);
+      setVotingClosesAt(null);
+      return;
+    }
+
+    // Exclude organizer from voting
+    if (isOrganizer) {
+      setVotingOpen(false);
+      setVotingClosesAt(null);
+      return;
+    }
+
+    // Must be an active participant
+    if (!userParticipant || userParticipant.status !== 'active') {
+      setVotingOpen(false);
+      setVotingClosesAt(null);
+      return;
+    }
+
+    // Already voted or dismissed this session
+    if (getVotingDismissed()) {
+      setVotingOpen(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const checkVoting = async () => {
+      // 1. Check voting window
+      const { data: window, error: wErr } = await supabase
+        .from('match_voting_windows')
+        .select('voting_closes_at, is_resolved')
+        .eq('match_id', match.id)
+        .single();
+
+      if (cancelled) return;
+      if (wErr || !window || window.is_resolved) {
+        setVotingOpen(false);
+        setVotingClosesAt(null);
+        return;
+      }
+
+      const now = new Date();
+      const closesAt = new Date(window.voting_closes_at);
+      if (closesAt <= now) {
+        setVotingOpen(false);
+        setVotingClosesAt(null);
+        return;
+      }
+
+      // 2. Check if user already voted in both categories
+      const { count, error: vErr } = await supabase
+        .from('match_votes')
+        .select('*', { count: 'exact', head: true })
+        .eq('match_id', match.id)
+        .eq('voter_id', user.id);
+
+      if (cancelled) return;
+      if (vErr) {
+        setVotingOpen(false);
+        return;
+      }
+
+      if ((count ?? 0) >= 2) {
+        markVotingDismissed();
+        setVotingOpen(false);
+        return;
+      }
+
+      if (!cancelled) {
+        setVotingClosesAt(closesAt);
+        setVotingOpen(true);
+      }
+    };
+
+    checkVoting();
+    return () => { cancelled = true; };
+  }, [match?.status, match?.id, user?.id, isOrganizer, userParticipant, getVotingDismissed, markVotingDismissed]);
+
+  // Realtime: watch match status changes to trigger voting check immediately
+  useEffect(() => {
+    if (!match?.id) return;
+
+    const channel = supabase
+      .channel(`match-status:${match.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'matches',
+          filter: `id=eq.${match.id}`,
+        } as any,
+        (payload: any) => {
+          if (payload.new?.status === 'completed' && payload.old?.status !== 'completed') {
+            // Force re-check voting eligibility when match completes
+            setVotingOpen(false);
+            // The effect above will re-run because match.status changes via hook refresh
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+      supabase.removeChannel(channel);
+    };
+  }, [match?.id]);
+
   // Resolve __auto__ to the team with fewer core players
   // Map display names to valid DB enum values ('reds', 'blues')
   const resolvedTeam = useMemo(() => {
@@ -95,7 +230,7 @@ const Lobby = () => {
   const { h, m, s, totalSec, isLive } = useCountdown(targetDate);
 
   const venueCost = match ? Number(match.entry_fee) * maxCore : 0;
-  const sharePerPlayer = match && maxCore > 0 ? Math.ceil(venueCost / maxCore) : 0;
+  const sharePerPlayer = maxCore && maxCore > 0 ? Math.ceil(venueCost / maxCore) : 0;
   const allPaid = corePaidCount >= maxCore;
 
   const corePlayers = buildPlayerList(coreList);
@@ -109,7 +244,7 @@ const Lobby = () => {
   const matchTimeMs = match ? new Date(match.match_date).getTime() : 0;
   const nowMs = Date.now();
   const hoursUntilMatch = matchTimeMs ? (matchTimeMs - nowMs) / (1000 * 60 * 60) : Infinity;
-  const showCheckIn = hoursUntilMatch <= 1.5 && hoursUntilMatch >= -2;
+  const showCheckIn = match?.status !== 'completed' && match?.status !== 'cancelled' && hoursUntilMatch <= 1.5 && hoursUntilMatch >= -2;
 
   /* ─── QR Scanner helpers ─── */
   const startScan = async () => {
@@ -290,6 +425,8 @@ const Lobby = () => {
   /* ---- Contextual CTA ---- */
   const cta = useMemo(() => {
     if (!match) return null;
+    if (match.status === 'completed') return { label: "Match Over", icon: Flag, disabled: true, onClick: () => {}, tone: "neutral" as const };
+    if (match.status === 'cancelled') return { label: "Match Cancelled", icon: X, disabled: true, onClick: () => {}, tone: "neutral" as const };
     if (isOrganizer) {
       if (allPaid) return { label: "Match confirmed", icon: Check, disabled: true, onClick: () => {}, tone: "success" as const };
       if (corePaidCount === maxCore - 1) return { label: `Cover last slot · ₵${sharePerPlayer}`, icon: Wallet, disabled: paying, onClick: handleJoinPaid, tone: "primary" as const };
@@ -325,8 +462,20 @@ const Lobby = () => {
   }, [isOrganizer, allPaid, corePaidCount, maxCore, sharePerPlayer, match, userParticipant, paying]);
 
   // Countdown display
-  const countdownMain = isLive ? "Live now" : totalSec < 3600 ? `${m}m ${String(s).padStart(2, "0")}s` : `${h}h ${String(m).padStart(2, "0")}m`;
-  const countdownSub = isLive ? "Match in progress" : `${String(s).padStart(2, "0")}s`;
+  const isMatchOver = match?.status === 'completed';
+  const isMatchLive = isLive && !isMatchOver;
+  const countdownMain = isMatchOver
+    ? "Match Over"
+    : isMatchLive
+    ? "Live now"
+    : totalSec < 3600
+    ? `${m}m ${String(s).padStart(2, "0")}s`
+    : `${h}h ${String(m).padStart(2, "0")}m`;
+  const countdownSub = isMatchOver
+    ? "This match has ended"
+    : isMatchLive
+    ? "Match in progress"
+    : `${String(s).padStart(2, "0")}s`;
 
   const turfOwners = useMemo(() => new Set(activeParticipants.filter((p: any) => p.slot_type === "turf_owner").map((p: any) => p.user_id)), [activeParticipants]);
 
@@ -341,7 +490,7 @@ const Lobby = () => {
           </div>
           {user && (
             <button onClick={() => navigate("/wallet")} className="inline-flex items-center gap-1.5 bg-secondary text-foreground rounded-full px-2.5 py-1.5 text-xs font-semibold hover:bg-secondary/80">
-              <Wallet className="w-3.5 h-3.5" /><span>₵{balance.toFixed(2)}</span>
+              <Wallet className="w-3.5 h-3.5" /><span>₵{Number(balance || 0).toFixed(2)}</span>
             </button>
           )}
           <button onClick={() => setShareOpen(true)} className="p-2 rounded-full hover:bg-secondary" aria-label="Share match"><Share2 className="w-4 h-4" /></button>
@@ -399,7 +548,7 @@ const Lobby = () => {
             user={user}
             countdownMain={countdownMain}
             countdownSub={countdownSub}
-            isLive={isLive}
+            isLive={isMatchLive}
             venueCost={venueCost}
             sharePerPlayer={sharePerPlayer}
             allPaid={allPaid}
@@ -422,6 +571,17 @@ const Lobby = () => {
             myReviews={myReviews}
             submitReview={submitReview}
             matchCode={matchCode}
+          />
+        )}
+
+        {/* Organizer result submission — only when match is live */}
+        {tab === "match" && isOrganizer && match?.status === "live" && (
+          <SubmitMatchResult
+            matchId={match.id}
+            teamAName={match?.team_color_a ?? "Team A"}
+            teamBName={match?.team_color_b ?? "Team B"}
+            isGala={match?.match_mode === "gala"}
+            onSubmitted={() => toast.success("Match completed!")}
           />
         )}
 
@@ -510,6 +670,28 @@ const Lobby = () => {
           walletBalance={balance}
           onPayWithWallet={handleWalletPay}
           onClose={() => { setPaymentModalOpen(false); setPaying(false); }}
+        />
+      )}
+
+      {/* Match voting modal */}
+      {match && votingClosesAt && (
+        <MatchVotingModal
+          matchId={match.id}
+          participants={activeParticipants
+            .filter((p) => p.user_id !== user?.id)
+            .map((p): PublicProfile => ({
+              id: p.id,
+              user_id: p.user_id,
+              full_name: p.full_name,
+              username: p.username,
+              avatar_url: p.avatar_url,
+            }))}
+          votingClosesAt={votingClosesAt}
+          open={votingOpen}
+          onClose={() => {
+            setVotingOpen(false);
+            markVotingDismissed();
+          }}
         />
       )}
     </main>

@@ -33,7 +33,6 @@ async function fetchVenues(): Promise<Venue[]> {
     .order("name");
 
   if (error) {
-    console.error("useVenues error:", error);
     return [];
   }
   return (data ?? []) as Venue[];

@@ -63,6 +63,8 @@ const CreateMatch = () => {
   const [venueSearch, setVenueSearch] = useState("");
 
   // Details
+  const [title, setTitle] = useState("");
+  const [sportType, setSportType] = useState("");
   const [matchDate, setMatchDate] = useState<string>("");
   const [matchHour, setMatchHour] = useState<number>(() => Math.min(new Date().getHours() + 2, 22));
   const [matchMinute, setMatchMinute] = useState<number>(0);
@@ -70,9 +72,12 @@ const CreateMatch = () => {
   const [entryFeeEnabled, setEntryFeeEnabled] = useState(false);
   const [entryFee, setEntryFee] = useState<number>(0);
   const [profitAmount, setProfitAmount] = useState<number>(0);
+  const [maxCore, setMaxCore] = useState<number>(10);
   const [notes, setNotes] = useState("");
   const [teamName, setTeamName] = useState("");
   const [teamColorIdx, setTeamColorIdx] = useState(0);
+  const [sportsList, setSportsList] = useState<{ id: string; name: string }[]>([]);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const selectedVenue = venues.find((v) => v.id === venueId);
   const hours = useMemo(() => getVenueHours(selectedVenue), [selectedVenue]);
@@ -99,6 +104,22 @@ const CreateMatch = () => {
       setProfitAmount(0);
     }
   }, [step, basePerPlayer]);
+
+  // Fetch sports list for selector
+  useEffect(() => {
+    supabase.from("sports").select("id, name").eq("is_active", true).order("name").then(({ data }) => {
+      setSportsList(data ?? []);
+    });
+  }, []);
+
+  // Auto-set maxCore from format/mode
+  useEffect(() => {
+    if (matchFormat) {
+      const side = parseInt(matchFormat.split("v")[0], 10) || 0;
+      const players = mode === "gala" ? side * 8 : side * 2;
+      setMaxCore(Math.max(2, Math.min(100, players)));
+    }
+  }, [matchFormat, mode]);
 
   useEffect(() => {
     if (basePerPlayer > 0) setEntryFee(basePerPlayer + profitAmount);
@@ -132,11 +153,11 @@ const CreateMatch = () => {
     if (step === 0) return !!type && !!mode && !!matchFormat;
     if (step === 1) return !!venueId;
     if (step === 2) {
-      if (!matchDate) return false;
+      if (!title.trim() || !sportType || !matchDate) return false;
       if (mode === "gala" && teamName.trim().length < 2) return false;
       const d = new Date(matchDate);
       d.setHours(matchHour, matchMinute, 0, 0);
-      if (d.getTime() <= Date.now()) return false;
+      if (d.getTime() <= Date.now() + 30 * 60 * 1000) return false;
       // Ensure match end time does not exceed venue close time
       if (selectedVenue?.close_time) {
         const endDate = new Date(d);
@@ -159,6 +180,56 @@ const CreateMatch = () => {
     setStep((s) => s - 1);
   };
 
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    const trimmedTitle = title.trim();
+
+    if (!trimmedTitle) {
+      newErrors.title = "Match title is required";
+    } else if (trimmedTitle.length < 3) {
+      newErrors.title = "Title must be at least 3 characters";
+    } else if (trimmedTitle.length > 60) {
+      newErrors.title = "Title must be 60 characters or less";
+    }
+
+    if (!sportType) {
+      newErrors.sportType = "Please select a sport";
+    }
+
+    if (entryFeeEnabled) {
+      if (isNaN(entryFee) || entryFee <= 0) {
+        newErrors.entryFee = "Entry fee must be greater than 0 for paid matches";
+      } else if (entryFee > 10000) {
+        newErrors.entryFee = "Entry fee cannot exceed ₵10,000";
+      }
+    } else {
+      if (entryFee !== 0) {
+        newErrors.entryFee = "Free matches must have an entry fee of 0";
+      }
+    }
+
+    if (!Number.isInteger(maxCore) || maxCore < 2) {
+      newErrors.maxCore = "Max players must be at least 2";
+    } else if (maxCore > 100) {
+      newErrors.maxCore = "Max players cannot exceed 100";
+    }
+
+    if (profitAmount < 0) {
+      newErrors.profitAmount = "Profit cannot be negative";
+    } else if (entryFeeEnabled && profitAmount >= entryFee * maxCore) {
+      newErrors.profitAmount = "Profit must be less than total pot (entry fee × max players)";
+    }
+
+    const dateObj = new Date(matchDate);
+    dateObj.setHours(matchHour, matchMinute, 0, 0);
+    if (dateObj.getTime() <= Date.now() + 30 * 60 * 1000) {
+      newErrors.matchDate = "Match must be scheduled at least 30 minutes from now";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const next = async () => {
     if (step === 1 && matchFormat && !availableFormats.includes(matchFormat)) setMatchFormat(null);
     if (step < STEP_LABELS.length - 1) {
@@ -170,17 +241,17 @@ const CreateMatch = () => {
     if (!user) { toast.error("Sign in to create a match"); return; }
     if (!venueId || !matchFormat || !matchDate) return;
 
+    setErrors({});
+    if (!validateForm()) return;
+
     const dateObj = new Date(matchDate);
     dateObj.setHours(matchHour, matchMinute, 0, 0);
     const matchDateIso = dateObj.toISOString();
 
-    if (dateObj.getTime() <= Date.now()) {
-      toast.error("Match time must be in the future — pick a later time or date.");
-      return;
-    }
-
     const colorPair = TEAM_COLOR_PRESETS[teamColorIdx];
-    const match = await createMatch({
+    const result = await createMatch({
+      title: title.trim(),
+      sportType,
       venueId,
       matchType: type === "public" ? "public" : "private",
       matchMode: mode === "gala" ? "gala" : "two_team",
@@ -188,14 +259,18 @@ const CreateMatch = () => {
       matchDate: matchDateIso,
       durationMinutes: duration,
       entryFee: entryFeeEnabled ? entryFee : 0,
+      maxCore,
+      profitAmount: entryFeeEnabled ? profitAmount : 0,
       notes: notes || undefined,
       teamColorA: type === "public" && mode === "two-team" ? colorPair.a : undefined,
       teamColorB: type === "public" && mode === "two-team" ? colorPair.b : undefined,
     });
 
-    if (match?.join_code) {
-      setCreatedCode(match.join_code);
+    if (result.success) {
+      setCreatedCode(result.match.join_code);
       setCreated(true);
+    } else if (result.field) {
+      setErrors((prev) => ({ ...prev, [result.field!]: result.error }));
     }
   };
 
@@ -442,6 +517,49 @@ const CreateMatch = () => {
         {/* ============ STEP 3 — DETAILS ============ */}
         {!created && step === 2 && (
           <div className="space-y-5">
+            {/* Title */}
+            <div className="bg-card rounded-3xl p-5" style={{ boxShadow: "var(--shadow-card)" }}>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Match title</p>
+              <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. Sunday Kickabout"
+                maxLength={60}
+                className="w-full bg-secondary rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground"
+              />
+              {errors.title && <p className="text-[11px] text-red-600 font-semibold mt-2">{errors.title}</p>}
+            </div>
+
+            {/* Sport */}
+            <div className="bg-card rounded-3xl p-5" style={{ boxShadow: "var(--shadow-card)" }}>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Sport</p>
+              <div className="flex flex-wrap gap-2">
+                {sportsList.map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => setSportType(s.id)}
+                    className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+                      sportType === s.id ? "bg-foreground text-background" : "bg-secondary"
+                    }`}
+                  >
+                    {s.name}
+                  </button>
+                ))}
+              </div>
+              {errors.sportType && <p className="text-[11px] text-red-600 font-semibold mt-2">{errors.sportType}</p>}
+            </div>
+
+            {/* Max players */}
+            <Counter
+              label="Max players"
+              value={maxCore}
+              onChange={(n) => setMaxCore(n)}
+              min={2}
+              max={100}
+              help="Total number of core players allowed"
+            />
+            {errors.maxCore && <p className="text-[11px] text-red-600 font-semibold mt-1 px-1">{errors.maxCore}</p>}
+
             {/* Date */}
             <div className="bg-card rounded-3xl p-5" style={{ boxShadow: "var(--shadow-card)" }}>
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Date</p>
@@ -515,6 +633,7 @@ const CreateMatch = () => {
                 }
                 return null;
               })()}
+              {errors.matchDate && <p className="text-[11px] text-red-600 font-semibold mt-2">{errors.matchDate}</p>}
             </div>
 
             {/* Duration */}
@@ -612,6 +731,7 @@ const CreateMatch = () => {
                           />
                         </div>
                       </div>
+                      {errors.profitAmount && <p className="text-[11px] text-red-600 font-semibold">{errors.profitAmount}</p>}
                       <div className="border-t border-border/60 pt-2 flex items-center justify-between">
                         <span className="text-[11px] font-semibold text-muted-foreground">Players pay</span>
                         <span className="text-base font-bold text-primary">₵{entryFee}/player</span>
@@ -651,6 +771,7 @@ const CreateMatch = () => {
                       🌅 Early bird discount available ({(selectedVenue as any).early_bird_discount_pct}% off if booked {(selectedVenue as any).early_bird_hours_before}h+ ahead)
                     </p>
                   )}
+                  {errors.entryFee && <p className="text-[11px] text-red-600 font-semibold mt-2">{errors.entryFee}</p>}
                 </div>
               )}
             </div>
@@ -688,6 +809,8 @@ const CreateMatch = () => {
             {/* Live summary */}
             <div className="bg-card rounded-3xl p-5 space-y-2" style={{ boxShadow: "var(--shadow-card)" }}>
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Summary</p>
+              <SummaryRow label="Title" value={title || "—"} />
+              <SummaryRow label="Sport" value={sportsList.find((s) => s.id === sportType)?.name ?? "—"} />
               <SummaryRow label="Type" value={type === "public" ? "Public" : "Private"} />
               <SummaryRow label="Mode" value={mode === "gala" ? "Gala" : "Two-team"} />
               <SummaryRow label="Format" value={matchFormat ?? "—"} />

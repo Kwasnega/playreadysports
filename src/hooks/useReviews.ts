@@ -43,7 +43,6 @@ export function useMatchReviews(matchId: string | undefined, reviewerId: string 
       if (error) {
         // Duplicate key → already reviewed
         if (error.code === "23505") return false;
-        console.error("submitReview error:", error);
         return false;
       }
       // Update reviewed user's reputation_score to avg of all their reviews

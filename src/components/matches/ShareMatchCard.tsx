@@ -124,7 +124,6 @@ export function ShareMatchCard({
         setGenerating(false);
       }, "image/png");
     } catch (err) {
-      console.error("Canvas card error:", err);
       toast.error("Failed to generate image");
       setGenerating(false);
     }
