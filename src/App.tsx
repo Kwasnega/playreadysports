@@ -86,9 +86,13 @@ const RouteFade = ({ children }: { children: ReactNode }) => {
 };
 
 function AppRoutes() {
-  const { maintenanceMode } = usePlatformSettings();
+  const { maintenanceMode, loading: settingsLoading } = usePlatformSettings();
   const { isAdmin } = useAuth();
   const location = useLocation();
+
+  if (settingsLoading) {
+    return <div style={{ minHeight: "100dvh", backgroundColor: "#070B14" }} />;
+  }
 
   if (maintenanceMode && !isAdmin && !location.pathname.startsWith("/admin")) {
     return <MaintenanceScreen />;
