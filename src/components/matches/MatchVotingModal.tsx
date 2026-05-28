@@ -211,25 +211,27 @@ export function MatchVotingModal({
     setSubmitting(true);
 
     try {
-      const { error: err1 } = await supabase.functions.invoke("submit-match-vote", {
+      const { data: d1, error: err1 } = await supabase.functions.invoke("submit-match-vote", {
         body: {
-          matchId,
-          nomineeId: king.nomineeId,
-          rating: king.rating,
-          category: "king_of_match",
+          match_id: matchId,
+          nominee_id: king.nomineeId,
+          vote_category: "king_of_match",
+          raw_score: king.rating,
         },
       });
-      if (err1) throw new Error(`King vote failed: ${err1.message}`);
+      if (err1) throw new Error(err1.message || "Failed to submit King of the Match vote");
+      if (d1?.error) throw new Error(d1.error);
 
-      const { error: err2 } = await supabase.functions.invoke("submit-match-vote", {
+      const { data: d2, error: err2 } = await supabase.functions.invoke("submit-match-vote", {
         body: {
-          matchId,
-          nomineeId: second.nomineeId,
-          rating: second.rating,
-          category: "second_king_of_match",
+          match_id: matchId,
+          nominee_id: second.nomineeId,
+          vote_category: "second_king_of_match",
+          raw_score: second.rating,
         },
       });
-      if (err2) throw new Error(`2nd King vote failed: ${err2.message}`);
+      if (err2) throw new Error(err2.message || "Failed to submit 2nd King of the Match vote");
+      if (d2?.error) throw new Error(d2.error);
 
       setSubmitted(true);
       toast.success("Votes submitted!");

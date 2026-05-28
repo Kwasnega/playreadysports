@@ -187,11 +187,12 @@ const MobileTabs = () => {
   const { pendingRequests } = useFriends();
   return (
     <nav className="fixed bottom-0 inset-x-0 z-30 bg-background/95 backdrop-blur-md border-t border-border">
-      <div className="max-w-[680px] mx-auto grid grid-cols-5 h-16">
+      <div className="max-w-[680px] mx-auto grid grid-cols-4 h-16">
         {[
           { to: "/", icon: Home, label: "Home" },
           { to: "/schedule", icon: Trophy, label: "Schedule" },
-          { to: "/leaderboard", icon: Award, label: "Ranks" },
+          // HIDDEN — Leaderboard: re-enable when feature is released
+          // { to: "/leaderboard", icon: Award, label: "Ranks" },
         ].map((t) => (
           <Link
             key={t.to}

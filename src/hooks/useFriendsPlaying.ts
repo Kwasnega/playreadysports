@@ -29,8 +29,7 @@ export function useFriendsPlaying() {
       setLoading(true);
 
       // 1. Get friend IDs
-      // @ts-ignore — friendships table not in generated types yet
-      const { data: friendships } = await supabase
+      const { data: friendships } = await (supabase as any)
         .from("friendships")
         .select("requester_id, recipient_id")
         .or(`requester_id.eq.${user.id},recipient_id.eq.${user.id}`)

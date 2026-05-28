@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
     // Verify user is a venue owner
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role, venue_owner_balance")
+      .select("role")
       .eq("id", user.id)
       .single();
 
@@ -59,41 +59,38 @@ Deno.serve(async (req) => {
       });
     }
 
-    const balance = profile.venue_owner_balance ?? 0;
+    // Read balance from wallet_balances (canonical table)
+    const { data: walletRow } = await supabase
+      .from("wallet_balances")
+      .select("balance")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    const balance = Number(walletRow?.balance ?? 0);
     if (amount > balance) {
       return new Response(JSON.stringify({ error: `Insufficient balance. Available: GHS ${balance.toFixed(2)}` }), {
         status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
-    // Debit balance and create pending withdrawal record
-    const { error: debitErr } = await supabase
-      .from("profiles")
-      .update({ venue_owner_balance: balance - amount })
-      .eq("id", user.id);
+    // Atomically debit via process_wallet_transaction (no race condition)
+    const ref = `vo-withdraw-${user.id}-${Date.now()}`;
+    const { data: deductResult, error: deductErr } = await supabase.rpc(
+      "process_wallet_transaction" as any,
+      {
+        p_user_id: user.id,
+        p_amount: -amount,
+        p_type: "withdrawal",
+        p_reference: ref,
+        p_match_id: null,
+        p_description: "Venue owner withdrawal request",
+      }
+    );
 
-    if (debitErr) {
-      return new Response(JSON.stringify({ error: "Failed to debit balance" }), {
-        status: 500, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
-      });
-    }
-
-    const { error: txErr } = await supabase
-      .from("wallet_transactions")
-      .insert({
-        user_id: user.id,
-        amount: -amount,
-        type: "withdrawal",
-        status: "pending",
-        reference: `vo-withdraw-${user.id}-${Date.now()}`,
-        metadata: { phone: phone.trim(), provider },
-      } as any);
-
-    if (txErr) {
-      // Rollback balance
-      await supabase.from("profiles").update({ venue_owner_balance: balance }).eq("id", user.id);
-      return new Response(JSON.stringify({ error: "Failed to record withdrawal" }), {
-        status: 500, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+    if (deductErr || !(deductResult as any)?.success) {
+      const msg = (deductResult as any)?.error || deductErr?.message || "Wallet deduction failed";
+      return new Response(JSON.stringify({ error: msg }), {
+        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 

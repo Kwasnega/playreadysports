@@ -1,13 +1,17 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
 export type WalletTransaction = {
   id: string;
+  user_id: string;
   amount: number;
-  type: "deposit" | "spend" | "refund" | "cashback" | "bonus" | "tip" | "withdrawal";
+  type: "deposit" | "spend" | "refund" | "cashback" | "bonus" | "tip" | "withdrawal" | "venue_cut" | "organizer_profit";
   reference: string | null;
   status: string;
+  description: string | null;
+  balance_after: number | null;
+  match_id: string | null;
   created_at: string;
 };
 
@@ -67,6 +71,28 @@ export function useWallet() {
   useEffect(() => {
     fetchWallet();
   }, [fetchWallet]);
+
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    const ch = supabase
+      .channel(`wallet_balance:${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "wallet_balances", filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          if (payload.new && typeof (payload.new as any).balance !== "undefined") {
+            setBalance(Number((payload.new as any).balance) || 0);
+          }
+        }
+      )
+      .subscribe();
+    channelRef.current = ch;
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [user]);
 
   const topUp = async (amountInCedis: number) => {
     if (!user) return false;

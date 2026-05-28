@@ -673,7 +673,7 @@ const Lobby = () => {
         />
       )}
 
-      {/* Match voting modal */}
+      {/* Man of the Match voting */}
       {match && votingClosesAt && (
         <MatchVotingModal
           matchId={match.id}

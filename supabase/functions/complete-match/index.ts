@@ -76,10 +76,15 @@ Deno.serve(async (req) => {
     try {
       const { data: match } = await svc
         .from("matches")
-        .select("join_code")
+        .select("join_code, organizer_id")
         .eq("id", matchId)
         .single();
       const joinCode = match?.join_code ?? "";
+      const organizerId = match?.organizer_id;
+
+      const winLabel = winningTeam
+        ? `${winningTeam.charAt(0).toUpperCase() + winningTeam.slice(1)} won!`
+        : "It was a draw!";
 
       const { data: participants } = await svc
         .from("match_participants")
@@ -87,28 +92,60 @@ Deno.serve(async (req) => {
         .eq("match_id", matchId)
         .eq("status", "active");
 
+      const participantUserIds = new Set((participants ?? []).map((p: any) => p.user_id));
+
       const notifs = (participants ?? []).map((p: any) => ({
         user_id: p.user_id,
         title: "Match complete! Great game.",
-        body: `Match ${joinCode} has ended.`,
+        body: `Match ${joinCode} has ended. ${winLabel}`,
         type: "match_update",
         data: { match_id: matchId, join_code: joinCode },
       }));
+
+      // Always notify the organizer even if they weren't an active participant
+      if (organizerId && !participantUserIds.has(organizerId)) {
+        notifs.push({
+          user_id: organizerId,
+          title: "Match complete!",
+          body: `Match ${joinCode} has ended. ${winLabel}`,
+          type: "match_update",
+          data: { match_id: matchId, join_code: joinCode },
+        });
+      }
+
       if (notifs.length) {
-        await svc.from("notifications").insert(notifs as any);
+        const { error: notifInsertErr } = await svc.from("notifications").insert(notifs as any);
+        if (notifInsertErr) {
+          // Log full error so it shows in Edge Function logs, but don't fail the request
+          console.error("complete-match: participant notification insert failed", {
+            error: notifInsertErr.message,
+            code: notifInsertErr.code,
+            matchId,
+          });
+        }
       }
 
       if (result?.venueOwnerId && result?.venueCut > 0) {
-        await svc.from("notifications").insert({
+        const { error: venueNotifErr } = await svc.from("notifications").insert({
           user_id: result.venueOwnerId,
           title: "Match earnings credited",
           body: `₵${Number(result.venueCut).toFixed(2)} from ${joinCode} was added to your venue balance.`,
           type: "payment_received",
           data: { match_id: matchId, join_code: joinCode },
         } as any);
+        if (venueNotifErr) {
+          console.error("complete-match: venue owner notification failed", {
+            error: venueNotifErr.message,
+            matchId,
+            venueOwnerId: result.venueOwnerId,
+          });
+        }
       }
     } catch (notifErr: any) {
-      console.error("complete-match notification error:", notifErr.message);
+      console.error("complete-match: unexpected notification error", {
+        message: notifErr?.message ?? String(notifErr),
+        matchId,
+      });
     }
 
     return new Response(

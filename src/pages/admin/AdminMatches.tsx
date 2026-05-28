@@ -65,8 +65,17 @@ export default function AdminMatches() {
       confirmText: "Release",
     });
     if (!ok) return;
-    await supabase.from("matches").update({ escrow_status: "released" }).eq("id", m.id);
-    await logAudit(user.id, "force_release_escrow", "match", m.id, {});
+    if (m.status === "live" || m.status === "full" || m.status === "upcoming") {
+      const { error: rpcErr } = await (supabase as any).rpc("complete_match_atomic", {
+        p_match_id: m.id,
+        p_winning_team: null,
+      });
+      if (rpcErr) { toast.error(`Failed to complete match: ${rpcErr.message}`); return; }
+    } else {
+      const { error } = await supabase.from("matches").update({ escrow_status: "released" } as any).eq("id", m.id);
+      if (error) { toast.error(error.message); return; }
+    }
+    await logAudit(user.id, "force_release_escrow", "match", m.id, { status: m.status });
     toast.success("Escrow released");
     load();
   };

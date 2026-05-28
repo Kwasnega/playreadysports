@@ -142,7 +142,9 @@ Deno.serve(async (req) => {
         p_amount: entryFee,
         p_type: "refund",
         p_reference: ref,
-      });
+        p_match_id: matchId,
+        p_description: `Refund for cancelled match ${match.join_code}`,
+      } as any);
 
       if (rpcErr) {
         console.error("Wallet credit failed for user", p.user_id, rpcErr);

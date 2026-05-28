@@ -26,13 +26,10 @@ export function useFriendActivity() {
     const load = async () => {
       setLoading(true);
       // Get accepted friend IDs
-      // @ts-ignore
-      const { data: friendships } = await supabase
+      const { data: friendships } = await (supabase as any)
         .from("friendships")
         .select("requester_id, recipient_id")
-        // @ts-ignore
         .or(`requester_id.eq.${user.id},recipient_id.eq.${user.id}`)
-        // @ts-ignore
         .eq("status", "accepted");
 
       const friendIds = (friendships ?? []).map((f: any) =>
@@ -74,7 +71,7 @@ export function useFriendActivity() {
         .select("id, full_name, avatar_url")
         .in("id", friendIds);
 
-      const profileMap = new Map((profiles ?? []).map((p: any) => [p.id, p]));
+      const profileMap = new Map<string, any>((profiles ?? []).map((p: any) => [p.id as string, p]));
 
       const items: FriendActivity[] = (joins ?? []).map((j: any) => {
         const prof = profileMap.get(j.user_id);

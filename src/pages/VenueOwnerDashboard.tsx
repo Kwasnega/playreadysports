@@ -293,12 +293,15 @@ export default function VenueOwnerDashboard() {
     }
     setLoading(true);
     try {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("venue_owner_balance")
-        .eq("id", user.id)
+      // Read venue owner's withdrawable balance from wallet_balances
+      // (process_wallet_transaction credits wallet_balance in profiles AND
+      //  a DB trigger syncs it to wallet_balances — see migration).
+      const { data: walletRow } = await (supabase as any)
+        .from("wallet_balances")
+        .select("balance")
+        .eq("user_id", user.id)
         .maybeSingle();
-      setVenueBalance(Number((profile as any)?.venue_owner_balance ?? 0) || 0);
+      setVenueBalance(Number(walletRow?.balance ?? 0) || 0);
 
       const { data: vens } = await supabase
         .from("venues")
@@ -331,7 +334,7 @@ export default function VenueOwnerDashboard() {
         .from("matches")
         .select("id, join_code, match_date, format, entry_fee, core_paid_count, status, venue_id")
         .in("venue_id", venueIds)
-        .in("status", ["upcoming", "live"])
+        .in("status", ["upcoming", "live", "full"])
         .gte("match_date", dayStart)
         .lte("match_date", dayEnd)
         .order("match_date", { ascending: true });
@@ -401,12 +404,12 @@ export default function VenueOwnerDashboard() {
         {
           event: "UPDATE",
           schema: "public",
-          table: "profiles",
-          filter: `id=eq.${user.id}`,
+          table: "wallet_balances",
+          filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          const newBal = Number((payload.new as any)?.venue_owner_balance);
-          const oldBal = Number((payload.old as any)?.venue_owner_balance);
+          const newBal = Number((payload.new as any)?.balance);
+          const oldBal = Number((payload.old as any)?.balance);
           if (!isNaN(newBal) && newBal !== oldBal) {
             setVenueBalance(newBal || 0);
             toast.success("Your earnings have been updated!");
@@ -750,11 +753,11 @@ export default function VenueOwnerDashboard() {
         <section className="bg-emerald-500/[0.06] border border-emerald-500/20 rounded-2xl p-6">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700/70">Net Earnings</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700/70">Net Earnings (est.)</p>
               <p className="font-display font-bold text-5xl mt-1 text-emerald-600">₵{Number(netEarnings || 0).toFixed(0)}</p>
               <div className="flex items-center gap-4 mt-3">
                 <div>
-                  <p className="text-[10px] text-muted-foreground uppercase">Gross</p>
+                  <p className="text-[10px] text-muted-foreground uppercase">Gross (est.)</p>
                   <p className="text-sm font-bold">₵{Number(totalGross || 0).toFixed(0)}</p>
                 </div>
                 <div className="w-px h-6 bg-border/60" />

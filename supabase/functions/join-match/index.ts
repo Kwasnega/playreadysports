@@ -18,9 +18,12 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey, {
       global: { headers: { Authorization: authHeader } },
     });
+    // Service role client for all writes — bypasses RLS to guarantee inserts succeed
+    const svc = createClient(supabaseUrl, serviceKey);
 
     const { data: { user }, error: authErr } = await supabase.auth.getUser();
     if (authErr || !user) {
@@ -50,7 +53,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (match.status !== "upcoming" && match.status !== "live") {
+    if (match.status !== "upcoming" && match.status !== "live" && match.status !== "full") {
       return new Response(JSON.stringify({ error: "Match is not open for joining" }), {
         status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
@@ -149,8 +152,9 @@ Deno.serve(async (req) => {
     }
     if (!assignedTeam) assignedTeam = "reds";
 
-    // Insert participant
-    const { data: participant, error: pErr } = await supabase
+    // Insert participant via service role to bypass RLS
+    const isFreeJoin = match.entry_fee === 0;
+    const { data: participant, error: pErr } = await svc
       .from("match_participants")
       .insert({
         match_id: matchId,
@@ -158,7 +162,7 @@ Deno.serve(async (req) => {
         slot_type: slotType as any,
         team: assignedTeam as any,
         status: "active" as any,
-        payment_status: (match.entry_fee === 0 ? "paid" : "unpaid") as any,
+        payment_status: (isFreeJoin ? "paid" : "unpaid") as any,
       })
       .select("id")
       .single();
@@ -169,11 +173,19 @@ Deno.serve(async (req) => {
       });
     }
 
+    // For free matches, increment core_paid_count atomically so that
+    // complete_match_atomic and the "match full" notification fire at the
+    // right time. Paid matches are incremented by paystack-webhook /
+    // join_match_with_wallet RPC so we skip them here.
+    if (isFreeJoin) {
+      await svc.rpc("increment_match_paid_count" as any, { p_match_id: matchId });
+    }
+
     // Notify organizer
     const joinerName = match.organizer?.full_name || match.organizer?.username || "Someone";
     const paidCount = (match.core_paid_count ?? 0) + 1;
 
-    await supabase.from("notifications").insert({
+    await svc.from("notifications").insert({
       user_id: match.organizer_id,
       title: "New player joined",
       body: `${joinerName} joined your match (${paidCount}/${maxCore})`,
@@ -182,7 +194,7 @@ Deno.serve(async (req) => {
     });
 
     // Re-count to check if now full
-    const { count: newActiveCount } = await supabase
+    const { count: newActiveCount } = await svc
       .from("match_participants")
       .select("*", { count: "exact", head: true })
       .eq("match_id", matchId)
@@ -190,9 +202,11 @@ Deno.serve(async (req) => {
       .eq("slot_type", "core");
 
     if ((newActiveCount ?? 0) >= maxCore) {
-      await supabase.from("matches").update({ status: "live" as any }).eq("id", matchId);
+      // Use 'full' to indicate the match is at capacity but not yet in-progress.
+      // 'live' is reserved for "currently being played" semantics.
+      await svc.from("matches").update({ status: "full" as any }).eq("id", matchId);
 
-      const { data: participants } = await supabase
+      const { data: participants } = await svc
         .from("match_participants")
         .select("user_id")
         .eq("match_id", matchId)
@@ -207,7 +221,7 @@ Deno.serve(async (req) => {
       }));
 
       if (notifs.length) {
-        await supabase.from("notifications").insert(notifs);
+        await svc.from("notifications").insert(notifs);
       }
     }
 

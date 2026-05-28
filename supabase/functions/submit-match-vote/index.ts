@@ -1,5 +1,6 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { checkRateLimit } from "../_shared/rateLimiter.ts";
 
 Deno.serve(async (req) => {
   const corsHeaders = getCorsHeaders();
@@ -27,6 +28,15 @@ Deno.serve(async (req) => {
     if (authErr || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Rate limit check: max 10 votes per 5 minutes per user
+    const allowed = await checkRateLimit(supabase, user.id, "submit_vote", 10, 5);
+    if (!allowed) {
+      return new Response(JSON.stringify({ error: "Rate limit exceeded — try again later" }), {
+        status: 429,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -73,10 +83,10 @@ Deno.serve(async (req) => {
 
     // 3. Database validations
 
-    // Validate voter is participant in match_id (status = 'active')
+    // Validate voter is an active, attending participant (not a no-show)
     const { data: voterParticipant, error: voterErr } = await svc
       .from("match_participants")
-      .select("status")
+      .select("status, attendance_scanned, no_show")
       .eq("match_id", match_id)
       .eq("user_id", user.id)
       .eq("status", "active")
@@ -84,6 +94,22 @@ Deno.serve(async (req) => {
 
     if (!voterParticipant) {
       return new Response(JSON.stringify({ error: "You were not in this match" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Players who didn't show up cannot vote
+    if ((voterParticipant as any).no_show === true) {
+      return new Response(JSON.stringify({ error: "No-show players cannot vote" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // If attendance scanning is in use, require the voter to have been scanned
+    if ((voterParticipant as any).attendance_scanned === false) {
+      return new Response(JSON.stringify({ error: "Your attendance was not confirmed for this match" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

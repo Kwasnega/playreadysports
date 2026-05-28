@@ -29,8 +29,7 @@ export function useSuggestedFriends() {
         .eq("id", user.id)
         .single();
 
-      // @ts-ignore
-      const { data: friendships } = await supabase
+      const { data: friendships } = await (supabase as any)
         .from("friendships")
         .select("requester_id, recipient_id, status")
         .or(`requester_id.eq.${user.id},recipient_id.eq.${user.id}`);

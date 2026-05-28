@@ -5,7 +5,8 @@ import "./index.css";
 // ── PostHog analytics (opt-in via VITE_POSTHOG_KEY) ─────────────────────────
 const posthogKey = import.meta.env.VITE_POSTHOG_KEY as string | undefined;
 if (posthogKey) {
-  import("posthog-js").then(({ default: posthog }) => {
+  const _ph = "posthog-js";
+  import(/* @vite-ignore */ _ph).then(({ default: posthog }) => {
     posthog.init(posthogKey, {
       api_host: import.meta.env.VITE_POSTHOG_HOST ?? "https://app.posthog.com",
       capture_pageview: true,
@@ -18,7 +19,8 @@ if (posthogKey) {
 // ── Sentry error monitoring (opt-in via VITE_SENTRY_DSN) ────────────────────
 const sentryDsn = import.meta.env.VITE_SENTRY_DSN as string | undefined;
 if (sentryDsn) {
-  import("@sentry/react").then((Sentry) => {
+  const _sentry = "@sentry/react";
+  import(/* @vite-ignore */ _sentry).then((Sentry) => {
     Sentry.init({
       dsn: sentryDsn,
       environment: import.meta.env.MODE,

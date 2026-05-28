@@ -103,6 +103,14 @@ Deno.serve(async (req) => {
       });
     } else {
       // Case B: Cron trigger to resolve all expired match voting windows
+      // Reject if not service role key
+      if (!isServiceRole) {
+        return new Response(JSON.stringify({ error: "Forbidden: Only service role can trigger batch resolution" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       const { data, error } = await svc.rpc("resolve_all_expired_voting_windows");
 
       if (error) {

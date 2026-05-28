@@ -115,7 +115,8 @@ function AppRoutes() {
       <Route path="/venue/earnings" element={<VenueOwnerDashboard />} />
       <Route path="/venue/dashboard" element={<VenueOwnerDashboard />} />
       <Route path="/turf/owner" element={<Navigate to="/venue/dashboard" replace />} />
-      <Route path="/leaderboard" element={<Leaderboard />} />
+      {/* HIDDEN — Leaderboard: re-enable when feature is released */}
+      {/* <Route path="/leaderboard" element={<Leaderboard />} /> */}
       {/* Admin dashboard */}
       <Route path="/admin" element={<ProtectedRoute roles={["admin", "super_admin"]}><AdminLayout /></ProtectedRoute>}>
         <Route index element={<AdminOverview />} />
@@ -152,7 +153,7 @@ const App = () => {
         <Toaster />
         <Sonner />
         {!splashDone && <SplashScreen onDone={handleSplashDone} />}
-        <BrowserRouter>
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <AuthProvider>
             <AuthModal />
             <ConfirmProvider>

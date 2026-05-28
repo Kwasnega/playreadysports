@@ -47,13 +47,14 @@ export default function AdminRevenue() {
         const d = t.created_at.slice(0, 10);
         if (!map[d]) map[d] = { date: d, gross: 0, refunds: 0, net: 0 };
         const amt = Math.abs(parseFloat(t.amount) || 0);
-        if (t.type === "deposit" && t.status === "completed") {
-          map[d].gross += amt;
-        } else if (t.type === "withdrawal" && t.status === "completed") {
-          map[d].refunds += amt;
-        } else if (t.type === "spend" && t.status === "completed") {
-          // match entry fees = platform revenue
-          map[d].gross += amt;
+        if (t.status === "completed") {
+          if (t.type === "deposit" || t.type === "spend") {
+            map[d].gross += amt;
+          } else if (t.type === "refund") {
+            // cancelled-match refunds reduce platform revenue
+            map[d].refunds += amt;
+          }
+          // withdrawal = user outflow, not a platform revenue loss — excluded
         }
       });
 
@@ -138,7 +139,7 @@ export default function AdminRevenue() {
         </div>
         <div className="bg-[#0B1120] border border-white/[0.06] rounded-2xl p-4">
           <div className="flex items-center gap-2 text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
-            <PiggyBank className="w-3.5 h-3.5" /> Refunds / Payouts
+            <PiggyBank className="w-3.5 h-3.5" /> Refunds (cancelled)
           </div>
           <p className="text-2xl font-display font-bold text-red-400">₵{totals.refunds.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
         </div>

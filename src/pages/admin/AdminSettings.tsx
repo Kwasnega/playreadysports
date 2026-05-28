@@ -121,13 +121,25 @@ export default function AdminSettings() {
 
     setSaving(true);
     try {
-      for (const k of KEYS) {
-        const value = rows[k.key]?.trim() ?? "";
-        const { error } = await callAdminSettings("POST", { key: k.key, value });
-        if (error) throw new Error(error);
+      const results = await Promise.allSettled(
+        KEYS.map((k) => {
+          const value = rows[k.key]?.trim() ?? "";
+          return callAdminSettings("POST", { key: k.key, value }).then((res) => {
+            if (res.error) throw new Error(`${k.label}: ${res.error}`);
+          });
+        })
+      );
+
+      const failures = results
+        .filter((r): r is PromiseRejectedResult => r.status === "rejected")
+        .map((r) => r.reason?.message ?? "Unknown error");
+
+      if (failures.length > 0) {
+        toast.error(`Some settings failed to save:\n${failures.join("\n")}`);
+      } else {
+        toast.success("Platform settings saved");
+        load();
       }
-      toast.success("Platform settings saved");
-      load();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Save failed";
       toast.error(msg);

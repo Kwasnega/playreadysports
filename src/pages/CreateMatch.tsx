@@ -64,7 +64,7 @@ const CreateMatch = () => {
 
   // Details
   const [title, setTitle] = useState("");
-  const [sportType, setSportType] = useState("");
+  const sportType = "football";
   const [matchDate, setMatchDate] = useState<string>("");
   const [matchHour, setMatchHour] = useState<number>(() => Math.min(new Date().getHours() + 2, 22));
   const [matchMinute, setMatchMinute] = useState<number>(0);
@@ -76,7 +76,6 @@ const CreateMatch = () => {
   const [notes, setNotes] = useState("");
   const [teamName, setTeamName] = useState("");
   const [teamColorIdx, setTeamColorIdx] = useState(0);
-  const [sportsList, setSportsList] = useState<{ id: string; name: string }[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const selectedVenue = venues.find((v) => v.id === venueId);
@@ -104,13 +103,6 @@ const CreateMatch = () => {
       setProfitAmount(0);
     }
   }, [step, basePerPlayer]);
-
-  // Fetch sports list for selector
-  useEffect(() => {
-    supabase.from("sports").select("id, name").eq("is_active", true).order("name").then(({ data }) => {
-      setSportsList(data ?? []);
-    });
-  }, []);
 
   // Auto-set maxCore from format/mode
   useEffect(() => {
@@ -153,7 +145,7 @@ const CreateMatch = () => {
     if (step === 0) return !!type && !!mode && !!matchFormat;
     if (step === 1) return !!venueId;
     if (step === 2) {
-      if (!title.trim() || !sportType || !matchDate) return false;
+      if (!title.trim() || !matchDate) return false;
       if (mode === "gala" && teamName.trim().length < 2) return false;
       const d = new Date(matchDate);
       d.setHours(matchHour, matchMinute, 0, 0);
@@ -190,10 +182,6 @@ const CreateMatch = () => {
       newErrors.title = "Title must be at least 3 characters";
     } else if (trimmedTitle.length > 60) {
       newErrors.title = "Title must be 60 characters or less";
-    }
-
-    if (!sportType) {
-      newErrors.sportType = "Please select a sport";
     }
 
     if (entryFeeEnabled) {
@@ -299,7 +287,8 @@ const CreateMatch = () => {
               />
             </Group>
 
-            <Group title="Mode">
+            {/* HIDDEN — Gala mode: re-enable when feature is released */}
+            {/* <Group title="Mode">
               <SegmentedTwo
                 a={{ id: "two-team", icon: Users,  label: "Two-team", desc: "Classic 1v1 squads" }}
                 b={{ id: "gala",     icon: Swords, label: "Gala",     desc: "3+ teams · winner stays" }}
@@ -309,7 +298,7 @@ const CreateMatch = () => {
                   if (matchFormat && !(v === "gala" ? GALA_FORMATS : TWO_TEAM_FORMATS).includes(matchFormat)) setMatchFormat(null);
                 }}
               />
-            </Group>
+            </Group> */}
 
             {type === "public" && mode === "two-team" && (
               <Group title="Team colours" hint="Preset palette for lobby chat">
@@ -333,7 +322,7 @@ const CreateMatch = () => {
               </Group>
             )}
 
-            <Group title="Format" hint={mode === "gala" ? "Gala runs 5v5 or 7v7 only." : "Pick a side count."}>
+            <Group title="Format" hint="Pick a side count.">
               <div className="flex flex-wrap gap-2">
                 {availableFormats.map((f) => (
                   <button
@@ -528,25 +517,6 @@ const CreateMatch = () => {
                 className="w-full bg-secondary rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground"
               />
               {errors.title && <p className="text-[11px] text-red-600 font-semibold mt-2">{errors.title}</p>}
-            </div>
-
-            {/* Sport */}
-            <div className="bg-card rounded-3xl p-5" style={{ boxShadow: "var(--shadow-card)" }}>
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Sport</p>
-              <div className="flex flex-wrap gap-2">
-                {sportsList.map((s) => (
-                  <button
-                    key={s.id}
-                    onClick={() => setSportType(s.id)}
-                    className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
-                      sportType === s.id ? "bg-foreground text-background" : "bg-secondary"
-                    }`}
-                  >
-                    {s.name}
-                  </button>
-                ))}
-              </div>
-              {errors.sportType && <p className="text-[11px] text-red-600 font-semibold mt-2">{errors.sportType}</p>}
             </div>
 
             {/* Max players */}
@@ -790,8 +760,8 @@ const CreateMatch = () => {
               <p className="text-[11px] text-muted-foreground mt-1 text-right">{notes.length}/300</p>
             </div>
 
-            {/* Gala team name */}
-            {mode === "gala" && (
+            {/* HIDDEN — Gala team name: re-enable when gala feature is released */}
+            {false && mode === "gala" && (
               <div className="bg-card rounded-3xl p-5" style={{ boxShadow: "var(--shadow-card)" }}>
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Your team name</p>
                 <input
@@ -810,7 +780,7 @@ const CreateMatch = () => {
             <div className="bg-card rounded-3xl p-5 space-y-2" style={{ boxShadow: "var(--shadow-card)" }}>
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Summary</p>
               <SummaryRow label="Title" value={title || "—"} />
-              <SummaryRow label="Sport" value={sportsList.find((s) => s.id === sportType)?.name ?? "—"} />
+              <SummaryRow label="Sport" value="Football" />
               <SummaryRow label="Type" value={type === "public" ? "Public" : "Private"} />
               <SummaryRow label="Mode" value={mode === "gala" ? "Gala" : "Two-team"} />
               <SummaryRow label="Format" value={matchFormat ?? "—"} />

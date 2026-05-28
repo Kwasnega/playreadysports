@@ -127,6 +127,9 @@ export default function AdminWithdrawals() {
         .from("wallet_transactions")
         .select("*")
         .eq("type", "withdrawal")
+        // Exclude withdrawals that originated from a venue payout request
+        // (those are managed in the Venue payouts tab via venue_payout_requests).
+        .or("metadata->>source.is.null,metadata->>source.neq.venue")
         .order("created_at", { ascending: false });
 
       if (filter !== "all") {

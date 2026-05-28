@@ -61,7 +61,7 @@ export default function Leaderboard() {
   }, []);
 
   const shareText = userEntry && userRank
-    ? `I'm ranked #${userRank} on PlayReady with ${userEntry.reputation_score.toFixed(1)} reputation points! Come play with me.`
+    ? `I'm ranked #${userRank} on PlayReady with ${Number(userEntry.reputation_score ?? 0).toFixed(1)} reputation points! Come play with me.`
     : "Check out the PlayReady leaderboard — find the best football players near you!";
 
   const handleShare = () => {
@@ -150,7 +150,7 @@ export default function Leaderboard() {
             <div className="text-right">
               <p className="font-display font-bold text-lg">#{userRank ?? "—"}</p>
               <p className="text-[10px] text-muted-foreground font-semibold">
-                {userEntry.reputation_score.toFixed(1)} pts
+                {Number(userEntry.reputation_score ?? 0).toFixed(1)} pts
               </p>
             </div>
           </div>

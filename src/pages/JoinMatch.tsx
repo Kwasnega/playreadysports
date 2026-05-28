@@ -114,7 +114,8 @@ const JoinMatch = () => {
         <div className="space-y-2.5">
           <div className="flex items-center gap-2 overflow-x-auto scrollbar-none -mx-1 px-1">
             {(
-              ["all", "two_team", "gala"] as ModeFilter[]
+              // HIDDEN — "gala" filter: re-enable when Gala feature is released
+              ["all", "two_team"] as ModeFilter[]
             ).map((id) => {
               const isActive = modeFilter === id;
               return (

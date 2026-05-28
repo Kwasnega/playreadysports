@@ -66,8 +66,10 @@ Deno.serve(async (req) => {
       p_user_id: user.id,
       p_amount: amountInCedis,
       p_type: 'deposit',
-      p_reference: reference
-    });
+      p_reference: reference,
+      p_match_id: null,
+      p_description: "Wallet top-up via Paystack",
+    } as any);
 
     if (rpcError) {
       // Check if it's a unique constraint violation (duplicate top-up attempt)

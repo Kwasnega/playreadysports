@@ -91,6 +91,14 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Match mode allowlist — gala is disabled
+    const ALLOWED_MODES = ["public", "private"];
+    if (!matchMode || !ALLOWED_MODES.includes(matchMode)) {
+      return new Response(JSON.stringify({ error: "VALIDATION_ERROR", field: "matchMode", message: "Invalid match mode" }), {
+        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+      });
+    }
+
     // Sport
     if (!sportType || typeof sportType !== "string") {
       return new Response(JSON.stringify({ error: "VALIDATION_ERROR", field: "sportType", message: "Please select a sport" }), {
@@ -346,7 +354,12 @@ Deno.serve(async (req) => {
       });
 
     if (participantErr) {
-      // Best-effort: don't fail the whole request, silently continue
+      // Cannot leave a match with no organizer participant — roll back
+      await svc.from("matches").delete().eq("id", match.id);
+      return new Response(
+        JSON.stringify({ error: `Match created but failed to add you as participant: ${participantErr.message}. Match has been cancelled.` }),
+        { status: 500, headers: { ...getCorsHeaders(), "Content-Type": "application/json" } }
+      );
     }
 
     // ------------------------------------------------------------------
@@ -355,37 +368,25 @@ Deno.serve(async (req) => {
     const svc = createClient(supabaseUrl, serviceKey);
 
     if (feeNum > 0) {
-      const { data: walletRow } = await svc
-        .from("wallet_balances")
-        .select("balance")
-        .eq("user_id", user.id)
-        .single();
+      const ref = `create_match_${match.id}_${Date.now()}`;
+      const { error: txErr } = await svc.rpc("process_wallet_transaction", {
+        p_user_id: user.id,
+        p_amount: -feeNum,
+        p_type: "spend",
+        p_reference: ref,
+        p_match_id: match.id,
+        p_description: `Entry fee for match: ${match.title}`,
+      });
 
-      const currentBalance = Number(walletRow?.balance ?? 0);
-      if (currentBalance < feeNum) {
+      if (txErr) {
         // Rollback: remove match and participant so the user isn't left with an unpaid match
         await svc.from("match_participants").delete().eq("match_id", match.id).eq("user_id", user.id);
         await svc.from("matches").delete().eq("id", match.id);
         return new Response(
           JSON.stringify({ error: `Insufficient wallet balance. You need ₵${feeNum} to create this match. Please top up your wallet.` }),
-          { status: 402, headers: { ...getCorsHeaders(), "Content-Type": "application/json" } },
+          { status: 402, headers: { ...getCorsHeaders(), "Content-Type": "application/json" } }
         );
       }
-
-      // Deduct fee
-      await svc
-        .from("wallet_balances")
-        .update({ balance: currentBalance - feeNum })
-        .eq("user_id", user.id);
-
-      // Log spend transaction
-      await svc.from("wallet_transactions").insert({
-        user_id: user.id,
-        amount: -feeNum,
-        type: "spend" as any,
-        reference: `create_match_${match.id}_${Date.now()}`,
-        status: "completed" as any,
-      });
 
       // Mark organizer as paid and increment paid count
       await svc
@@ -414,15 +415,18 @@ Deno.serve(async (req) => {
       if (pricePerHour > 0) {
         const hrs = (durationMinutes ?? 60) / 60;
         const organizerVenueFee = pricePerHour * hrs;
+        const ref = `venue_cost_${match.id}_${Date.now()}`;
 
-        const { data: walletRow } = await svc
-          .from("wallet_balances")
-          .select("balance")
-          .eq("user_id", user.id)
-          .single();
+        const { error: txErr } = await svc.rpc("process_wallet_transaction", {
+          p_user_id: user.id,
+          p_amount: -organizerVenueFee,
+          p_type: "spend",
+          p_reference: ref,
+          p_match_id: match.id,
+          p_description: `Venue cost for free match: ${match.title}`,
+        });
 
-        const currentBalance = Number(walletRow?.balance ?? 0);
-        if (currentBalance < organizerVenueFee) {
+        if (txErr) {
           // Rollback: remove match and participant
           await svc.from("match_participants").delete().eq("match_id", match.id).eq("user_id", user.id);
           await svc.from("matches").delete().eq("id", match.id);
@@ -431,21 +435,6 @@ Deno.serve(async (req) => {
             { status: 402, headers: { ...getCorsHeaders(), "Content-Type": "application/json" } },
           );
         }
-
-        // Deduct venue cost
-        await svc
-          .from("wallet_balances")
-          .update({ balance: currentBalance - organizerVenueFee })
-          .eq("user_id", user.id);
-
-        // Log spend transaction
-        await svc.from("wallet_transactions").insert({
-          user_id: user.id,
-          amount: -organizerVenueFee,
-          type: "spend" as any,
-          reference: `venue_cost_${match.id}_${Date.now()}`,
-          status: "completed" as any,
-        });
 
         // Update match with organizer_venue_fee
         await svc

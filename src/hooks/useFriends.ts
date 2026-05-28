@@ -31,8 +31,7 @@ export function useFriends() {
     if (!user) { setFriends([]); setPendingRequests([]); setSentRequests([]); setLoading(false); return; }
     setLoading(true);
 
-    // @ts-ignore — friendships table not in generated types yet
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("friendships")
       .select("*, requester:profiles!requester_id(id, username, full_name, avatar_url), recipient:profiles!recipient_id(id, username, full_name, avatar_url)")
       .or(`requester_id.eq.${user.id},recipient_id.eq.${user.id}`)
@@ -115,8 +114,7 @@ export function useFriends() {
   const sendRequest = async (recipientId: string) => {
     if (!user) return { error: "Not signed in" };
     // Check if friendship already exists
-    // @ts-ignore
-    const { data: existing } = await supabase
+    const { data: existing } = await (supabase as any)
       .from("friendships")
       .select("id, status")
       .or(`and(requester_id.eq.${user.id},recipient_id.eq.${recipientId}),and(requester_id.eq.${recipientId},recipient_id.eq.${user.id})`)
@@ -125,8 +123,7 @@ export function useFriends() {
       if (existing.status === "accepted") return { error: "You are already friends with this player." };
       if (existing.status === "pending") return { error: "Friend request already sent." };
     }
-    // @ts-ignore
-    const { error } = await supabase.from("friendships").insert({
+    const { error } = await (supabase as any).from("friendships").insert({
       requester_id: user.id,
       recipient_id: recipientId,
       status: "pending",
@@ -151,29 +148,25 @@ export function useFriends() {
 
   const acceptRequest = async (friendshipId: string) => {
     if (!user) return;
-    // @ts-ignore
-    await supabase.from("friendships").update({ status: "accepted", updated_at: new Date().toISOString() }).eq("id", friendshipId);
+    await (supabase as any).from("friendships").update({ status: "accepted", updated_at: new Date().toISOString() }).eq("id", friendshipId);
     load();
   };
 
   const rejectRequest = async (friendshipId: string) => {
     if (!user) return;
-    // @ts-ignore
-    await supabase.from("friendships").delete().eq("id", friendshipId);
+    await (supabase as any).from("friendships").delete().eq("id", friendshipId);
     load();
   };
 
   const unfriend = async (friendshipId: string) => {
     if (!user) return;
-    // @ts-ignore
-    await supabase.from("friendships").delete().eq("id", friendshipId);
+    await (supabase as any).from("friendships").delete().eq("id", friendshipId);
     load();
   };
 
   const getFriendshipStatus = async (otherUserId: string): Promise<"none" | "pending_sent" | "pending_received" | "friends"> => {
     if (!user || otherUserId === user.id) return "none";
-    // @ts-ignore
-    const { data } = await supabase
+    const { data } = await (supabase as any)
       .from("friendships")
       .select("id, requester_id, status")
       .or(`and(requester_id.eq.${user.id},recipient_id.eq.${otherUserId}),and(requester_id.eq.${otherUserId},recipient_id.eq.${user.id})`)
