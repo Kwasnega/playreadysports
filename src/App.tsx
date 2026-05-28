@@ -42,6 +42,7 @@ const AdminWithdrawals = lazy(() => import("@/pages/admin/AdminWithdrawals"));
 const AdminSettings = lazy(() => import("@/pages/admin/AdminSettings"));
 const AdminCreateOwner = lazy(() => import("@/pages/admin/AdminCreateOwner"));
 const AdminVenueDetail = lazy(() => import("@/pages/admin/AdminVenueDetail"));
+const AdminDisputes = lazy(() => import("@/pages/admin/AdminDisputes"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -132,6 +133,7 @@ function AppRoutes() {
         <Route path="withdrawals" element={<AdminWithdrawals />} />
         <Route path="settings" element={<AdminSettings />} />
         <Route path="owners" element={<AdminCreateOwner />} />
+        <Route path="disputes" element={<AdminDisputes />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>

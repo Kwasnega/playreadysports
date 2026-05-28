@@ -102,22 +102,19 @@ export default function AdminOverview() {
     (async () => {
       setLoading(true);
       try {
-        const [{ count: players }, { count: matches }, { data: txns }, { data: walletTxns }, { data: chart }, { data: recent }, { data: setting }, { data: maintenanceSetting }] = await Promise.all([
+        const [{ count: players }, { count: matches }, { data: walletTxns }, { data: chart }, { data: recent }, { data: setting }, { data: maintenanceSetting }] = await Promise.all([
           supabase.from("profiles").select("*", { count: "exact", head: true }),
           supabase.from("matches").select("*", { count: "exact", head: true }).eq("status", "upcoming"),
-          supabase.from("transactions").select("amount").eq("type", "entry_fee").eq("status", "completed"),
           (supabase as any).from("wallet_transactions").select("amount").eq("type", "spend").eq("status", "completed"),
           (supabase as any).rpc("matches_per_day", { days: 14 }),
-          supabase.from("transactions").select("id, amount, type, status, created_at, user:profiles(full_name, username), match:matches(join_code)").order("created_at", { ascending: false }).limit(10),
+          (supabase as any).from("wallet_transactions").select("id, amount, type, status, created_at, user:profiles(full_name, username), match:matches(join_code)").not("type", "in", "(venue_cut,organizer_profit)").order("created_at", { ascending: false }).limit(10),
           (supabase as any).from("platform_settings").select("value").eq("key", "commission_rate").single(),
           (supabase as any).from("platform_settings").select("value").eq("key", "maintenance_mode").single(),
         ]);
         const rate = parseFloat(setting?.value ?? "0.05");
         setCommissionRate(isNaN(rate) ? 0.05 : rate);
         setMaintenanceMode(maintenanceSetting?.value === "true");
-        const gatewayRevenue = (txns ?? []).reduce((s, t) => s + (Number(t.amount) || 0), 0);
-        const walletRevenue = (walletTxns ?? []).reduce((s, t) => s + (Math.abs(Number(t.amount)) || 0), 0);
-        const revenue = gatewayRevenue + walletRevenue;
+        const revenue = (walletTxns ?? []).reduce((s, t) => s + (Math.abs(Number(t.amount)) || 0), 0);
         setMetrics({ players: players ?? 0, matches: matches ?? 0, revenue, fees: Math.round(revenue * rate * 100) / 100 });
         const chartPoints = (chart ?? []).map((d: any) => ({ day: d.day.slice(5), count: Number(d.count) }));
         setChartData(chartPoints);
@@ -305,15 +302,17 @@ export default function AdminOverview() {
                     <td className="px-6 py-3.5 font-mono text-xs text-slate-400">{match?.join_code || "—"}</td>
                     <td className="px-6 py-3.5">
                       <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${
-                        t.type === 'entry_fee' ? 'bg-emerald-500/10 text-emerald-400' :
+                        t.type === 'spend' ? 'bg-emerald-500/10 text-emerald-400' :
+                        t.type === 'deposit' ? 'bg-blue-500/10 text-blue-400' :
                         t.type === 'refund' ? 'bg-amber-500/10 text-amber-400' :
-                        t.type === 'payout' ? 'bg-blue-500/10 text-blue-400' :
+                        t.type === 'withdrawal' ? 'bg-rose-500/10 text-rose-400' :
+                        t.type === 'bonus' || t.type === 'cashback' ? 'bg-purple-500/10 text-purple-400' :
                         'bg-slate-500/10 text-slate-400'
                       }`}>
-                        {t.type.replace('_', ' ')}
+                        {t.type.replace(/_/g, ' ')}
                       </span>
                     </td>
-                    <td className="px-6 py-3.5 text-right font-mono text-slate-200 font-medium">₵{t.amount}</td>
+                    <td className="px-6 py-3.5 text-right font-mono text-slate-200 font-medium">₵{Math.abs(Number(t.amount || 0)).toFixed(2)}</td>
                     <td className="px-6 py-3.5 text-right text-xs text-slate-500">{new Date(t.created_at).toLocaleDateString()}</td>
                   </tr>
                 );
