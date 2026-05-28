@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -102,74 +102,92 @@ export function useBrowseMatches(filters: BrowseFilters) {
 
   const { mode, sort, search, userLat, userLng } = filters;
 
-  useEffect(() => {
-    let cancelled = false;
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
 
-    const load = async () => {
-      setLoading(true);
-      setError(null);
+    const now = new Date().toISOString();
 
-      const now = new Date().toISOString();
-
-      let query = supabase
-        .from("matches")
-        .select(
-          `
-          *,
-          venue:venues(id, name, city, area, lat, lng),
-          participants:match_participants(id, status, team, slot_type, payment_status)
+    let query = supabase
+      .from("matches")
+      .select(
         `
-        )
-        .eq("match_type", "public" as any)
-        .eq("status", "upcoming" as any)
-        .gte("match_date", now)
-        .order("match_date", { ascending: true })
-        .limit(50);
+        *,
+        venue:venues(id, name, city, area, lat, lng),
+        participants:match_participants(id, status, team, slot_type, payment_status)
+      `
+      )
+      .eq("match_type", "public" as any)
+      .in("status", ["upcoming", "full"] as any)
+      .gte("match_date", now)
+      .order("match_date", { ascending: true })
+      .limit(50);
 
-      if (mode) {
-        query = query.eq("match_mode", mode as any);
+    if (mode) {
+      query = query.eq("match_mode", mode as any);
+    }
+
+    if (search?.trim()) {
+      const q = `%${search.trim()}%`;
+      query = query.or(`join_code.ilike.${q},title.ilike.${q},format.ilike.${q},venue(name).ilike.${q}`, { foreignTable: "venues" } as any);
+    }
+
+    const { data, error: supaErr } = await query;
+
+    if (supaErr) {
+      setError(supaErr.message);
+      setMatches([]);
+    } else {
+      const rows = data ?? [];
+
+      // Two-step: fetch organizer profiles from public_profiles (safe view)
+      const organizerIds = [...new Set(rows.map((r: any) => r.organizer_id).filter(Boolean))];
+      const organizerMap: Record<string, any> = {};
+      if (organizerIds.length > 0) {
+        const { data: profs } = await (supabase as any)
+          .from("public_profiles")
+          .select("id, username, full_name, avatar_url, reputation_score")
+          .in("id", organizerIds);
+        (profs ?? []).forEach((p: any) => { organizerMap[p.id] = p; });
       }
 
-      if (search?.trim()) {
-        const q = `%${search.trim()}%`;
-        query = query.or(`join_code.ilike.${q},title.ilike.${q},format.ilike.${q},venue(name).ilike.${q}`, { foreignTable: "venues" } as any);
-      }
+      const normalized = rows.map((row: any) => ({
+        ...row,
+        venue: Array.isArray(row.venue) ? row.venue[0] ?? null : row.venue ?? null,
+        organizer: organizerMap[row.organizer_id] ?? null,
+        participants: Array.isArray(row.participants) ? row.participants : [],
+      })) as BrowseMatch[];
+      setMatches(normalized);
+    }
 
-      const { data, error: supaErr } = await query;
-
-      if (cancelled) return;
-
-      if (supaErr) {
-        setError(supaErr.message);
-        setMatches([]);
-      } else {
-        const rows = data ?? [];
-
-        // Two-step: fetch organizer profiles from public_profiles (safe view)
-        const organizerIds = [...new Set(rows.map((r: any) => r.organizer_id).filter(Boolean))];
-        const organizerMap: Record<string, any> = {};
-        if (organizerIds.length > 0) {
-          const { data: profs } = await (supabase as any)
-            .from("public_profiles")
-            .select("id, username, full_name, avatar_url, reputation_score")
-            .in("id", organizerIds);
-          (profs ?? []).forEach((p: any) => { organizerMap[p.id] = p; });
-        }
-
-        const normalized = rows.map((row: any) => ({
-          ...row,
-          venue: Array.isArray(row.venue) ? row.venue[0] ?? null : row.venue ?? null,
-          organizer: organizerMap[row.organizer_id] ?? null,
-          participants: Array.isArray(row.participants) ? row.participants : [],
-        })) as BrowseMatch[];
-        setMatches(normalized);
-      }
-
-      setLoading(false);
-    };
-
-    load();
+    setLoading(false);
   }, [mode, search]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  // Realtime subscription for new public matches
+  useEffect(() => {
+    const channel = supabase
+      .channel("browse-matches")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "matches",
+          filter: "match_type=eq.public",
+        } as any,
+        () => {
+          load();
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [load]);
 
   // Sort and bucket the loaded matches
   const sorted = useMemo(() => {

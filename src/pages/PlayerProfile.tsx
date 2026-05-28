@@ -49,10 +49,12 @@ const ReportModal = ({
   open,
   onClose,
   reportedUserId,
+  reporterId,
 }: {
   open: boolean;
   onClose: () => void;
   reportedUserId: string;
+  reporterId?: string;
 }) => {
   const [reason, setReason] = useState("");
   const [sending, setSending] = useState(false);
@@ -62,6 +64,7 @@ const ReportModal = ({
     setSending(true);
     const { error } = await supabase.from("reports").insert({
       reported_user_id: reportedUserId,
+      reporter_id: reporterId,
       reason: reason.trim(),
     } as any);
     setSending(false);
@@ -377,6 +380,7 @@ const PlayerProfile = () => {
         open={reportOpen}
         onClose={() => setReportOpen(false)}
         reportedUserId={profile?.id ?? ""}
+        reporterId={user?.id}
       />
     </main>
   );

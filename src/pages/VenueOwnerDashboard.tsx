@@ -308,7 +308,7 @@ export default function VenueOwnerDashboard() {
         .select(
           "id, name, status, city, area, price_per_hour, capacity, opening_hours, open_time, close_time, contact_phone, amenities, image_urls, surge_peak_start_hour, surge_peak_end_hour, surge_multiplier",
         )
-        .eq("owner_email", user.email);
+        .eq("owner_id", user.id);
 
       const venueList = (vens ?? []) as VenueRow[];
       setVenues(venueList);
@@ -340,11 +340,14 @@ export default function VenueOwnerDashboard() {
         .order("match_date", { ascending: true });
       setTodayMatches((today ?? []) as TodayMatch[]);
 
+      const since = new Date();
+      since.setDate(since.getDate() - 90);
       const { data: completed } = await supabase
         .from("matches")
         .select("id, join_code, match_date, format, entry_fee, core_paid_count, venue_id, status")
         .in("venue_id", venueIds)
         .eq("status", "completed")
+        .gte("match_date", since.toISOString())
         .order("match_date", { ascending: false });
 
       const grouped: VenueEarning[] = verified.map((v) => {
@@ -366,8 +369,6 @@ export default function VenueOwnerDashboard() {
       });
       setEarnings(grouped);
 
-      const since = new Date();
-      since.setDate(since.getDate() - 90);
       const { data: heatRows } = await supabase
         .from("matches")
         .select("match_date")
@@ -599,7 +600,7 @@ export default function VenueOwnerDashboard() {
       open_time: venueForm.open_time.trim() || null,
       close_time: venueForm.close_time.trim() || null,
       amenities: amenitiesArr.length ? amenitiesArr : null,
-      is_active: true,
+      is_active: false,
       status: "pending",
       image_urls: venueImages,
       owner_email: user?.email ?? null,
@@ -878,33 +879,46 @@ export default function VenueOwnerDashboard() {
             </div>
           ) : (
             <div className="space-y-2">
-              {todayMatches.map((m) => (
-                <div key={m.id} className="flex items-center gap-3 rounded-xl border border-border/60 p-3">
-                  <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <span className="text-[10px] font-bold">{m.join_code.slice(0, 2).toUpperCase()}</span>
+              {todayMatches.map((m) => {
+                const statusBadge = () => {
+                  switch (m.status) {
+                    case "live": return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600">LIVE</span>;
+                    case "full": return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600">FULL</span>;
+                    case "upcoming": return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600">UPCOMING</span>;
+                    default: return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-500/10 text-slate-600">{m.status}</span>;
+                  }
+                };
+                return (
+                  <div key={m.id} className="flex items-center gap-3 rounded-xl border border-border/60 p-3">
+                    <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <span className="text-[10px] font-bold">{m.join_code.slice(0, 2).toUpperCase()}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold truncate">{m.join_code}</p>
+                        {statusBadge()}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        {getFormattedTime(m.match_date)} · {m.format} · {m.core_paid_count} paid
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        onClick={() => openRoster(m)}
+                        className="text-[10px] font-bold bg-secondary rounded-full px-2.5 py-1.5 hover:bg-secondary/80 transition-colors"
+                      >
+                        Roster
+                      </button>
+                      <button
+                        onClick={() => openQr(m)}
+                        className="text-[10px] font-bold bg-foreground text-background rounded-full px-2.5 py-1.5 hover:bg-foreground/90 transition-colors"
+                      >
+                        QR
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate">{m.join_code}</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {getFormattedTime(m.match_date)} · {m.format} · {m.core_paid_count} paid
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      onClick={() => openRoster(m)}
-                      className="text-[10px] font-bold bg-secondary rounded-full px-2.5 py-1.5 hover:bg-secondary/80 transition-colors"
-                    >
-                      Roster
-                    </button>
-                    <button
-                      onClick={() => openQr(m)}
-                      className="text-[10px] font-bold bg-foreground text-background rounded-full px-2.5 py-1.5 hover:bg-foreground/90 transition-colors"
-                    >
-                      QR
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>

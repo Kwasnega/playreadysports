@@ -4,7 +4,6 @@ import { ArrowLeft, Camera, Loader2, Check } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { useUpdateProfile, checkUsernameAvailable, uploadAvatar } from "@/hooks/useUpdateProfile";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const CITIES = ["Accra", "Kumasi", "Tema", "Tamale", "Cape Coast", "Takoradi", "Sunyani", "Ho", "Bolgatanga", "Wa"];
@@ -13,22 +12,8 @@ const POSITIONS = ["GK", "CB", "LB", "RB", "CM", "LM", "RM", "CDM", "CAM", "ST",
 const EditProfile = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [currentUsername, setCurrentUsername] = useState("");
-
-  // Resolve username from profile lookup by user id
-  useEffect(() => {
-    if (!user?.id) return;
-    supabase
-      .from("profiles")
-      .select("username")
-      .eq("id", user.id)
-      .single()
-      .then(({ data }) => {
-        if (data?.username) setCurrentUsername(data.username);
-      });
-  }, [user?.id]);
-
-  const { profile, loading: profileLoading } = useProfile(currentUsername);
+  // Pass user.id directly — useProfile accepts UUIDs
+  const { profile, loading: profileLoading } = useProfile(user?.id);
   const update = useUpdateProfile(user?.id);
 
   const [fullName, setFullName] = useState("");
@@ -56,7 +41,7 @@ const EditProfile = () => {
 
   // Debounced username check
   useEffect(() => {
-    if (!username.trim() || username === currentUsername) {
+    if (!username.trim() || username === (profile?.username ?? "")) {
       setUsernameAvail(null);
       return;
     }
@@ -67,7 +52,7 @@ const EditProfile = () => {
       setCheckingUsername(false);
     }, 400);
     return () => clearTimeout(t);
-  }, [username, currentUsername, user?.id]);
+  }, [username, profile?.username, user?.id]);
 
   const handleAvatar = async (file: File) => {
     if (!user?.id) return;
@@ -82,7 +67,7 @@ const EditProfile = () => {
 
   const save = async () => {
     if (!user?.id) return;
-    if (username.trim() && username !== currentUsername && usernameAvail === false) {
+    if (username.trim() && username !== (profile?.username ?? "") && usernameAvail === false) {
       toast.error("Username is already taken");
       return;
     }
@@ -98,7 +83,7 @@ const EditProfile = () => {
         avatar_url: avatarUrl,
       });
       toast.success("Profile updated");
-      navigate(`/player/${username.trim() || currentUsername}`);
+      navigate(`/player/${username.trim() || profile?.username || user?.id || ""}`);
     } catch (err: any) {
       toast.error(err.message || "Failed to save");
     } finally {
@@ -234,7 +219,7 @@ const EditProfile = () => {
 
         <button
           onClick={save}
-          disabled={saving || (usernameAvail === false && username !== currentUsername)}
+          disabled={saving || (usernameAvail === false && username !== (profile?.username ?? ""))}
           className="w-full h-14 rounded-full bg-foreground text-background text-sm font-bold disabled:opacity-40 active:scale-[0.99]"
         >
           {saving ? "Saving…" : "Save changes"}

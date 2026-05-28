@@ -40,6 +40,22 @@ export default function AdminReports() {
 
   useEffect(() => { load(); }, []);
 
+  // Realtime subscription for new reports
+  useEffect(() => {
+    const channel = supabase
+      .channel("admin-reports")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "reports" },
+        () => {
+          load();
+          toast("New report received");
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
   const resolve = async (r: Report) => {
     if (!user) return;
     await supabase.from("reports").update({ status: "resolved" }).eq("id", r.id);

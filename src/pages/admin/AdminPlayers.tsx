@@ -103,7 +103,6 @@ interface AuditRow {
 interface PlayerDetails {
   profile: Profile;
   matches: MatchParticipantRow[];
-  transactions: any[];
   walletTransactions: any[];
   reviewsGiven: ReviewRow[];
   reviewsReceived: ReviewRow[];
@@ -320,7 +319,6 @@ export default function AdminPlayers() {
     const [
       profileRes,
       participantsRes,
-      transactionsRes,
       walletTxnsRes,
       reviewsGivenRes,
       reviewsReceivedRes,
@@ -333,7 +331,6 @@ export default function AdminPlayers() {
     ] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", p.id).single(),
       supabase.from("match_participants").select("*").eq("user_id", p.id).order("joined_at", { ascending: false }),
-      supabase.from("transactions").select("*").eq("user_id", p.id).order("created_at", { ascending: false }),
       supabase.from("wallet_transactions").select("*").eq("user_id", p.id).order("created_at", { ascending: false }),
       supabase.from("reviews").select("*").eq("reviewer_id", p.id).order("created_at", { ascending: false }),
       supabase.from("reviews").select("*").eq("reviewed_user_id", p.id).order("created_at", { ascending: false }),
@@ -413,7 +410,6 @@ export default function AdminPlayers() {
     setDetails({
       profile: profileRes.data as Profile,
       matches,
-      transactions: transactionsRes.data || [],
       walletTransactions: walletTxnsRes.data || [],
       reviewsGiven: enrichedReviewsGiven,
       reviewsReceived: enrichedReviewsReceived,
@@ -455,7 +451,6 @@ export default function AdminPlayers() {
     const exportData = {
       profile: details.profile,
       matches: details.matches,
-      transactions: details.transactions,
       wallet_transactions: details.walletTransactions,
       wallet_balance: details.walletBalance,
       reviews_given: details.reviewsGiven,
@@ -486,7 +481,7 @@ export default function AdminPlayers() {
       );
     }
 
-    const { profile, matches, transactions, walletTransactions, reviewsGiven, reviewsReceived, reportsFiled, reportsReceived, auditLog, notifications, reputationHistory, walletBalance } = details;
+    const { profile, matches, walletTransactions, reviewsGiven, reviewsReceived, reportsFiled, reportsReceived, auditLog, notifications, reputationHistory, walletBalance } = details;
 
     switch (detailTab) {
       case "overview": {
@@ -598,17 +593,10 @@ export default function AdminPlayers() {
       }
 
       case "payments": {
-        const allTxns = [
-          ...transactions.map((t: any) => ({ ...t, source: "payment_gateway" })),
-          ...walletTransactions.map((t: any) => ({ ...t, source: "wallet" })),
-        ].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        const list = walletTransactions.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         return (
           <div className="space-y-3">
-            <div className="grid grid-cols-3 gap-3 mb-2">
-              <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3 text-center">
-                <p className="text-lg font-bold text-white">{transactions.length}</p>
-                <p className="text-[10px] text-slate-500 uppercase">Gateway Txns</p>
-              </div>
+            <div className="grid grid-cols-2 gap-3 mb-2">
               <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3 text-center">
                 <p className="text-lg font-bold text-white">{walletTransactions.length}</p>
                 <p className="text-[10px] text-slate-500 uppercase">Wallet Txns</p>
@@ -618,20 +606,20 @@ export default function AdminPlayers() {
                 <p className="text-[10px] text-slate-500 uppercase">Balance</p>
               </div>
             </div>
-            {allTxns.length === 0 && <p className="text-sm text-slate-500 text-center py-8">No transactions found</p>}
-            {allTxns.map((t: any, i: number) => (
+            {list.length === 0 && <p className="text-sm text-slate-500 text-center py-8">No transactions found</p>}
+            {list.map((t: any, i: number) => (
               <div key={i} className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${t.source === "wallet" ? "bg-cyan-500/10" : "bg-emerald-500/10"}`}>
-                    <CreditCard className={`w-3.5 h-3.5 ${t.source === "wallet" ? "text-cyan-400" : "text-emerald-400"}`} />
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-cyan-500/10">
+                    <CreditCard className="w-3.5 h-3.5 text-cyan-400" />
                   </div>
                   <div>
-                    <p className="text-sm text-white">{t.type || t.source}</p>
-                    <p className="text-[10px] text-slate-500">{t.source === "wallet" ? t.reference || "—" : t.payment_reference || "—"}</p>
+                    <p className="text-sm text-white">{t.type}</p>
+                    <p className="text-[10px] text-slate-500">{t.reference || "—"}</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className={`text-sm font-semibold ${(t.amount ?? 0) < 0 ? "text-rose-400" : "text-emerald-400"}`}>{(t.amount ?? 0) < 0 ? "" : "+"}₵{t.amount}</p>
+                  <p className={`text-sm font-semibold ${(t.amount ?? 0) < 0 ? "text-rose-400" : "text-emerald-400"}`}>{(t.amount ?? 0) < 0 ? "" : "+"}₵{Math.abs(t.amount ?? 0)}</p>
                   <p className="text-[10px] text-slate-500">{t.status}</p>
                   <p className="text-[10px] text-slate-500">{formatDate(t.created_at).split(",")[0]}</p>
                 </div>

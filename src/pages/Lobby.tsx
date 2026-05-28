@@ -30,9 +30,20 @@ const Lobby = () => {
   const confirm = useConfirm();
   const { code } = useParams();
   const [params] = useSearchParams();
-  const matchCode = code ?? "ACC-100";
-  const teamFromUrl = params.get("team");
+  const matchCode = code ?? "";
   const navigate = useNavigate();
+  if (!matchCode) {
+    return (
+      <main className="min-h-screen bg-background flex flex-col items-center justify-center px-5">
+        <h1 className="font-display font-bold text-xl mb-2">Invalid match code</h1>
+        <p className="text-sm text-muted-foreground mb-4">No match code was provided.</p>
+        <button onClick={() => navigate("/")} className="bg-foreground text-background rounded-full px-6 py-2.5 text-sm font-bold">
+          Go home
+        </button>
+      </main>
+    );
+  }
+  const teamFromUrl = params.get("team");
   const { user, openAuth } = useAuth();
   const [checkInCode, setCheckInCode] = useState("");
   const [checkInBusy, setCheckInBusy] = useState(false);

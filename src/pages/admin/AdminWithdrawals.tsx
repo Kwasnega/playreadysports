@@ -170,7 +170,7 @@ export default function AdminWithdrawals() {
   useEffect(() => { load(); }, [filter]);
   useEffect(() => { if (tab === "venue") loadVenuePayouts(); }, [venueFilter, tab]);
 
-  // Realtime subscription for new venue payout requests
+  // Realtime subscription for venue payout requests (new + status changes)
   useEffect(() => {
     const channel = supabase
       .channel("admin-withdrawals")
@@ -184,6 +184,17 @@ export default function AdminWithdrawals() {
         () => {
           loadVenuePayouts();
           toast("New withdrawal request received");
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "venue_payout_requests",
+        },
+        () => {
+          loadVenuePayouts();
         }
       )
       .subscribe();

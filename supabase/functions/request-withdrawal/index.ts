@@ -1,6 +1,10 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
 
+// DEPRECATED / UNUSED: This edge function is dead code. It is never called by any
+// frontend component. The active withdrawal flow uses `request_venue_withdrawal` RPC
+// (called from VenueOwnerDashboard) which properly writes to venue_payout_requests.
+// This function bypasses that table and would hide withdrawals from the admin panel.
 // CORS is handled via getCorsHeaders() from _shared/cors.ts
 
 Deno.serve(async (req) => {

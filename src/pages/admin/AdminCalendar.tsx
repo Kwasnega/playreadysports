@@ -27,21 +27,22 @@ interface CalMatch {
   duration_minutes: number;
 }
 
-const ALL_STATUSES = ["upcoming", "live", "completed", "cancelled"] as const;
+const ALL_STATUSES = ["upcoming", "full", "live", "completed", "cancelled"] as const;
 
 const statusColor: Record<string, string> = {
   upcoming: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+  full: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30",
   live: "bg-amber-500/20 text-amber-400 border-amber-500/30",
   completed: "bg-slate-500/20 text-slate-400 border-slate-500/30",
   cancelled: "bg-red-500/20 text-red-400 border-red-500/30",
 };
 
 const statusLabel: Record<string, string> = {
-  upcoming: "Upcoming", live: "Live", completed: "Completed", cancelled: "Cancelled",
+  upcoming: "Upcoming", full: "Full", live: "Live", completed: "Completed", cancelled: "Cancelled",
 };
 
 const statusDot: Record<string, string> = {
-  upcoming: "bg-emerald-400", live: "bg-amber-400", completed: "bg-slate-400", cancelled: "bg-red-400",
+  upcoming: "bg-emerald-400", full: "bg-cyan-400", live: "bg-amber-400", completed: "bg-slate-400", cancelled: "bg-red-400",
 };
 
 export default function AdminCalendar() {

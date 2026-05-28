@@ -83,14 +83,16 @@ export default function AdminMatches() {
 
   const stats = useMemo(() => ({
     total: matches.length,
-    upcoming: matches.filter(m => m.status === "upcoming").length,
+    upcoming: matches.filter(m => m.status === "upcoming" || m.status === "full").length,
     live: matches.filter(m => m.status === "live").length,
     completed: matches.filter(m => m.status === "completed").length,
+    cancelled: matches.filter(m => m.status === "cancelled").length,
   }), [matches]);
 
   const statusBadge = (status: string) => {
     switch(status) {
       case "upcoming": return "bg-blue-500/10 text-blue-400";
+      case "full": return "bg-cyan-500/10 text-cyan-400";
       case "live": return "bg-emerald-500/10 text-emerald-400";
       case "completed": return "bg-slate-500/10 text-slate-400";
       case "cancelled": return "bg-rose-500/10 text-rose-400";
@@ -105,12 +107,13 @@ export default function AdminMatches() {
         <p className="text-sm text-slate-400 mt-1">Monitor and manage all platform matches</p>
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-5 gap-4">
         {[
           { label: "Total", value: stats.total, icon: Trophy, color: "text-blue-400", bg: "bg-blue-500/10" },
           { label: "Upcoming", value: stats.upcoming, icon: Trophy, color: "text-emerald-400", bg: "bg-emerald-500/10" },
           { label: "Live", value: stats.live, icon: Trophy, color: "text-amber-400", bg: "bg-amber-500/10" },
           { label: "Completed", value: stats.completed, icon: Trophy, color: "text-slate-400", bg: "bg-slate-500/10" },
+          { label: "Cancelled", value: stats.cancelled, icon: Trophy, color: "text-rose-400", bg: "bg-rose-500/10" },
         ].map((s) => (
           <div key={s.label} className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.06] rounded-xl p-4 hover:border-white/[0.12] transition-all">
             <div className={`w-8 h-8 rounded-lg ${s.bg} flex items-center justify-center mb-2`}>
@@ -129,6 +132,7 @@ export default function AdminMatches() {
           <option value="live" className="bg-[#0B1120]">Live</option>
           <option value="completed" className="bg-[#0B1120]">Completed</option>
           <option value="cancelled" className="bg-[#0B1120]">Cancelled</option>
+          <option value="full" className="bg-[#0B1120]">Full</option>
         </select>
         <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-10 px-4 rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-slate-300 outline-none focus:border-white/20" />
         <span className="text-xs text-slate-500">to</span>

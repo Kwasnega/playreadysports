@@ -180,6 +180,9 @@ export default function VenueOwnerCalendar({
             <span className="w-2 h-2 rounded-full bg-emerald-500" /> Upcoming / Live
           </span>
           <span className="flex items-center gap-1 text-[10px] text-muted-foreground font-semibold">
+            <span className="w-2 h-2 rounded-full bg-cyan-500" /> Full
+          </span>
+          <span className="flex items-center gap-1 text-[10px] text-muted-foreground font-semibold">
             <span className="w-2 h-2 rounded-full bg-blue-500" /> Completed
           </span>
           <span className="flex items-center gap-1 text-[10px] text-muted-foreground font-semibold">
@@ -200,6 +203,7 @@ export default function VenueOwnerCalendar({
         <div className="grid grid-cols-7 gap-1">
           {calendarDays.map((cell, i) => {
             const hasUpcoming = cell.matches.some((m) => m.status === "upcoming" || m.status === "live");
+            const hasFull = cell.matches.some((m) => m.status === "full");
             const hasCompleted = cell.matches.some((m) => m.status === "completed");
             const hasCancelled = cell.matches.some((m) => m.status === "cancelled");
             return (
@@ -219,6 +223,7 @@ export default function VenueOwnerCalendar({
                 </span>
                 <div className="flex gap-0.5 mt-1">
                   {hasUpcoming && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
+                  {hasFull && <span className="w-1.5 h-1.5 rounded-full bg-cyan-500" />}
                   {hasCompleted && <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
                   {hasCancelled && <span className="w-1.5 h-1.5 rounded-full bg-red-500" />}
                 </div>
@@ -266,9 +271,11 @@ export default function VenueOwnerCalendar({
                           ? "bg-red-500/10 text-red-500"
                           : m.status === "live"
                           ? "bg-amber-500/10 text-amber-500"
+                          : m.status === "full"
+                          ? "bg-cyan-500/10 text-cyan-500"
                           : "bg-emerald-500/10 text-emerald-500"
                       }`}>
-                        {m.status}
+                        {m.status === "full" ? "FULL" : m.status}
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">

@@ -28,8 +28,13 @@ export default function AdminBroadcast() {
   const [history, setHistory] = useState<Broadcast[]>([]);
 
   const loadHistory = async () => {
-    const { data } = await supabase.from("broadcasts" as any).select("*").order("created_at", { ascending: false }).limit(20);
-    setHistory((data ?? []) as any);
+    try {
+      const { data } = await supabase.from("broadcasts" as any).select("*").order("created_at", { ascending: false }).limit(20);
+      setHistory((data ?? []) as any);
+    } catch (err: any) {
+      toast.error("Broadcasts table not found — history unavailable");
+      setHistory([]);
+    }
   };
 
   useEffect(() => { loadHistory(); }, []);

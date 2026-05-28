@@ -107,9 +107,7 @@ export function useMatchLobby(joinCode: string) {
 
   const refresh = useCallback(async () => {
     if (!matchId) return;
-    setLoading(true);
     await loadParticipants(matchId);
-    setLoading(false);
   }, [matchId, loadParticipants]);
 
   useEffect(() => {

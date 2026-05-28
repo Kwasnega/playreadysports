@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Filter, MapPin, Sparkles, Check, X, Clock, Users, Repeat,
@@ -36,13 +36,14 @@ function useDayMatches(date: Date) {
   const [matches, setMatches] = useState<DayMatch[]>([]);
   const [loading, setLoading] = useState(false);
 
-  useMemo(() => {
+  useEffect(() => {
     setLoading(true);
     const dayStart = new Date(date);
     dayStart.setHours(0, 0, 0, 0);
     const dayEnd = new Date(date);
     dayEnd.setHours(23, 59, 59, 999);
 
+    let cancelled = false;
     supabase
       .from("matches")
       .select("id, join_code, match_date, format, match_mode, entry_fee, status, core_paid_count, max_core_players, venue:venues(name)")
@@ -50,6 +51,7 @@ function useDayMatches(date: Date) {
       .lte("match_date", dayEnd.toISOString())
       .order("match_date", { ascending: true })
       .then(({ data, error }) => {
+        if (cancelled) return;
         if (error) { setMatches([]); }
         else {
           setMatches((data ?? []).map((row: any) => {
@@ -70,6 +72,7 @@ function useDayMatches(date: Date) {
         }
         setLoading(false);
       });
+    return () => { cancelled = true; };
   }, [ymd(date)]);
 
   return { matches, loading };

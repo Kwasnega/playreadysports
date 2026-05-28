@@ -246,8 +246,8 @@ export default function AdminLiveMonitor() {
   const statsPulse = usePulse(stats, [stats.live_matches, stats.players_on_pitch, stats.total_escrow, stats.active_users]);
 
   /* ─── Data loading ─── */
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     try {
       const { data: matchesRaw } = await supabase
         .from("matches")
@@ -375,9 +375,9 @@ export default function AdminLiveMonitor() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Auto-refresh every 10s
+  // Auto-refresh every 10s (silent — no skeleton flicker)
   useEffect(() => {
-    const timer = setInterval(() => { load(); }, 10000);
+    const timer = setInterval(() => { load({ silent: true }); }, 10000);
     return () => clearInterval(timer);
   }, [load]);
 

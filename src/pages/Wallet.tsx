@@ -150,7 +150,7 @@ const WalletPage = () => {
                 <li key={tx.id} className="flex items-center justify-between">
                   <div>
                     <p className="font-semibold capitalize text-foreground flex items-center gap-1.5">
-                      {tx.type.replace('_', ' ')}
+                      {tx.type.replace(/_/g, ' ')}
                       {tx.status === 'completed' && <Check className="w-3 h-3 text-emerald-500" />}
                       {tx.status === 'pending' && <Loader2 className="w-3 h-3 text-amber-500 animate-spin" />}
                       {tx.status === 'failed' && <AlertCircle className="w-3 h-3 text-red-500" />}
