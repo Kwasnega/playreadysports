@@ -154,11 +154,14 @@ export default function AdminOverview() {
   const toggleMaintenance = async () => {
     setSavingMaintenance(true);
     const next = !maintenanceMode;
-    const { error } = await (supabase as any).from("platform_settings").upsert({
-      key: "maintenance_mode",
-      value: next ? "true" : "false",
-      updated_at: new Date().toISOString(),
-    });
+    const { error } = await (supabase as any).from("platform_settings").upsert(
+      {
+        key: "maintenance_mode",
+        value: next ? "true" : "false",
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "key" }
+    );
     setSavingMaintenance(false);
     if (error) {
       toast.error(error.message || "Failed to toggle maintenance mode");
