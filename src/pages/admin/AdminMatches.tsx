@@ -65,9 +65,10 @@ export default function AdminMatches() {
       confirmText: "Release",
     });
     if (!ok) return;
-    if (m.status === "live" || m.status === "full" || m.status === "upcoming") {
+    if (m.status === "live" || m.status === "full") {
       const { error: rpcErr } = await (supabase as any).rpc("complete_match_atomic", {
         p_match_id: m.id,
+        p_caller_id: user.id,
         p_winning_team: null,
       });
       if (rpcErr) { toast.error(`Failed to complete match: ${rpcErr.message}`); return; }

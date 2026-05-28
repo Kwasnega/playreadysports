@@ -100,6 +100,11 @@ export function useWallet() {
     
     return new Promise<boolean>((resolve) => {
       try {
+        if (!(window as any).PaystackPop) {
+          setToppingUp(false);
+          resolve(false);
+          return;
+        }
         const handler = (window as any).PaystackPop.setup({
           key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY,
           email: user.email,
