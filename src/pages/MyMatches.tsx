@@ -35,6 +35,8 @@ const statusBadge = (status: string) => {
   switch (status) {
     case "upcoming":
       return "bg-emerald-500/10 text-emerald-600";
+    case "full":
+      return "bg-cyan-500/10 text-cyan-600";
     case "live":
       return "bg-amber-500/10 text-amber-600";
     case "completed":
@@ -96,7 +98,10 @@ export default function MyMatches() {
     else fetchJoined();
   }, [user?.id, view]);
 
-  const filtered = matches.filter((m) => m.status === tab);
+  const filtered = matches.filter((m) => {
+    const effectiveStatus = m.status === "full" ? "upcoming" : m.status;
+    return effectiveStatus === tab;
+  });
 
   return (
     <main className="min-h-screen bg-background pb-24">
@@ -196,7 +201,7 @@ export default function MyMatches() {
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-bold">{m.join_code}</span>
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${statusBadge(m.status)}`}>
-                        {m.status}
+                        {m.status === "full" ? "FULL" : m.status}
                       </span>
                     </div>
                     <ChevronRight className="w-4 h-4 text-muted-foreground" />

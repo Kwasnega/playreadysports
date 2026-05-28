@@ -222,6 +222,8 @@ export default function AdminLiveMonitor() {
   const [alerts, setAlerts] = useState<CriticalAlert[]>([]);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [checkins, setCheckins] = useState<{ id: string; scanned_at: string; user_id: string }[]>([]);
+  const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
+  const [runningCleanup, setRunningCleanup] = useState(false);
 
   useEffect(() => {
     if (!expandedId) {
@@ -258,7 +260,7 @@ export default function AdminLiveMonitor() {
             profiles(full_name, username)
           )
         `)
-        .in("status", ["upcoming", "live"] as any)
+        .in("status", ["upcoming", "live", "full"] as any)
         .order("match_date", { ascending: true });
 
       const normalized = (matchesRaw ?? []).map((m: any) => ({
@@ -460,6 +462,28 @@ export default function AdminLiveMonitor() {
     load();
   };
 
+  const runAutoCleanup = async () => {
+    setRunningCleanup(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auto-cancel-matches`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session?.access_token ?? ""}`, "Content-Type": "application/json" },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(`Cleanup: ${data.cancelled ?? 0} match${data.cancelled !== 1 ? "es" : ""} cancelled (${data.checked ?? 0} checked)`);
+        load();
+      } else {
+        toast.error(data.error || "Cleanup failed");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Cleanup failed");
+    } finally {
+      setRunningCleanup(false);
+    }
+  };
+
   const runAutoIntervention = async () => {
     const now = Date.now();
     const triggered: { matchId: string; users: string[] }[] = [];
@@ -604,19 +628,29 @@ export default function AdminLiveMonitor() {
       )}
 
       {/* Auto-intervention bar */}
-      <div className="flex items-center justify-between bg-white/[0.03] border border-white/[0.06] rounded-xl p-3">
-        <div className="flex items-center gap-2">
-          <Zap className="w-4 h-4 text-cyan-400" />
-          <span className="text-sm text-slate-300">Auto-intervention rules active</span>
-          <span className="text-[10px] text-slate-500 bg-white/[0.04] px-2 py-0.5 rounded-full">
-            If match starts in 30min and &lt; 50% paid → auto-remind unpaid players
-          </span>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex-1 flex items-center justify-between bg-white/[0.03] border border-white/[0.06] rounded-xl p-3 min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <Zap className="w-4 h-4 text-cyan-400 shrink-0" />
+            <span className="text-sm text-slate-300 shrink-0">Auto-intervention rules active</span>
+            <span className="text-[10px] text-slate-500 bg-white/[0.04] px-2 py-0.5 rounded-full hidden md:block">
+              If match starts in 30min and &lt; 50% paid → auto-remind unpaid players
+            </span>
+          </div>
+          <button
+            onClick={runAutoIntervention}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-600/10 text-cyan-400 text-xs font-semibold hover:bg-cyan-600/20 transition-all shrink-0"
+          >
+            <RotateCcw className="w-3.5 h-3.5" /> Run Now
+          </button>
         </div>
         <button
-          onClick={runAutoIntervention}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-600/10 text-cyan-400 text-xs font-semibold hover:bg-cyan-600/20 transition-all"
+          onClick={runAutoCleanup}
+          disabled={runningCleanup}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold hover:bg-rose-500/20 transition-all disabled:opacity-50 shrink-0"
         >
-          <RotateCcw className="w-3.5 h-3.5" /> Run Now
+          <Ban className="w-3.5 h-3.5" />
+          {runningCleanup ? "Running…" : "Run Cleanup"}
         </button>
       </div>
 
@@ -652,14 +686,16 @@ export default function AdminLiveMonitor() {
                 const filled = paidCount(m);
                 const pct = Math.round((filled / spots) * 100);
                 const isFull = filled >= spots;
-                const isSoon = new Date(m.match_date).getTime() - Date.now() < 1000 * 60 * 60 * 2;
+                const matchTime = new Date(m.match_date).getTime();
                 const live = m.status === "live";
+                const isExpired = !live && matchTime < Date.now();
+                const isSoon = !live && !isExpired && matchTime - Date.now() < 1000 * 60 * 60 * 2;
 
                 return (
                   <div
                     key={m.id}
                     className={`bg-white/[0.03] border rounded-2xl overflow-hidden transition-all hover:border-white/[0.12] ${
-                      isSoon ? "border-amber-500/20" : "border-white/[0.06]"
+                      isExpired ? "border-rose-500/20 opacity-70" : isSoon ? "border-amber-500/20" : "border-white/[0.06]"
                     } ${live ? "ring-1 ring-rose-500/10" : ""}`}
                   >
                     <div className="p-5">
@@ -672,9 +708,19 @@ export default function AdminLiveMonitor() {
                                 <Radio className="w-3 h-3 animate-pulse" /> LIVE
                               </span>
                             )}
-                            {isSoon && !live && (
+                            {isExpired && (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full">
+                                <AlertTriangle className="w-3 h-3" /> Expired
+                              </span>
+                            )}
+                            {isSoon && (
                               <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">
                                 <AlertCircle className="w-3 h-3" /> Starting soon
+                              </span>
+                            )}
+                            {m.status === "full" && !isExpired && (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-full">
+                                <Users className="w-3 h-3" /> FULL
                               </span>
                             )}
                             {m.payments_frozen && (
@@ -739,7 +785,7 @@ export default function AdminLiveMonitor() {
                           <ChevronRight className={`w-3 h-3 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
                         </button>
 
-                        {m.status === "upcoming" && (
+                        {(m.status === "upcoming" || m.status === "full" || isExpired) && (
                           <button
                             onClick={() => cancelMatch(m.id)}
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-500/10 text-rose-400 text-xs font-medium hover:bg-rose-500/20 transition-all"
