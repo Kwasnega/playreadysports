@@ -3,10 +3,10 @@ import { getCorsHeaders } from "../_shared/cors.ts";
 import { checkRateLimit } from "../_shared/rateLimiter.ts";
 import { sendBrandedEmail, welcomeEmail } from "../_shared/brandedEmail.ts";
 
-function json(body: Record<string, unknown>, status = 200) {
+function json(body: Record<string, unknown>, status = 200, requestOrigin?: string | null) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+    headers: { ...getCorsHeaders(requestOrigin), "Content-Type": "application/json" },
   });
 }
 
@@ -39,13 +39,15 @@ async function findUserByEmail(svc: any, email: string) {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: getCorsHeaders() });
-  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+  const requestOrigin = req.headers.get("origin");
+
+  if (req.method === "OPTIONS") return new Response("ok", { headers: getCorsHeaders(requestOrigin) });
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405, requestOrigin);
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    if (!serviceKey) return json({ error: "Server misconfiguration" }, 500);
+    if (!serviceKey) return json({ error: "Server misconfiguration" }, 500, requestOrigin);
 
     const svc = createClient(supabaseUrl, serviceKey);
     const body = await req.json();
@@ -54,13 +56,13 @@ Deno.serve(async (req) => {
     const password = String(body?.password ?? "");
     const otp = String(body?.otp ?? "").replace(/\D/g, "");
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: "Enter a valid email address." }, 400);
-    if (password.length < 6) return json({ error: "Password must be at least 6 characters." }, 400);
-    if (otp.length !== 6) return json({ error: "Enter the 6-digit code." }, 400);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: "Enter a valid email address." }, 400, requestOrigin);
+    if (password.length < 6) return json({ error: "Password must be at least 6 characters." }, 400, requestOrigin);
+    if (otp.length !== 6) return json({ error: "Enter the 6-digit code." }, 400, requestOrigin);
 
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
     const allowed = await checkRateLimit(svc, `${email}:${ip}`, "signup_otp_verify", 8, 10);
-    if (!allowed) return json({ error: "Too many attempts. Please wait a minute and try again." }, 429);
+    if (!allowed) return json({ error: "Too many attempts. Please wait a minute and try again." }, 429, requestOrigin);
 
     const { data: record, error: recordErr } = await svc
       .from("signup_otps")
@@ -70,26 +72,26 @@ Deno.serve(async (req) => {
 
     if (recordErr) {
       console.error("[verify-signup-otp] select error:", recordErr.message);
-      return json({ error: "Unable to verify code." }, 500);
+      return json({ error: "Unable to verify code." }, 500, requestOrigin);
     }
 
-    if (!record) return json({ error: "Request a new code to continue." }, 400);
+    if (!record) return json({ error: "Request a new code to continue." }, 400, requestOrigin);
     if (new Date(record.expires_at).getTime() < Date.now()) {
       await svc.from("signup_otps").delete().eq("email", email);
-      return json({ error: "That code expired. Request a new one." }, 400);
+      return json({ error: "That code expired. Request a new one." }, 400, requestOrigin);
     }
-    if (record.attempts >= 5) return json({ error: "Too many wrong codes. Request a new one." }, 429);
+    if (record.attempts >= 5) return json({ error: "Too many wrong codes. Request a new one." }, 429, requestOrigin);
 
     const expected = await hashOtp(email, otp);
     if (!timingSafeEqual(expected, record.otp_hash)) {
       await svc.from("signup_otps").update({ attempts: record.attempts + 1 }).eq("email", email);
-      return json({ error: "That code is not correct." }, 400);
+      return json({ error: "That code is not correct." }, 400, requestOrigin);
     }
 
     const existing = await findUserByEmail(svc, email);
     if (existing?.email_confirmed_at) {
       await svc.from("signup_otps").delete().eq("email", email);
-      return json({ error: "An account with that email already exists. Please sign in instead." }, 409);
+      return json({ error: "An account with that email already exists. Please sign in instead." }, 409, requestOrigin);
     }
 
     if (existing) {
@@ -98,7 +100,7 @@ Deno.serve(async (req) => {
         email_confirm: true,
         user_metadata: { full_name: fullName },
       });
-      if (updateErr) return json({ error: updateErr.message }, 400);
+      if (updateErr) return json({ error: updateErr.message }, 400, requestOrigin);
     } else {
       const { error: createErr } = await svc.auth.admin.createUser({
         email,
@@ -106,7 +108,7 @@ Deno.serve(async (req) => {
         email_confirm: true,
         user_metadata: { full_name: fullName },
       });
-      if (createErr) return json({ error: createErr.message }, 400);
+      if (createErr) return json({ error: createErr.message }, 400, requestOrigin);
     }
 
     await svc.from("signup_otps").delete().eq("email", email);
@@ -114,9 +116,9 @@ Deno.serve(async (req) => {
     const welcome = await sendBrandedEmail(welcomeEmail(email, fullName));
     if (welcome.error) console.error("[verify-signup-otp] welcome email failed:", welcome.error);
 
-    return json({ ok: true });
+    return json({ ok: true }, 200, requestOrigin);
   } catch (err) {
     console.error("[verify-signup-otp] error:", err);
-    return json({ error: "Something went wrong. Please try again." }, 500);
+    return json({ error: "Something went wrong. Please try again." }, 500, requestOrigin);
   }
 });
