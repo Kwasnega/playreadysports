@@ -26,6 +26,24 @@ export type CreateMatchResult =
 export function useCreateMatch() {
   const [creating, setCreating] = useState(false);
 
+  const friendlyFunctionError = async (err: any): Promise<string> => {
+    const msg = (err?.message ?? "").toString().toLowerCase();
+    if (err?.status === 429 || msg.includes("too many") || msg.includes("rate limit")) {
+      return "You have reached the match creation limit. Please wait a few minutes and try again.";
+    }
+    try {
+      const context = err?.context;
+      if (context?.json) {
+        const body = await context.clone().json();
+        if (body?.message) return String(body.message);
+        if (body?.error) return String(body.error);
+      }
+    } catch {
+      // ignore parse failure
+    }
+    return err?.message || "Failed to create match. Please try again.";
+  };
+
   const createMatch = async (payload: CreateMatchPayload): Promise<CreateMatchResult> => {
     setCreating(true);
     console.log("[createMatch] Payload:", payload);
@@ -37,10 +55,11 @@ export function useCreateMatch() {
       console.log("[createMatch] Response:", { data, error });
 
       if (error) {
+        const friendly = await friendlyFunctionError(error);
         console.error("[createMatch] Error:", error);
-        toast.error(error.message || "Failed to create match");
+        toast.error(friendly);
         setCreating(false);
-        return { success: false, error: error.message || "Failed to create match" };
+        return { success: false, error: friendly };
       }
 
       if (data?.error) {
@@ -51,8 +70,9 @@ export function useCreateMatch() {
           toast.error(msg);
           return { success: false, error: msg, field: data.field };
         }
-        toast.error(data.error);
-        return { success: false, error: data.error };
+        const friendly = data.message || data.error;
+        toast.error(friendly);
+        return { success: false, error: friendly };
       }
 
       const match = data?.match;

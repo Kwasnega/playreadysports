@@ -49,12 +49,18 @@ Deno.serve(async (req) => {
     }
 
     // Rate limit: 5 creates per user per 60 minutes
-    const allowed = await checkRateLimit(supabase, user.id, "create_match", 5, 60);
-    if (!allowed) {
-      return new Response(JSON.stringify({ error: "Rate limit exceeded — try again later" }), {
-        status: 429, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
-      });
-    }
+    // Disabled while debugging match creation issues.
+    // const allowed = await checkRateLimit(supabase, user.id, "create_match", 5, 60);
+    // if (!allowed) {
+    //   return new Response(JSON.stringify({
+    //     error: "Rate limit exceeded",
+    //     type: "rate_limit",
+    //     message: "You have reached the match creation limit. Please wait a few minutes and try again.",
+    //   }), {
+    //     status: 429,
+    //     headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+    //   });
+    // }
 
     // ------------------------------------------------------------------
     // 2. Validate payload

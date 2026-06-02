@@ -5,6 +5,7 @@ import {
   BarChart3, TrendingUp, TrendingDown, Wallet, PiggyBank,
   RefreshCw, Loader2,
 } from "lucide-react";
+import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
 interface DayRevenue {
   date: string;
@@ -93,11 +94,6 @@ export default function AdminRevenue() {
     return { gross, refunds, net, avg, trend };
   }, [days]);
 
-  const barMax = useMemo(() => {
-    const m = Math.max(...days.map((d) => d.net), 1);
-    return m * 1.15;
-  }, [days]);
-
   return (
     <div>
       <header className="flex items-center justify-between mb-6">
@@ -168,27 +164,36 @@ export default function AdminRevenue() {
             <Loader2 className="w-5 h-5 animate-spin" /> Loading…
           </div>
         ) : (
-          <div className="flex items-end gap-1 h-64">
-            {days.map((d) => {
-              const h = barMax > 0 ? (Math.max(d.net, 0) / barMax) * 100 : 0;
-              return (
-                <div key={d.date} className="flex-1 flex flex-col items-center gap-1 group">
-                  <div className="relative w-full flex justify-center">
-                    <div
-                      className={`w-full max-w-[24px] rounded-t-md ${d.net >= 0 ? "bg-emerald-500/60" : "bg-red-500/60"} transition-all group-hover:opacity-80`}
-                      style={{ height: `${Math.max(h, 2)}%` }}
-                    />
-                    <div className="absolute bottom-full mb-1 hidden group-hover:block bg-slate-800 text-white text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-10">
-                      ₵{Number(d.net || 0).toFixed(2)}<br />
-                      <span className="text-slate-400">{d.date}</span>
-                    </div>
-                  </div>
-                  <span className="text-[9px] text-slate-500 rotate-45 origin-left translate-y-1">
-                    {new Date(d.date + "T00:00:00").toLocaleDateString(undefined, { weekday: "narrow" })}
-                  </span>
-                </div>
-              );
-            })}
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={days} margin={{ top: 10, right: 0, left: -10, bottom: 0 }}>
+                <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
+                <XAxis
+                  dataKey="date"
+                  tickFormatter={(value) => new Date(value + "T00:00:00").toLocaleDateString(undefined, { weekday: "narrow" })}
+                  tick={{ fill: '#94A3B8', fontSize: 11 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fill: '#94A3B8', fontSize: 11 }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={42}
+                  tickFormatter={(value) => `₵${value}`}
+                />
+                <Tooltip
+                  formatter={(value: any) => [`₵${Number(value).toFixed(2)}`, 'Net Revenue']}
+                  labelFormatter={(label: string) => new Date(label + "T00:00:00").toLocaleDateString()}
+                  contentStyle={{ backgroundColor: '#0F172A', borderColor: 'rgba(255,255,255,0.12)', color: '#F8FAFC' }}
+                />
+                <Bar dataKey="net" radius={[8, 8, 0, 0]} maxBarSize={36}>
+                  {days.map((entry) => (
+                    <Cell key={entry.date} fill={entry.net >= 0 ? '#34D399' : '#F87171'} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         )}
       </div>
