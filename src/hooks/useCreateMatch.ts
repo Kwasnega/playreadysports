@@ -28,12 +28,16 @@ export function useCreateMatch() {
 
   const createMatch = async (payload: CreateMatchPayload): Promise<CreateMatchResult> => {
     setCreating(true);
+    console.log("[createMatch] Payload:", payload);
     try {
       const { data, error } = await supabase.functions.invoke("create-match", {
         body: payload,
       });
 
+      console.log("[createMatch] Response:", { data, error });
+
       if (error) {
+        console.error("[createMatch] Error:", error);
         toast.error(error.message || "Failed to create match");
         setCreating(false);
         return { success: false, error: error.message || "Failed to create match" };
@@ -41,8 +45,11 @@ export function useCreateMatch() {
 
       if (data?.error) {
         setCreating(false);
+        console.error("[createMatch] Validation error:", data);
         if (data.error === "VALIDATION_ERROR" && data.field) {
-          return { success: false, error: data.message || "Validation failed", field: data.field };
+          const msg = `${data.field}: ${data.message}`;
+          toast.error(msg);
+          return { success: false, error: msg, field: data.field };
         }
         toast.error(data.error);
         return { success: false, error: data.error };
@@ -58,9 +65,12 @@ export function useCreateMatch() {
       toast.success("Match created!");
       return { success: true, match };
     } catch (err: any) {
+      console.error("[createMatch] Exception:", err);
       toast.error(err.message || "Network error");
       setCreating(false);
       return { success: false, error: err.message || "Network error" };
+    } finally {
+      setCreating(false);
     }
   };
 
