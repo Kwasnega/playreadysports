@@ -324,29 +324,40 @@ Deno.serve(async (req) => {
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
 
-    // Resolve sport identifier: allow numeric id, uuid, or string slug/name
+    // Resolve sport identifier: for now, only "football" is supported
+    // sportType can be "football", the numeric id, or a uuid
     let resolvedSportId: any = null;
-    try {
+    
+    const sportLower = String(sportType).trim().toLowerCase();
+    
+    if (sportLower === "football" || sportLower === "⚽") {
+      // Hardcoded for football (the only sport for now)
+      // Fetch the actual ID from the database
+      const { data: football } = await svc.from("sports").select("id").ilike("name", "football").single();
+      resolvedSportId = football?.id ?? 1; // fallback to 1 if not found
+      console.log(`[create-match] Football resolved to ID: ${resolvedSportId}`);
+    } else {
+      // Try to lookup by name or ID
       const asNum = Number(sportType);
-      if (!isNaN(asNum)) {
-        // caller passed numeric id
+      if (!isNaN(asNum) && asNum > 0) {
         resolvedSportId = asNum;
+        console.log(`[create-match] Sport resolved to numeric ID: ${resolvedSportId}`);
       } else {
-        // try exact case-insensitive match on name
-        const { data: s1, error: s1err } = await supabase.from("sports").select("id, name").ilike("name", sportType).maybeSingle();
-        if (s1) resolvedSportId = s1.id;
-        else {
-          // try partial match
-          const { data: s2 } = await supabase.from("sports").select("id, name").ilike("name", `%${String(sportType).trim()}%`).maybeSingle();
-          if (s2) resolvedSportId = s2.id;
+        const { data: sport } = await svc.from("sports").select("id").ilike("name", sportLower).single();
+        if (sport) {
+          resolvedSportId = sport.id;
+          console.log(`[create-match] Sport matched: ${sportLower} → ${resolvedSportId}`);
         }
       }
-    } catch (e) {
-      // ignore — we'll validate below
     }
 
     if (!resolvedSportId) {
-      return new Response(JSON.stringify({ error: "VALIDATION_ERROR", field: "sportType", message: "Could not resolve sport type to an existing sport." }), {
+      console.error(`[create-match] Could not resolve sport: ${sportType}`);
+      return new Response(JSON.stringify({ 
+        error: "VALIDATION_ERROR", 
+        field: "sportType", 
+        message: "Only 'football' is currently supported." 
+      }), {
         status: 400,
         headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
