@@ -101,9 +101,17 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Match mode allowlist — gala is disabled
-    const ALLOWED_MODES = ["public", "private"];
-    if (!matchMode || !ALLOWED_MODES.includes(matchMode)) {
+    // Match type allowlist
+    const ALLOWED_MATCH_TYPES = ["public", "private"];
+    if (!matchType || !ALLOWED_MATCH_TYPES.includes(matchType)) {
+      return new Response(JSON.stringify({ error: "VALIDATION_ERROR", field: "matchType", message: "Invalid match type" }), {
+        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+      });
+    }
+
+    // Match mode allowlist
+    const ALLOWED_MATCH_MODES = ["two_team", "gala"];
+    if (!matchMode || !ALLOWED_MATCH_MODES.includes(matchMode)) {
       return new Response(JSON.stringify({ error: "VALIDATION_ERROR", field: "matchMode", message: "Invalid match mode" }), {
         status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
