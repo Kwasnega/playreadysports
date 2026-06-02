@@ -49,12 +49,13 @@ Deno.serve(async (req) => {
     }
 
     // Rate limit: 5 creates per user per 60 minutes
-    const allowed = await checkRateLimit(supabase, user.id, "create_match", 5, 60);
-    if (!allowed) {
-      return new Response(JSON.stringify({ error: "Rate limit exceeded — try again later" }), {
-        status: 429, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
-      });
-    }
+    // TODO: uncomment after ensuring increment_rate_limit RPC is deployed
+    // const allowed = await checkRateLimit(supabase, user.id, "create_match", 5, 60);
+    // if (!allowed) {
+    //   return new Response(JSON.stringify({ error: "Rate limit exceeded — try again later" }), {
+    //     status: 429, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+    //   });
+    // }
 
     // ------------------------------------------------------------------
     // 2. Validate payload
@@ -490,6 +491,13 @@ Deno.serve(async (req) => {
       headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
     });
   } catch (err: any) {
+    console.error("create-match error:", err);
+    console.error("Error stack:", err.stack);
+    console.error("Error details:", {
+      name: err.name,
+      message: err.message,
+      toString: String(err),
+    });
     return new Response(JSON.stringify({ error: err.message ?? "Internal error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

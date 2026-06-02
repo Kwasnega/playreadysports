@@ -312,6 +312,7 @@ export function MatchVotingModal({
     return (
       <Dialog open={isOpen} onOpenChange={(o) => !o && handleClose()}>
         <DialogContent className="max-w-md rounded-3xl p-6">
+          <DialogTitle className="sr-only">Loading voting data</DialogTitle>
           <div className="flex items-center justify-center py-10">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
@@ -325,6 +326,7 @@ export function MatchVotingModal({
     return (
       <Dialog open={isOpen} onOpenChange={(o) => !o && handleClose()}>
         <DialogContent className="max-w-md rounded-3xl p-0 overflow-hidden">
+          <DialogTitle className="sr-only">Voting closed</DialogTitle>
           <div className="p-8 text-center space-y-4">
             <div className="w-14 h-14 rounded-full bg-secondary flex items-center justify-center mx-auto">
               <Lock className="w-6 h-6 text-muted-foreground" />
@@ -350,6 +352,7 @@ export function MatchVotingModal({
     return (
       <Dialog open={isOpen} onOpenChange={(o) => !o && handleClose()}>
         <DialogContent className="max-w-md rounded-3xl p-0 overflow-hidden">
+          <DialogTitle className="sr-only">Already voted</DialogTitle>
           <div className="p-8 text-center space-y-4">
             <div className="w-14 h-14 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto">
               <CheckCircle className="w-6 h-6 text-emerald-500" />
@@ -377,6 +380,7 @@ export function MatchVotingModal({
     return (
       <Dialog open={isOpen} onOpenChange={(o) => !o && handleClose()}>
         <DialogContent className="max-w-md rounded-3xl p-0 overflow-hidden">
+          <DialogTitle className="sr-only">Votes submitted</DialogTitle>
           <div className="p-8 text-center space-y-4">
             <div className="w-14 h-14 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto">
               <CheckCircle className="w-6 h-6 text-emerald-500" />
