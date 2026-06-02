@@ -6,8 +6,11 @@ import { checkRateLimit } from "../_shared/rateLimiter.ts";
 // CORS is handled via getCorsHeaders() from _shared/cors.ts
 
 Deno.serve(async (req) => {
+  const requestOrigin = req.headers.get("origin");
+  const corsHeaders = getCorsHeaders(requestOrigin);
+
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: getCorsHeaders() });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
@@ -25,10 +28,17 @@ Deno.serve(async (req) => {
     // Create a Supabase client with the user's JWT so RLS applies
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!serviceKey) {
+      return new Response(JSON.stringify({ error: "Server misconfiguration" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     const supabase = createClient(supabaseUrl, supabaseKey, {
       global: { headers: { Authorization: authHeader } },
     });
+    const svc = createClient(supabaseUrl, serviceKey);
 
     const { data: { user }, error: authErr } = await supabase.auth.getUser();
     if (authErr || !user) {
@@ -365,8 +375,6 @@ Deno.serve(async (req) => {
     // ------------------------------------------------------------------
     // 8a. Charge organizer entry fee (auto-pay on creation)
     // ------------------------------------------------------------------
-    const svc = createClient(supabaseUrl, serviceKey);
-
     if (feeNum > 0) {
       const ref = `create_match_${match.id}_${Date.now()}`;
       const { error: txErr } = await svc.rpc("process_wallet_transaction", {
@@ -484,7 +492,7 @@ Deno.serve(async (req) => {
   } catch (err: any) {
     return new Response(JSON.stringify({ error: err.message ?? "Internal error" }), {
       status: 500,
-      headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
