@@ -324,6 +324,34 @@ Deno.serve(async (req) => {
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
 
+    // Resolve sport identifier: allow numeric id, uuid, or string slug/name
+    let resolvedSportId: any = null;
+    try {
+      const asNum = Number(sportType);
+      if (!isNaN(asNum)) {
+        // caller passed numeric id
+        resolvedSportId = asNum;
+      } else {
+        // try exact case-insensitive match on name
+        const { data: s1, error: s1err } = await supabase.from("sports").select("id, name").ilike("name", sportType).maybeSingle();
+        if (s1) resolvedSportId = s1.id;
+        else {
+          // try partial match
+          const { data: s2 } = await supabase.from("sports").select("id, name").ilike("name", `%${String(sportType).trim()}%`).maybeSingle();
+          if (s2) resolvedSportId = s2.id;
+        }
+      }
+    } catch (e) {
+      // ignore — we'll validate below
+    }
+
+    if (!resolvedSportId) {
+      return new Response(JSON.stringify({ error: "VALIDATION_ERROR", field: "sportType", message: "Could not resolve sport type to an existing sport." }), {
+        status: 400,
+        headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+      });
+    }
+
     // ------------------------------------------------------------------
     // 7. Insert match
     // ------------------------------------------------------------------
@@ -331,7 +359,7 @@ Deno.serve(async (req) => {
       .from("matches")
       .insert({
         title: title.trim(),
-        sport_id: sportType,
+        sport_id: resolvedSportId,
         join_code: joinCode,
         organizer_id: user.id,
         venue_id: venueId,
@@ -511,7 +539,8 @@ Deno.serve(async (req) => {
       message: err.message,
       toString: String(err),
     });
-    return new Response(JSON.stringify({ error: err.message ?? "Internal error" }), {
+    // Return error and stack for debugging (remove in production)
+    return new Response(JSON.stringify({ error: err.message ?? "Internal error", stack: err.stack ?? null }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
