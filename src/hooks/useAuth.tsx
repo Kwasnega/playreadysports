@@ -39,6 +39,17 @@ const friendly = (err: any): string => {
   return "Something went wrong. Please try again.";
 };
 
+const friendlyFunctionError = async (err: any): Promise<string> => {
+  try {
+    const context = err?.context;
+    if (context?.json) {
+      const body = await context.clone().json();
+      if (body?.error) return String(body.error);
+    }
+  } catch {}
+  return friendly(err);
+};
+
 type AuthCtx = {
   user: AppUser | null;
   loading: boolean;
@@ -47,6 +58,7 @@ type AuthCtx = {
   isAdmin: boolean;
   isTurfOwner: boolean;
   signUpWithEmail: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>;
+  verifySignupOtp: (otp: string) => Promise<{ error: string | null }>;
   signInWithEmail: (email: string, password: string) => Promise<{ error: string | null }>;
   signInWithGoogle: () => Promise<{ error: string | null }>;
   requestPasswordReset: (email: string) => Promise<{ error: string | null }>;
@@ -74,6 +86,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
   const [pendingVerifyEmail, setPendingVerifyEmail] = useState<string | null>(null);
+  const [pendingSignup, setPendingSignup] = useState<{ email: string; password: string; fullName: string } | null>(null);
   const pendingActionRef = useRef<(() => void) | null>(null);
 
   const isVerified = (u: any) =>
@@ -196,29 +209,42 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signUpWithEmail = async (email: string, password: string, fullName: string) => {
     try {
-      const name = fullName.trim() || email.split("@")[0];
-      const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-        options: { data: { full_name: name } },
+      const cleanEmail = email.trim().toLowerCase();
+      const name = fullName.trim() || cleanEmail.split("@")[0];
+      const { error } = await supabase.functions.invoke("send-signup-otp", {
+        body: { email: cleanEmail, fullName: name },
       });
-      if (error) return { error: friendly(error) };
+      if (error) return { error: await friendlyFunctionError(error) };
 
-      const u = data.user;
-      if (!u) {
-        return { error: "Unable to create account. Please try again." };
-      }
-
-      // Supabase returns a user with empty identities when the email already exists (enumeration protection)
-      if (!u.identities || u.identities.length === 0) {
-        return { error: "An account with that email already exists. Please sign in instead." };
-      }
-
-      setSbUser(u);
+      setPendingSignup({ email: cleanEmail, password, fullName: name });
+      setPendingVerifyEmail(cleanEmail);
       setAuthOpen(false);
-      if (!isVerified(u)) {
-        setPendingVerifyEmail(u.email);
-      }
+      return { error: null };
+    } catch (e: any) {
+      return { error: friendly(e) };
+    }
+  };
+
+  const verifySignupOtp = async (otp: string) => {
+    if (!pendingSignup) return { error: "Start signup again to request a new code." };
+    try {
+      const { error } = await supabase.functions.invoke("verify-signup-otp", {
+        body: { ...pendingSignup, otp },
+      });
+      if (error) return { error: await friendlyFunctionError(error) };
+
+      const { data, error: signInErr } = await supabase.auth.signInWithPassword({
+        email: pendingSignup.email,
+        password: pendingSignup.password,
+      });
+      if (signInErr) return { error: friendly(signInErr) };
+      if (!data.user) return { error: "Account created, but sign-in failed. Please sign in." };
+
+      setSbUser(data.user);
+      setPendingSignup(null);
+      setPendingVerifyEmail(null);
+      setAuthOpen(false);
+      runPending();
       return { error: null };
     } catch (e: any) {
       return { error: friendly(e) };
@@ -302,11 +328,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const resendVerification = async () => {
     if (!pendingVerifyEmail) return { error: "Not signed in." };
     try {
-      const { error } = await supabase.auth.resend({
-        type: "signup",
-        email: pendingVerifyEmail,
+      const { error } = await supabase.functions.invoke("send-signup-otp", {
+        body: {
+          email: pendingVerifyEmail,
+          fullName: pendingSignup?.fullName ?? pendingVerifyEmail.split("@")[0],
+        },
       });
-      if (error) return { error: friendly(error) };
+      if (error) return { error: await friendlyFunctionError(error) };
       return { error: null };
     } catch (e: any) {
       return { error: friendly(e) };
@@ -328,12 +356,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const cancelVerification = async () => {
     setPendingVerifyEmail(null);
+    setPendingSignup(null);
     await supabase.auth.signOut();
   };
 
   const signOut = async () => {
     await supabase.auth.signOut();
     setPendingVerifyEmail(null);
+    setPendingSignup(null);
     setProfileRole(null);
     setProfileIsAdminFlag(false);
   };
@@ -362,6 +392,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isAdmin,
         isTurfOwner,
         signUpWithEmail,
+        verifySignupOtp,
         signInWithEmail,
         signInWithGoogle,
         requestPasswordReset,

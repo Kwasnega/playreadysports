@@ -117,7 +117,7 @@ export function ShareMatchCard({
 
       // Footer
       c.font = "400 10px system-ui, sans-serif"; c.fillStyle = "#64748b";
-      c.fillText("playreadysports.com", cx, y);
+      c.fillText("joinplayready.com", cx, y);
 
       canvas.toBlob((b) => {
         if (b) setBlobUrl(URL.createObjectURL(b));
@@ -189,12 +189,13 @@ export function ShareMatchCard({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const matchUrl = `https://joinplayready.com/lobby/${data.joinCode}`;
   const whatsappText = encodeURIComponent(
     `⚽ Football at ${data.venueName}\n` +
     `Time: ${data.matchDate} · ${data.format} · ${data.mode === "gala" ? "Gala" : "Two-team"}\n` +
     `Entry: ${data.entryFee > 0 ? `₵${data.entryFee}/player` : "Free"}\n\n` +
     `Join code: ${data.joinCode}\n` +
-    `${window.location.origin}/lobby/${data.joinCode}`
+    matchUrl
   );
 
   if (!open) return null;
@@ -335,4 +336,3 @@ export function ShareMatchCard({
     </>
   );
 }
-

@@ -829,7 +829,7 @@ UPDATE public.profiles SET role = 'admin' WHERE id = 'ADMIN_UUID';
 **Steps:**
 1. Player B taps **Share** or copies the lobby URL.
 2. Sends link to Player C (e.g., via WhatsApp or manual paste).
-3. Player C opens the link `https://playreadysports.com/lobby/X7K9P2`.
+3. Player C opens the link `https://joinplayready.com/lobby/X7K9P2`.
 
 **Expected result:**
 - Player C sees the lobby page with match details.

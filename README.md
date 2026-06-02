@@ -98,7 +98,7 @@ Required Supabase Secrets (Dashboard → Settings → Edge Function Secrets):
 |---|---|
 | `SUPABASE_SERVICE_ROLE_KEY` | Service role key for privileged DB access |
 | `PAYSTACK_SECRET_KEY` | Paystack secret (`sk_live_...` in production) |
-| `ALLOWED_ORIGIN` | Production domain e.g. `https://playreadysports.com` |
+| `ALLOWED_ORIGIN` | Production domain e.g. `https://joinplayready.com` |
 
 ---
 

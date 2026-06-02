@@ -290,7 +290,7 @@ export default function Leaderboard() {
               </div>
 
               {/* Watermark */}
-              <p className="text-[9px] text-muted-foreground/50 mt-3 tracking-wide">playreadysports.com</p>
+              <p className="text-[9px] text-muted-foreground/50 mt-3 tracking-wide">joinplayready.com</p>
             </div>
 
             <div className="space-y-2">

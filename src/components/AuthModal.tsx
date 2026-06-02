@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/useAuth";
 import { Loader2, MailCheck, Eye, EyeOff } from "lucide-react";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 const GoogleIcon = () => (
   <svg viewBox="0 0 24 24" className="w-5 h-5" aria-hidden>
@@ -16,8 +17,8 @@ const GoogleIcon = () => (
 export const AuthModal = () => {
   const {
     authOpen, authMode, closeAuth, openAuth,
-    signInWithEmail, signUpWithEmail, signInWithGoogle, requestPasswordReset,
-    pendingVerifyEmail, resendVerification, checkVerification, cancelVerification,
+    signInWithEmail, signUpWithEmail, verifySignupOtp, signInWithGoogle, requestPasswordReset,
+    pendingVerifyEmail, resendVerification, cancelVerification,
   } = useAuth();
 
   type View = "signin" | "signup" | "forgot" | "forgot-sent" | "verify";
@@ -31,6 +32,7 @@ export const AuthModal = () => {
   const [verifyMsg, setVerifyMsg] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const [otp, setOtp] = useState("");
 
   useEffect(() => {
     if (authOpen) {
@@ -40,6 +42,7 @@ export const AuthModal = () => {
       setBusy(false);
       setAgree(false);
       setVerifyMsg(null);
+      setOtp("");
     }
   }, [authOpen, authMode, pendingVerifyEmail]);
 
@@ -90,6 +93,19 @@ export const AuthModal = () => {
     }
   };
 
+  const submitOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setVerifyMsg(null);
+    setBusy(true);
+    const r = await verifySignupOtp(otp);
+    setBusy(false);
+    if (r.error) {
+      setError(r.error);
+      if (r.error.includes("Too many attempts")) setCooldown(60);
+    }
+  };
+
   const google = async () => {
     setError(null);
     setBusy(true);
@@ -102,14 +118,10 @@ export const AuthModal = () => {
     setBusy(true); setError(null); setVerifyMsg(null);
     const r = await resendVerification();
     setBusy(false);
-    if (r.error) setError(r.error); else setVerifyMsg("Verification email sent.");
-  };
-
-  const onCheckVerified = async () => {
-    setBusy(true); setError(null); setVerifyMsg(null);
-    const ok = await checkVerification();
-    setBusy(false);
-    if (!ok) setError("Not verified yet. Check your inbox and click the link.");
+    if (r.error) setError(r.error); else {
+      setOtp("");
+      setVerifyMsg("A fresh code is on its way.");
+    }
   };
 
   const handleOpenChange = (o: boolean) => {
@@ -150,20 +162,39 @@ export const AuthModal = () => {
           {view === "verify" ? (
             <div className="mt-4 space-y-4">
               <p className="text-sm text-muted-foreground leading-relaxed">
-                A verification link has been sent to{" "}
-                <span className="font-semibold text-foreground">{pendingVerifyEmail}</span>. Please check your inbox and verify your account to continue.
+                We sent a 6-digit PlayReady code to{" "}
+                <span className="font-semibold text-foreground">{pendingVerifyEmail}</span>. Enter it here to finish creating your account.
               </p>
               {verifyMsg && <p className="text-xs font-semibold text-foreground">{verifyMsg}</p>}
               {error && <p className="text-xs font-semibold text-destructive">{error}</p>}
-              <div className="space-y-2.5">
-                <button
-                  onClick={onCheckVerified}
+              <form onSubmit={submitOtp} className="space-y-3">
+                <InputOTP
+                  maxLength={6}
+                  value={otp}
+                  onChange={setOtp}
                   disabled={busy}
+                  containerClassName="justify-center gap-2"
+                >
+                  <InputOTPGroup className="gap-2">
+                    {[0, 1, 2, 3, 4, 5].map((index) => (
+                      <InputOTPSlot
+                        key={index}
+                        index={index}
+                        className="h-12 w-11 rounded-2xl border border-border bg-secondary text-base font-bold"
+                      />
+                    ))}
+                  </InputOTPGroup>
+                </InputOTP>
+                <button
+                  type="submit"
+                  disabled={busy || otp.length !== 6 || cooldown > 0}
                   className="w-full h-12 rounded-2xl bg-foreground text-background font-display font-bold tracking-tight inline-flex items-center justify-center gap-2 disabled:opacity-40"
                 >
                   {busy && <Loader2 className="w-4 h-4 animate-spin" />}
-                  I've verified
+                  {cooldown > 0 ? `Wait ${cooldown}s...` : "Verify and enter"}
                 </button>
+              </form>
+              <div className="space-y-2.5">
                 <button
                   onClick={onResend}
                   disabled={busy}
@@ -179,7 +210,7 @@ export const AuthModal = () => {
                 </button>
               </div>
               <p className="text-[11px] text-muted-foreground/70 text-center">
-                We're checking automatically. This will close as soon as you verify.
+                Codes expire after 10 minutes. Google signup skips this step.
               </p>
             </div>
           ) : view === "forgot-sent" ? (

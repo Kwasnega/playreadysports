@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
     }
 
     // Get user email for Paystack
-    const userEmail = user.email ?? "player@playreadysports.com";
+    const userEmail = user.email ?? "player@joinplayready.com";
     const amountKobo = Math.round((match.entry_fee as number) * 100); // GHS in pesewas
     const reference = `PRS-${match.join_code}-${user.id.slice(0, 8)}-${Date.now()}`;
 

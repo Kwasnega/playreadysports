@@ -24,8 +24,10 @@ function timingSafeEqual(a: string, b: string): boolean {
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = getCorsHeaders();
+
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: { "Access-Control-Allow-Origin": "*" } });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   if (req.method !== "POST") {
