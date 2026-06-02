@@ -170,7 +170,7 @@ export const LobbyTeamsTab = (props: LobbyTeamsTabProps) => {
         <div className="grid grid-cols-2 gap-3">
           {/* Team A */}
           <div className="bg-card rounded-2xl border border-border/60 overflow-hidden">
-            <div className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-white text-center" style={{ backgroundColor: TEAM_HEX[keyA] ?? "#dc2626" }}>{colorA}</div>
+            <div className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-white text-center" style={{ backgroundColor: TEAM_HEX[colorA.toLowerCase()] ?? "#dc2626" }}>{colorA}</div>
             <ul className="divide-y divide-border/50">
               {teamAPlayers.map((p, i) => (
                 <li key={i}>
@@ -201,7 +201,7 @@ export const LobbyTeamsTab = (props: LobbyTeamsTabProps) => {
 
           {/* Team B */}
           <div className="bg-card rounded-2xl border border-border/60 overflow-hidden">
-            <div className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-white text-center" style={{ backgroundColor: TEAM_HEX[keyB] ?? "#2563eb" }}>{colorB}</div>
+            <div className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-white text-center" style={{ backgroundColor: TEAM_HEX[colorB.toLowerCase()] ?? "#2563eb" }}>{colorB}</div>
             <ul className="divide-y divide-border/50">
               {teamBPlayers.map((p, i) => (
                 <li key={i}>
