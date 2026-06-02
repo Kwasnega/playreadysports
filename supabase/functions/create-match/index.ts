@@ -49,13 +49,12 @@ Deno.serve(async (req) => {
     }
 
     // Rate limit: 5 creates per user per 60 minutes
-    // TODO: uncomment after ensuring increment_rate_limit RPC is deployed
-    // const allowed = await checkRateLimit(supabase, user.id, "create_match", 5, 60);
-    // if (!allowed) {
-    //   return new Response(JSON.stringify({ error: "Rate limit exceeded — try again later" }), {
-    //     status: 429, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
-    //   });
-    // }
+    const allowed = await checkRateLimit(supabase, user.id, "create_match", 5, 60);
+    if (!allowed) {
+      return new Response(JSON.stringify({ error: "Rate limit exceeded — try again later" }), {
+        status: 429, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+      });
+    }
 
     // ------------------------------------------------------------------
     // 2. Validate payload
