@@ -37,7 +37,7 @@ const Lobby = () => {
       <main className="min-h-screen bg-background flex flex-col items-center justify-center px-5">
         <h1 className="font-display font-bold text-xl mb-2">Invalid match code</h1>
         <p className="text-sm text-muted-foreground mb-4">No match code was provided.</p>
-        <button onClick={() => navigate("/")} className="bg-foreground text-background rounded-full px-6 py-2.5 text-sm font-bold">
+        <button onClick={() => navigate("/")} className="bg-primary text-primary-foreground-lg px-6 py-2.5 text-sm font-bold">
           Go home
         </button>
       </main>
@@ -500,7 +500,7 @@ const Lobby = () => {
             <p className="text-[11px] text-muted-foreground font-mono truncate">{matchCode} · {match?.format ?? "?"} · {match ? getFormattedTime(match.match_date) : ""}</p>
           </div>
           {user && (
-            <button onClick={() => navigate("/wallet")} className="inline-flex items-center gap-1.5 bg-secondary text-foreground rounded-full px-2.5 py-1.5 text-xs font-semibold hover:bg-secondary/80">
+            <button onClick={() => navigate("/wallet")} className="inline-flex items-center gap-1.5 bg-[hsl(var(--gold))] text-[hsl(var(--gold-foreground))] rounded-full px-2.5 py-1.5 text-xs font-semibold hover:opacity-90">
               <Wallet className="w-3.5 h-3.5" /><span>₵{Number(balance || 0).toFixed(2)}</span>
             </button>
           )}
@@ -517,7 +517,7 @@ const Lobby = () => {
               <button key={t.id} onClick={() => setTab(t.id as any)} data-active={tab === t.id} className="pill-tab text-xs">
                 {t.label}
                 {t.id === "teams" && joinRequests.length > 0 && isOrganizer && (
-                  <span className="text-[10px] bg-primary text-primary-foreground rounded-full px-1.5 ml-1">{joinRequests.length}</span>
+                  <span className="text-[10px] bg-primary text-primary-foreground-lg px-1.5 ml-1">{joinRequests.length}</span>
                 )}
                 {t.id === "chat" && chatUnread > 0 && (
                   <span className="text-[10px] bg-destructive text-background rounded-full px-1.5 ml-1">{chatUnread}</span>
@@ -526,7 +526,7 @@ const Lobby = () => {
             ))}
           </div>
           {userParticipant && tab !== "chat" && chatUnread > 0 && chatPreview && (
-            <button onClick={() => setTab("chat")} className="mt-2 w-full text-left flex items-center gap-2 rounded-2xl bg-secondary/70 px-3 py-2 text-xs text-muted-foreground hover:bg-secondary transition-colors">
+            <button onClick={() => setTab("chat")} className="mt-2 w-full text-left flex items-center gap-2 rounded-xl bg-secondary/70 px-3 py-2 text-xs text-muted-foreground hover:bg-secondary transition-colors">
               <MessageCircle className="w-3.5 h-3.5 shrink-0 text-foreground/70" />
               <span className="truncate">{chatPreview}</span>
               <span className="ml-auto text-[10px] bg-destructive text-background rounded-full px-1.5 shrink-0">{chatUnread}</span>
@@ -538,11 +538,11 @@ const Lobby = () => {
       {/* Match over overlay */}
       {match && (match.status === "completed" || match.status === "cancelled") && (
         <div className="max-w-[680px] mx-auto px-5 pt-8 pb-4 text-center">
-          <div className="rounded-3xl border border-border/60 bg-card p-8 space-y-3">
+          <div className="rounded-xl border border-border bg-card p-8 space-y-3">
             <p className="text-4xl">{match.status === "completed" ? "🏁" : "🚫"}</p>
             <h2 className="font-display font-bold text-xl">{match.status === "completed" ? "Match Finished" : "Match Cancelled"}</h2>
             <p className="text-sm text-muted-foreground">{match.status === "completed" ? "Thanks for playing! Reviews are open below." : "This match has been cancelled. Any fees paid will be refunded."}</p>
-            <Link to="/" className="inline-block mt-2 bg-foreground text-background rounded-full px-5 py-2.5 text-sm font-semibold">Back to Home</Link>
+            <Link to="/" className="inline-block mt-2 bg-primary text-primary-foreground-lg px-5 py-2.5 text-sm font-semibold">Back to Home</Link>
           </div>
         </div>
       )}
@@ -640,7 +640,7 @@ const Lobby = () => {
                 cta.tone === "primary"
                   ? cta.label.startsWith("Cover")
                     ? "bg-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.4)] animate-cta-pulse"
-                    : "bg-foreground text-background"
+                    : "bg-primary text-primary-foreground"
                   : cta.tone === "success"
                   ? "bg-success text-background"
                   : "bg-secondary text-foreground"

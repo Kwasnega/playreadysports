@@ -61,23 +61,23 @@ const JoinMatch = () => {
 
   return (
     <main className="min-h-screen bg-background pb-10">
-      <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b border-border/60">
+      <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b border-border">
         <div className="max-w-[680px] mx-auto px-5 h-14 flex items-center gap-3">
           <button onClick={() => nav("/")} className="p-2 -ml-2 rounded-full hover:bg-secondary" aria-label="Back">
             <ArrowLeft className="w-5 h-5" />
           </button>
           <h1 className="font-display font-bold text-xl tracking-tight flex-1">Browse matches</h1>
           {user && (
-            <button onClick={() => nav("/wallet")} className="inline-flex items-center gap-1.5 bg-secondary text-foreground rounded-full px-2.5 py-1.5 text-xs font-semibold hover:bg-secondary/80">
+            <button onClick={() => nav("/wallet")} className="inline-flex items-center gap-1.5 bg-[hsl(var(--gold))] text-[hsl(var(--gold-foreground))] rounded-full px-2.5 py-1.5 text-xs font-semibold hover:opacity-90">
               <WalletIcon className="w-3.5 h-3.5" />
               <span>₵{balance.toFixed(2)}</span>
             </button>
           )}
           <button
             onClick={() => nav("/code")}
-            className="inline-flex items-center gap-1.5 bg-primary/10 text-primary rounded-full px-3 py-1.5 text-xs font-semibold"
+            className="inline-flex items-center gap-1.5 bg-primary/8 border border-primary/15 text-primary rounded-full px-3 py-1.5 text-xs font-semibold"
           >
-            <KeyRound className="w-3.5 h-3.5" /> Have a code?
+            <KeyRound className="w-3.5 h-3.5 text-[hsl(var(--gold))]" /> Have a code?
           </button>
         </div>
       </header>
@@ -147,7 +147,7 @@ const JoinMatch = () => {
                     onClick={() => setSort(s.id)}
                     className={`text-[11px] font-semibold rounded-full px-2.5 py-1 transition-colors ${
                       isActive
-                        ? "bg-foreground text-background"
+                        ? "bg-primary text-primary-foreground"
                         : "bg-secondary text-muted-foreground hover:text-foreground"
                     }`}
                   >
@@ -161,7 +161,7 @@ const JoinMatch = () => {
 
         {/* Feed */}
         {matches.length === 0 && !loading ? (
-          <div className="rounded-2xl border border-dashed border-border/70 py-12 px-5 text-center">
+          <div className="rounded-xl border border-dashed border-border/70 py-12 px-5 text-center">
             <Sparkles className="w-5 h-5 text-muted-foreground mx-auto mb-2" />
             <p className="text-sm text-muted-foreground mb-3">
               No matches match your filters.
@@ -177,9 +177,9 @@ const JoinMatch = () => {
           <ul className="space-y-3">
             {Array.from({ length: 3 }).map((_, i) => (
               <li key={`skel-${i}`}>
-                <div className="bg-card rounded-2xl px-4 py-4 border border-border/60 animate-pulse">
+                <div className="bg-card rounded-xl px-4 py-4 border border-border animate-pulse">
                   <div className="flex items-center gap-3">
-                    <div className="shrink-0 w-[68px] border-r border-border/60 pr-3 space-y-2">
+                    <div className="shrink-0 w-[68px] border-r border-border pr-3 space-y-2">
                       <div className="h-3 bg-secondary rounded w-10" />
                       <div className="h-7 bg-secondary rounded w-12" />
                     </div>
@@ -272,12 +272,12 @@ const FeedRow = ({ m, user, onTap }: { m: BrowseMatch; user: any; onTap: () => v
     <li>
       <button
         onClick={onTap}
-        className="w-full text-left bg-card rounded-2xl px-4 py-4 border border-border/60 transition-all duration-200 hover:-translate-y-0.5 hover:border-border hover:shadow-lg active:scale-[0.99]"
+        className="w-full text-left bg-card rounded-xl px-4 py-4 border border-border transition-all duration-200 hover:-translate-y-0.5 hover:border-border hover:shadow-lg active:scale-[0.99]"
       >
         <div className="flex items-center gap-3">
-          <div className="shrink-0 w-[68px] text-left border-r border-border/60 pr-3">
+          <div className="shrink-0 w-[68px] text-left border-r border-border pr-3">
             {when && <p className="text-xs font-semibold text-muted-foreground tracking-tight">{when}</p>}
-            <p className={`font-display font-extrabold text-[26px] leading-[1.05] tabular-nums tracking-tight mt-0.5 ${tight ? "text-warn" : "text-foreground"}`}>
+            <p className={`font-display font-extrabold text-[26px] leading-[1.05] tabular-nums tracking-tight mt-0.5 ${tight ? "text-warn" : "text-primary"}`}>
               {time}
             </p>
           </div>
@@ -302,7 +302,7 @@ const FeedRow = ({ m, user, onTap }: { m: BrowseMatch; user: any; onTap: () => v
               )}
               <span className="text-xs font-medium text-foreground/80">{organizerName}</span>
               {isOrganizer && (
-                <span className="inline-flex items-center gap-0.5 rounded-full bg-primary/10 text-primary px-1.5 py-0.5 text-[10px] font-bold">
+                <span className="inline-flex items-center gap-0.5 rounded-full bg-primary/8 border border-primary/15 text-primary px-1.5 py-0.5 text-[10px] font-bold">
                   You
                 </span>
               )}
@@ -320,7 +320,7 @@ const FeedRow = ({ m, user, onTap }: { m: BrowseMatch; user: any; onTap: () => v
                   <Check className="w-3 h-3" /> Confirmed
                 </span>
               ) : (
-                <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-semibold ${tight ? "bg-warn/15 text-warn" : "bg-secondary text-foreground/75"}`}>
+                <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-semibold ${tight ? "bg-warning/15 text-warning border border-warning/25" : "bg-secondary text-foreground/75"}`}>
                   {left} spot{left === 1 ? "" : "s"} left
                 </span>
               )}
@@ -379,7 +379,7 @@ const JoinSheet = ({
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold font-mono">
                   {match.join_code}
                 </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-foreground text-background px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider">
+                <span className="inline-flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider">
                   {match.match_mode === "gala" ? "Gala" : "Two-team"} · {match.format}
                 </span>
               </div>
@@ -469,7 +469,7 @@ const JoinSheet = ({
               {user?.id && match.organizer_id === user.id ? (
                 <button
                   onClick={() => { onJoin("__auto__"); }}
-                  className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-full bg-primary text-primary-foreground text-sm font-semibold active:scale-[0.99]"
+                  className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-lg bg-primary text-primary-foreground text-sm font-semibold active:scale-[0.99]"
                 >
                   Manage match
                   <ArrowRight className="w-4 h-4" />
@@ -488,7 +488,7 @@ const JoinSheet = ({
                     setBusy(false);
                   }}
                   disabled={busy || (match.match_mode === "gala" || match.match_type === "private" ? !picked : false)}
-                  className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-full bg-foreground text-background text-sm font-semibold disabled:opacity-40 active:scale-[0.99]"
+                  className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-lg bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40 active:scale-[0.99]"
                 >
                   {match.match_type !== "private" && match.match_mode !== "gala"
                     ? "Join match"

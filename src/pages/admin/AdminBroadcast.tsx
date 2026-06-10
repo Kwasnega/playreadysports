@@ -110,7 +110,7 @@ export default function AdminBroadcast() {
         <p className="text-sm text-slate-400 mt-1">Send targeted push notifications to users</p>
       </div>
 
-      <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.06] rounded-2xl p-6 space-y-5 hover:border-white/[0.12] transition-all">
+      <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.06] rounded-xl p-6 space-y-5 hover:border-white/[0.12] transition-all">
         <div>
           <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Segment</label>
           <select value={segment} onChange={(e) => setSegment(e.target.value)} className="mt-2 w-full h-11 rounded-xl bg-white/[0.04] border border-white/[0.08] px-4 text-sm text-slate-300 outline-none focus:border-white/20 appearance-none cursor-pointer">
@@ -144,7 +144,7 @@ export default function AdminBroadcast() {
       </div>
 
       {/* History */}
-      <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.06] rounded-2xl overflow-hidden hover:border-white/[0.12] transition-all">
+      <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.06] rounded-xl overflow-hidden hover:border-white/[0.12] transition-all">
         <div className="px-6 py-5 border-b border-white/[0.06]">
           <h2 className="text-lg font-semibold text-white">Recent Broadcasts</h2>
           <p className="text-xs text-slate-400 mt-0.5">History of sent notifications</p>

@@ -81,7 +81,7 @@ const CodeBoxes = ({ value, onChange }: { value: string; onChange: (s: string) =
           autoCapitalize="characters"
           aria-label={`Code character ${i + 1}`}
           autoFocus={i === 0}
-          className={`w-12 h-16 text-center font-display font-bold text-3xl bg-background border-2 ${c.trim() ? "border-foreground" : "border-border"} rounded-2xl uppercase focus:outline-none focus:border-foreground focus:ring-2 focus:ring-foreground/20 transition-all`}
+          className={`w-12 h-16 text-center font-display font-bold text-3xl bg-background border-2 ${c.trim() ? "border-foreground" : "border-border"} rounded-xl uppercase focus:outline-none focus:border-foreground focus:ring-2 focus:ring-foreground/20 transition-all`}
         />
       ))}
     </div>
@@ -192,7 +192,7 @@ const HaveCode = () => {
       <div className="max-w-[680px] mx-auto px-4 py-5">
         {/* CODE ENTRY */}
         {status !== "found" && (
-          <section className="rounded-3xl bg-secondary p-6 text-center">
+          <section className="rounded-xl bg-secondary p-6 text-center">
             <div className="w-12 h-12 rounded-full bg-foreground/10 mx-auto flex items-center justify-center mb-3">
               <KeyRound className="w-5 h-5" />
             </div>
@@ -212,7 +212,7 @@ const HaveCode = () => {
             <button
               onClick={lookup}
               disabled={!codeReady || status === "loading"}
-              className="mt-6 w-full inline-flex items-center justify-center gap-2 h-12 rounded-full bg-foreground text-background text-sm font-semibold transition-all disabled:opacity-40 active:scale-[0.99]"
+              className="mt-6 w-full inline-flex items-center justify-center gap-2 h-12 rounded-lg bg-primary text-primary-foreground text-sm font-semibold transition-all disabled:opacity-40 active:scale-[0.99]"
             >
               {status === "loading" ? (
                 <>
@@ -229,12 +229,12 @@ const HaveCode = () => {
         {status === "found" && match && (
           <div className="space-y-5">
             {/* Preview card */}
-            <section className="rounded-3xl bg-secondary p-5">
+            <section className="rounded-xl bg-secondary p-5">
               <div className="flex items-center justify-between gap-3">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-background px-2.5 py-1 text-[11px] font-semibold">
                   <KeyRound className="w-3 h-3" /> {match.join_code}
                 </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-foreground text-background px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider">
+                <span className="inline-flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider">
                   {match.match_mode === "gala" ? "Gala" : "Two-team"} · {match.format}
                 </span>
               </div>
@@ -343,7 +343,7 @@ const HaveCode = () => {
             <button
               onClick={confirm}
               disabled={!pickedTeam}
-              className="flex-1 inline-flex items-center justify-center gap-2 h-12 rounded-full bg-foreground text-background text-sm font-semibold disabled:opacity-40 active:scale-[0.99]"
+              className="flex-1 inline-flex items-center justify-center gap-2 h-12 rounded-lg bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40 active:scale-[0.99]"
             >
               {pickedTeam ? `Join as ${pickedTeam === "__bring__" ? "captain" : pickedTeam}` : "Pick a team"}
             </button>

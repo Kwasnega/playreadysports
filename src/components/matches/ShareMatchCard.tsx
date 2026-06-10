@@ -207,7 +207,7 @@ export function ShareMatchCard({
         className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
         onClick={onClose}
       >
-        <div className="bg-card rounded-3xl p-6 w-full max-w-sm space-y-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="bg-card rounded-xl p-6 w-full max-w-sm space-y-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
           {/* Header */}
           <div className="flex items-center justify-between">
             <h2 className="font-display font-bold text-lg">Share match</h2>
@@ -217,7 +217,7 @@ export function ShareMatchCard({
           </div>
 
           {/* Preview */}
-          <div className="rounded-2xl overflow-hidden border border-border/60">
+          <div className="rounded-xl overflow-hidden border border-border">
             {generating ? (
               <div className="aspect-[4/5] bg-secondary flex items-center justify-center">
                 <div className="w-6 h-6 border-2 border-foreground/30 border-t-foreground rounded-full animate-spin" />
@@ -248,7 +248,7 @@ export function ShareMatchCard({
             <button
               onClick={shareImage}
               disabled={generating || !blobUrl}
-              className="w-full h-12 rounded-full bg-foreground text-background text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-40 active:scale-[0.99]"
+              className="w-full h-12 rounded-lg bg-primary text-primary-foreground text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-40 active:scale-[0.99]"
             >
               {navigator.canShare ? (
                 <>
@@ -279,7 +279,7 @@ export function ShareMatchCard({
 
             {/* Invite friends toggle */}
             {user && (
-              <div className="pt-2 border-t border-border/60">
+              <div className="pt-2 border-t border-border">
                 <button
                   onClick={() => setShowFriends((s) => !s)}
                   className="w-full flex items-center justify-between py-2 text-sm font-semibold"
@@ -315,7 +315,7 @@ export function ShareMatchCard({
                           <button
                             onClick={() => sendInvite(f.id)}
                             disabled={sendingTo === f.id}
-                            className="p-1.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-50"
+                            className="p-1.5 rounded-full bg-primary/8 border border-primary/15 text-primary hover:bg-primary/20 disabled:opacity-50"
                           >
                             {sendingTo === f.id ? (
                               <Loader2 className="w-3.5 h-3.5 animate-spin" />

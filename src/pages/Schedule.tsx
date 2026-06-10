@@ -179,8 +179,8 @@ const Schedule = () => {
         <div className="flex gap-2 overflow-x-auto scrollbar-none -mx-1 px-1">
           <button
             onClick={() => setActiveVenueId(ALL_ID)}
-            className={`shrink-0 rounded-2xl px-4 py-3 text-left transition-colors ${
-              isAll ? "bg-foreground text-background" : "bg-secondary"
+            className={`shrink-0 rounded-xl px-4 py-3 text-left transition-colors ${
+              isAll ? "bg-primary text-primary-foreground" : "bg-secondary"
             }`}
           >
             <p className="text-sm font-display font-bold tracking-tight">All venues</p>
@@ -191,7 +191,7 @@ const Schedule = () => {
 
           {venuesLoading
             ? Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="shrink-0 rounded-2xl px-4 py-3 bg-secondary animate-pulse w-32">
+                <div key={i} className="shrink-0 rounded-xl px-4 py-3 bg-secondary animate-pulse w-32">
                   <div className="h-4 bg-secondary-foreground/10 rounded w-20 mb-1" />
                   <div className="h-3 bg-secondary-foreground/10 rounded w-16" />
                 </div>
@@ -206,8 +206,8 @@ const Schedule = () => {
                   <button
                     key={v.id}
                     onClick={() => setActiveVenueId(v.id)}
-                    className={`shrink-0 rounded-2xl px-4 py-3 text-left transition-colors ${
-                      isActive ? "bg-foreground text-background" : "bg-secondary"
+                    className={`shrink-0 rounded-xl px-4 py-3 text-left transition-colors ${
+                      isActive ? "bg-primary text-primary-foreground" : "bg-secondary"
                     }`}
                   >
                     <p className="text-sm font-display font-bold tracking-tight">{v.name}</p>
@@ -225,7 +225,7 @@ const Schedule = () => {
         </div>
 
         {/* Calendar + legend */}
-        <div className="bg-card rounded-3xl p-2" style={{ boxShadow: "var(--shadow-card)" }}>
+        <div className="bg-card rounded-xl p-2" style={{ boxShadow: "var(--shadow-card)" }}>
           <Calendar
             mode="single"
             selected={date}
@@ -264,14 +264,14 @@ const Schedule = () => {
           {availLoading ? (
             <ul className="space-y-2">
               {Array.from({ length: 3 }).map((_, i) => (
-                <li key={i} className="bg-card rounded-2xl px-4 py-3 border border-border/60 animate-pulse">
+                <li key={i} className="bg-card rounded-xl px-4 py-3 border border-border animate-pulse">
                   <div className="h-4 bg-secondary rounded w-1/2 mb-1" />
                   <div className="h-3 bg-secondary rounded w-1/3" />
                 </li>
               ))}
             </ul>
           ) : (isAll ? allDayMatches : selectedDayMatches).length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-border/70 py-10 px-5 text-center">
+            <div className="rounded-xl border border-dashed border-border/70 py-10 px-5 text-center">
               <Sparkles className="w-5 h-5 text-muted-foreground mx-auto mb-2" />
               <p className="text-sm text-muted-foreground">No matches for this date.</p>
               <button
@@ -292,7 +292,7 @@ const Schedule = () => {
                   <li
                     key={m.id}
                     onClick={() => nav(`/lobby/${m.join_code}`)}
-                    className="flex items-center justify-between bg-card rounded-2xl px-4 py-3 border border-border/60 cursor-pointer hover:border-border transition-colors"
+                    className="flex items-center justify-between bg-card rounded-xl px-4 py-3 border border-border cursor-pointer hover:border-border transition-colors"
                   >
                     <div className="min-w-0">
                       <span className="text-sm font-semibold">{time}</span>

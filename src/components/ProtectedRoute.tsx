@@ -32,10 +32,10 @@ function AdminLoginGate({ onSuccess }: { onSuccess: () => void }) {
     <div className="min-h-screen flex items-center justify-center bg-[#070B14] px-5">
       <form
         onSubmit={handleLogin}
-        className="w-full max-w-sm bg-white/[0.03] border border-white/[0.08] rounded-3xl p-8 space-y-5"
+        className="w-full max-w-sm bg-white/[0.03] border border-white/[0.08] rounded-xl p-8 space-y-5"
       >
         <div className="text-center space-y-2">
-          <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 flex items-center justify-center mx-auto">
+          <div className="w-14 h-14 rounded-xl bg-cyan-500/10 flex items-center justify-center mx-auto">
             <Lock className="w-6 h-6 text-cyan-400" />
           </div>
           <h1 className="font-display font-bold text-xl text-white">Admin Login</h1>
@@ -100,7 +100,7 @@ function PlayerLoginGate() {
       </p>
       <button
         onClick={() => openAuth("signin")}
-        className="mt-2 px-6 py-2.5 bg-foreground text-background rounded-full text-sm font-bold hover:opacity-90 transition-all"
+        className="mt-2 px-6 py-2.5 bg-primary text-primary-foreground-lg text-sm font-bold hover:opacity-90 transition-all"
       >
         Sign In
       </button>
@@ -178,7 +178,7 @@ export function ProtectedRoute({ children, roles }: Props) {
           <p className="text-sm text-muted-foreground text-center max-w-xs">
             Your account does not have permission to view this page.
           </p>
-          <a href="/" className="mt-2 px-6 py-2.5 bg-foreground text-background rounded-full text-sm font-bold hover:opacity-90 transition-all">
+          <a href="/" className="mt-2 px-6 py-2.5 bg-primary text-primary-foreground-lg text-sm font-bold hover:opacity-90 transition-all">
             Go Home
           </a>
         </div>

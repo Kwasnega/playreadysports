@@ -26,10 +26,10 @@ const MyPitches = () => {
         <div className="max-w-[680px] mx-auto px-5 h-14 flex items-center gap-3">
           <h1 className="font-display font-bold text-xl tracking-tight flex-1">My pitches</h1>
           <ThemeToggle />
-          <Link to="/venue/earnings" className="inline-flex items-center gap-1.5 bg-secondary text-foreground rounded-full px-3.5 py-2 text-xs font-semibold hover:bg-secondary/80">
+          <Link to="/venue/earnings" className="inline-flex items-center gap-1.5 bg-[hsl(var(--gold))] text-[hsl(var(--gold-foreground))] rounded-full px-3.5 py-2 text-xs font-semibold hover:opacity-90">
             <Wallet className="w-3.5 h-3.5" /> Earnings
           </Link>
-          <Link to="/turf/register" className="inline-flex items-center gap-1.5 bg-foreground text-background rounded-full px-3.5 py-2 text-xs font-semibold">
+          <Link to="/turf/register" className="inline-flex items-center gap-1.5 bg-primary text-primary-foreground-lg px-3.5 py-2 text-xs font-semibold">
             <Plus className="w-3.5 h-3.5" /> Add
           </Link>
         </div>
@@ -37,8 +37,8 @@ const MyPitches = () => {
 
       <div className="max-w-[680px] mx-auto px-5 pt-4 space-y-4">
         {turfs.length === 0 ? (
-          <section className="rounded-3xl tile-ink p-7 text-center">
-            <div className="w-12 h-12 mx-auto rounded-2xl bg-background/15 flex items-center justify-center">
+          <section className="rounded-xl tile-ink p-7 text-center">
+            <div className="w-12 h-12 mx-auto rounded-xl bg-background/15 flex items-center justify-center">
               <MapPin className="w-6 h-6" strokeWidth={2.2} />
             </div>
             <h2 className="font-display font-bold text-2xl tracking-tight mt-4 leading-tight">
@@ -57,7 +57,7 @@ const MyPitches = () => {
           </section>
         ) : (
           <>
-            <section className="rounded-3xl tile-cool p-4 flex items-start gap-3">
+            <section className="rounded-xl tile-cool p-4 flex items-start gap-3">
               <ShieldCheck className="w-5 h-5 mt-0.5 shrink-0" />
               <p className="text-xs leading-relaxed">
                 Pending pitches won't appear to players until verified. You'll get a
@@ -67,7 +67,7 @@ const MyPitches = () => {
 
             <ul className="space-y-3">
               {turfs.map(t => (
-                <li key={t.id} className="bg-card rounded-3xl p-5" style={{ boxShadow: "var(--shadow-card)" }}>
+                <li key={t.id} className="bg-card rounded-xl p-5" style={{ boxShadow: "var(--shadow-card)" }}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="font-display font-bold text-lg tracking-tight truncate">{t.name}</p>

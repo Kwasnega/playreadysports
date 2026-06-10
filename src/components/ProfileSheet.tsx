@@ -104,16 +104,16 @@ export const ProfileSheet = ({ trigger }: Props) => {
 
         <div className="px-5 space-y-5 overflow-y-auto pb-6 flex-1">
           {/* Identity */}
-          <section className="rounded-3xl tile-ink p-5">
+          <section className="rounded-xl tile-ink p-5">
             <button
               onClick={goToProfile}
               disabled={!username}
               className="w-full flex items-center gap-4 text-left disabled:cursor-default"
             >
               {profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt="" className="w-14 h-14 rounded-2xl object-cover shrink-0" />
+                <img src={profile.avatar_url} alt="" className="w-14 h-14 rounded-xl object-cover shrink-0" />
               ) : (
-                <div className="w-14 h-14 rounded-2xl bg-background/15 flex items-center justify-center font-display font-extrabold text-2xl shrink-0">
+                <div className="w-14 h-14 rounded-xl bg-background/15 flex items-center justify-center font-display font-extrabold text-2xl shrink-0">
                   {initial}
                 </div>
               )}
@@ -141,13 +141,13 @@ export const ProfileSheet = ({ trigger }: Props) => {
 
           {/* Stats */}
           <section className="grid grid-cols-2 gap-3">
-            <div className="bg-card rounded-2xl p-4" style={{ boxShadow: "var(--shadow-card)" }}>
+            <div className="bg-card rounded-xl p-4" style={{ boxShadow: "var(--shadow-card)" }}>
               <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold inline-flex items-center gap-1">
                 <Trophy className="w-3 h-3" /> Matches
               </p>
               <p className="font-display font-bold text-2xl mt-1 tracking-tight">{stats.matches}</p>
             </div>
-            <div className="bg-card rounded-2xl p-4" style={{ boxShadow: "var(--shadow-card)" }}>
+            <div className="bg-card rounded-xl p-4" style={{ boxShadow: "var(--shadow-card)" }}>
               <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold inline-flex items-center gap-1">
                 <Star className="w-3 h-3" /> Reviews
               </p>
@@ -156,7 +156,7 @@ export const ProfileSheet = ({ trigger }: Props) => {
           </section>
 
           {/* Settings */}
-          <section className="bg-card rounded-3xl overflow-hidden" style={{ boxShadow: "var(--shadow-card)" }}>
+          <section className="bg-card rounded-xl overflow-hidden" style={{ boxShadow: "var(--shadow-card)" }}>
             <Row icon={theme === "dark" ? Moon : Sun} label="Appearance" value={theme === "dark" ? "Dark" : "Light"} onClick={toggleTheme} />
             {user && (
               <>
@@ -179,14 +179,14 @@ export const ProfileSheet = ({ trigger }: Props) => {
           {user ? (
             <button
               onClick={handleSignOut}
-              className="w-full h-12 rounded-2xl bg-foreground text-background font-display font-bold tracking-tight inline-flex items-center justify-center gap-2"
+              className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-display font-bold tracking-tight inline-flex items-center justify-center gap-2"
             >
               <LogOut className="w-4 h-4" /> Sign out
             </button>
           ) : (
             <button
               onClick={handleSignIn}
-              className="w-full h-12 rounded-2xl bg-foreground text-background font-display font-bold tracking-tight inline-flex items-center justify-center gap-2"
+              className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-display font-bold tracking-tight inline-flex items-center justify-center gap-2"
             >
               Sign in
             </button>

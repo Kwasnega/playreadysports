@@ -78,8 +78,8 @@ export function MotmVote({ matchId, participants }: Props) {
   if (!user || eligible.length === 0) return null;
 
   return (
-    <div className="bg-card rounded-3xl border border-border/60 overflow-hidden">
-      <div className="px-5 py-4 border-b border-border/60 flex items-center gap-2">
+    <div className="bg-card rounded-xl border border-border overflow-hidden">
+      <div className="px-5 py-4 border-b border-border flex items-center gap-2">
         <Trophy className="w-4 h-4 text-amber-500" />
         <h3 className="font-display font-bold text-sm">Man of the Match</h3>
         {voted && <span className="text-[10px] text-emerald-600 font-semibold ml-auto">Voted</span>}

@@ -145,7 +145,7 @@ function LiveMapView({ matches, onSelectMatch }: { matches: LiveMatch[]; onSelec
 
   if (matchesWithCoords.length === 0) {
     return (
-      <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-12 text-center">
+      <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-12 text-center">
         <MapIcon className="w-8 h-8 text-slate-600 mx-auto mb-3" />
         <p className="text-slate-400 text-sm">No matches have venue coordinates for mapping.</p>
       </div>
@@ -153,7 +153,7 @@ function LiveMapView({ matches, onSelectMatch }: { matches: LiveMatch[]; onSelec
   }
 
   return (
-    <div className="relative bg-[#070B14] border border-white/[0.06] rounded-2xl overflow-hidden" style={{ aspectRatio: "16/9" }}>
+    <div className="relative bg-[#070B14] border border-white/[0.06] rounded-xl overflow-hidden" style={{ aspectRatio: "16/9" }}>
       <svg viewBox={viewBox} className="w-full h-full" preserveAspectRatio="xMidYMid slice">
         {/* Grid */}
         {Array.from({ length: 11 }).map((_, i) => (
@@ -667,14 +667,14 @@ export default function AdminLiveMonitor() {
           {loading ? (
             <div className="grid gap-4">
               {[...Array(3)].map((_, i) => (
-                <div key={i} className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5 animate-pulse">
+                <div key={i} className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5 animate-pulse">
                   <div className="h-5 bg-white/5 rounded w-48 mb-3" />
                   <div className="h-3 bg-white/5 rounded w-32" />
                 </div>
               ))}
             </div>
           ) : matches.length === 0 ? (
-            <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-12 text-center">
+            <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-12 text-center">
               <Trophy className="w-8 h-8 text-slate-600 mx-auto mb-3" />
               <p className="text-slate-400 text-sm">No active or upcoming matches right now.</p>
             </div>
@@ -694,7 +694,7 @@ export default function AdminLiveMonitor() {
                 return (
                   <div
                     key={m.id}
-                    className={`bg-white/[0.03] border rounded-2xl overflow-hidden transition-all hover:border-white/[0.12] ${
+                    className={`bg-white/[0.03] border rounded-xl overflow-hidden transition-all hover:border-white/[0.12] ${
                       isExpired ? "border-rose-500/20 opacity-70" : isSoon ? "border-amber-500/20" : "border-white/[0.06]"
                     } ${live ? "ring-1 ring-rose-500/10" : ""}`}
                   >
@@ -908,7 +908,7 @@ export default function AdminLiveMonitor() {
 
       {/* Intervention logs */}
       {interventions.length > 0 && (
-        <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5">
+        <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5">
           <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
             <Activity className="w-3.5 h-3.5 text-slate-400" /> Recent Auto-Interventions
           </h3>
@@ -930,7 +930,7 @@ export default function AdminLiveMonitor() {
       {/* Broadcast Modal */}
       {broadcastModal.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setBroadcastModal({ open: false, matchId: "", joinCode: "" })}>
-          <div className="bg-[#0F172A] border border-white/10 rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-[#0F172A] border border-white/10 rounded-xl p-6 w-full max-w-md space-y-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div>
               <h2 className="text-lg font-bold text-white">Broadcast to Players</h2>
               <p className="text-sm text-slate-400 mt-1">Match {broadcastModal.joinCode}</p>

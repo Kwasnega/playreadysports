@@ -99,7 +99,7 @@ export default function Leaderboard() {
               onClick={() => setTimeframe(tf.key)}
               className={`flex-1 rounded-xl py-2 text-xs font-bold transition-colors ${
                 timeframe === tf.key
-                  ? "bg-foreground text-background"
+                  ? "bg-primary text-primary-foreground"
                   : "bg-secondary text-muted-foreground hover:bg-secondary/80"
               }`}
             >
@@ -114,7 +114,7 @@ export default function Leaderboard() {
             <button
               onClick={() => setCity("")}
               className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors ${
-                city === "" ? "bg-foreground text-background" : "bg-secondary text-muted-foreground"
+                city === "" ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"
               }`}
             >
               All Cities
@@ -124,7 +124,7 @@ export default function Leaderboard() {
                 key={c}
                 onClick={() => setCity(c)}
                 className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors ${
-                  city === c ? "bg-foreground text-background" : "bg-secondary text-muted-foreground"
+                  city === c ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"
                 }`}
               >
                 {c}
@@ -135,7 +135,7 @@ export default function Leaderboard() {
 
         {/* Your Rank Card */}
         {user && userEntry && (
-          <div className="bg-card rounded-2xl p-4 border border-border/60 flex items-center gap-4">
+          <div className="bg-card rounded-xl p-4 border border-border flex items-center gap-4">
             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
               <TrendingUp className="w-5 h-5 text-primary" />
             </div>
@@ -158,7 +158,7 @@ export default function Leaderboard() {
 
         {/* Top Venue */}
         {topVenue && (
-          <div className="bg-card rounded-2xl p-4 border border-border/60 flex items-center gap-3">
+          <div className="bg-card rounded-xl p-4 border border-border flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
               <MapPin className="w-5 h-5 text-emerald-500" />
             </div>
@@ -174,9 +174,9 @@ export default function Leaderboard() {
 
         {loading ? (
           <div className="space-y-4 animate-pulse">
-            <div className="h-32 bg-secondary rounded-2xl" />
+            <div className="h-32 bg-secondary rounded-xl" />
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-16 bg-secondary rounded-2xl" />
+              <div key={i} className="h-16 bg-secondary rounded-xl" />
             ))}
           </div>
         ) : players.length === 0 ? (
@@ -221,8 +221,8 @@ export default function Leaderboard() {
             )}
 
             {/* Full Ranked List */}
-            <div className="bg-card rounded-2xl border border-border/60 overflow-hidden">
-              <div className="px-5 py-3 border-b border-border/60 flex items-center justify-between">
+            <div className="bg-card rounded-xl border border-border overflow-hidden">
+              <div className="px-5 py-3 border-b border-border flex items-center justify-between">
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Rankings</p>
                 <p className="text-[10px] text-muted-foreground">{players.length} players</p>
               </div>
@@ -246,7 +246,7 @@ export default function Leaderboard() {
       {/* Share Modal — branded rank card */}
       {shareOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShareOpen(false)}>
-          <div className="bg-card rounded-3xl p-6 w-full max-w-sm space-y-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-card rounded-xl p-6 w-full max-w-sm space-y-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h2 className="font-display font-bold text-lg">Share your rank</h2>
               <button onClick={() => setShareOpen(false)} className="p-1 rounded-full hover:bg-secondary">
@@ -256,7 +256,7 @@ export default function Leaderboard() {
 
             {/* Branded rank card */}
             <div
-              className="rounded-2xl p-5 text-center relative overflow-hidden"
+              className="rounded-xl p-5 text-center relative overflow-hidden"
               style={{
                 background: "linear-gradient(135deg, hsl(var(--primary) / 0.25), hsl(var(--primary) / 0.05) 60%, hsl(var(--background)))",
                 border: "1px solid hsl(var(--primary) / 0.25)",
@@ -402,7 +402,7 @@ function ListRow({
         <span className="w-6 text-center text-sm font-bold text-muted-foreground shrink-0">{rank}</span>
         <Link to={profilePath} className="flex items-center gap-3 flex-1 min-w-0">
           {player.avatar_url ? (
-            <img src={player.avatar_url} alt="" className="w-9 h-9 rounded-full object-cover border border-border/60 shrink-0" />
+            <img src={player.avatar_url} alt="" className="w-9 h-9 rounded-full object-cover border border-border shrink-0" />
           ) : (
             <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center text-xs font-bold shrink-0">
               {initials(player.full_name || player.username)}

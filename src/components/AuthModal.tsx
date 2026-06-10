@@ -136,14 +136,14 @@ export const AuthModal = () => {
     <Dialog open={authOpen} onOpenChange={handleOpenChange}>
       <DialogContent
         aria-describedby={undefined}
-        className="max-w-[440px] p-0 overflow-hidden rounded-3xl border-0 bg-background animate-in fade-in-0 zoom-in-95 duration-200"
+        className="max-w-[440px] p-0 overflow-hidden rounded-xl border-0 bg-background animate-in fade-in-0 zoom-in-95 duration-200"
         onPointerDownOutside={(e) => { if (view === "verify") e.preventDefault(); }}
         onEscapeKeyDown={(e) => { if (view === "verify") e.preventDefault(); }}
         onInteractOutside={(e) => { if (view === "verify") e.preventDefault(); }}
       >
         <div className="px-6 pt-6 pb-7">
           {view === "verify" && (
-            <div className="w-12 h-12 rounded-2xl bg-secondary flex items-center justify-center mb-4">
+            <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center mb-4">
               <MailCheck className="w-6 h-6" />
             </div>
           )}
@@ -180,7 +180,7 @@ export const AuthModal = () => {
                       <InputOTPSlot
                         key={index}
                         index={index}
-                        className="h-12 w-11 rounded-2xl border border-border bg-secondary text-base font-bold"
+                        className="h-12 w-11 rounded-xl border border-border bg-secondary text-base font-bold"
                       />
                     ))}
                   </InputOTPGroup>
@@ -188,7 +188,7 @@ export const AuthModal = () => {
                 <button
                   type="submit"
                   disabled={busy || otp.length !== 6 || cooldown > 0}
-                  className="w-full h-12 rounded-2xl bg-foreground text-background font-display font-bold tracking-tight inline-flex items-center justify-center gap-2 disabled:opacity-40"
+                  className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-display font-bold tracking-tight inline-flex items-center justify-center gap-2 disabled:opacity-40"
                 >
                   {busy && <Loader2 className="w-4 h-4 animate-spin" />}
                   {cooldown > 0 ? `Wait ${cooldown}s...` : "Verify and enter"}
@@ -198,13 +198,13 @@ export const AuthModal = () => {
                 <button
                   onClick={onResend}
                   disabled={busy}
-                  className="w-full h-12 rounded-2xl border border-border bg-card font-semibold text-sm inline-flex items-center justify-center gap-2 hover:bg-secondary disabled:opacity-60"
+                  className="w-full h-12 rounded-xl border border-border bg-card font-semibold text-sm inline-flex items-center justify-center gap-2 hover:bg-secondary disabled:opacity-60"
                 >
                   Resend email
                 </button>
                 <button
                   onClick={() => cancelVerification()}
-                  className="w-full h-10 rounded-2xl text-xs font-semibold text-muted-foreground hover:text-foreground"
+                  className="w-full h-10 rounded-xl text-xs font-semibold text-muted-foreground hover:text-foreground"
                 >
                   Cancel and sign out
                 </button>
@@ -220,7 +220,7 @@ export const AuthModal = () => {
               </p>
               <button
                 onClick={() => { setView("signin"); setEmail(""); setPassword(""); }}
-                className="w-full h-12 rounded-2xl bg-foreground text-background font-display font-bold tracking-tight"
+                className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-display font-bold tracking-tight"
               >
                 Back to sign in
               </button>
@@ -250,13 +250,13 @@ export const AuthModal = () => {
                   <input
                     type="text" placeholder="Full name" value={fullName}
                     onChange={e => setFullName(e.target.value)} autoComplete="name"
-                    className="w-full h-12 px-4 rounded-2xl bg-secondary placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20"
+                    className="w-full h-12 px-4 rounded-xl bg-secondary placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20"
                   />
                 )}
                 <input
                   type="email" placeholder="Email" value={email} required
                   onChange={e => setEmail(e.target.value)} autoComplete="email"
-                  className="w-full h-12 px-4 rounded-2xl bg-secondary placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20"
+                  className="w-full h-12 px-4 rounded-xl bg-secondary placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20"
                 />
                 {(view === "signin" || view === "signup") && (
                   <div className="relative">
@@ -268,7 +268,7 @@ export const AuthModal = () => {
                       minLength={6}
                       onChange={e => setPassword(e.target.value)}
                       autoComplete={view === "signin" ? "current-password" : "new-password"}
-                      className="w-full h-12 px-4 pr-11 rounded-2xl bg-secondary placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20"
+                      className="w-full h-12 px-4 pr-11 rounded-xl bg-secondary placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20"
                     />
                     <button
                       type="button"
@@ -311,7 +311,7 @@ export const AuthModal = () => {
                 <button
                   type="submit"
                   disabled={busy || cooldown > 0 || (view === "signup" && !agree)}
-                  className="w-full h-12 rounded-2xl bg-foreground text-background font-display font-bold tracking-tight inline-flex items-center justify-center gap-2 disabled:opacity-40"
+                  className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-display font-bold tracking-tight inline-flex items-center justify-center gap-2 disabled:opacity-40"
                 >
                   {busy && <Loader2 className="w-4 h-4 animate-spin" />}
                   {cooldown > 0 ? `Wait ${cooldown}s…` : view === "signin" ? "Sign in" : view === "signup" ? "Create account" : "Send reset link"}

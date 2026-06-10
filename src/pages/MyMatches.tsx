@@ -125,7 +125,7 @@ export default function MyMatches() {
                 key={v}
                 onClick={() => setView(v)}
                 className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-full py-1.5 text-xs font-bold transition-colors ${
-                  active ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
+                  active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <Icon className="w-3.5 h-3.5" />
@@ -146,7 +146,7 @@ export default function MyMatches() {
                 onClick={() => setTab(t)}
                 className={`shrink-0 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors ${
                   active
-                    ? "bg-foreground text-background"
+                    ? "bg-primary text-primary-foreground"
                     : "bg-secondary text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -160,7 +160,7 @@ export default function MyMatches() {
         {loading ? (
           <div className="space-y-3 animate-pulse">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-card rounded-2xl p-4 border border-border/60 h-24" />
+              <div key={i} className="bg-card rounded-xl p-4 border border-border h-24" />
             ))}
           </div>
         ) : filtered.length === 0 ? (
@@ -180,7 +180,7 @@ export default function MyMatches() {
             {tab === "upcoming" && view === "organized" && (
               <button
                 onClick={() => nav("/create")}
-                className="mt-4 inline-flex items-center gap-1.5 bg-foreground text-background rounded-full px-4 py-2 text-xs font-bold"
+                className="mt-4 inline-flex items-center gap-1.5 bg-primary text-primary-foreground-lg px-4 py-2 text-xs font-bold"
               >
                 Create a match
               </button>
@@ -195,7 +195,7 @@ export default function MyMatches() {
                 <button
                   key={m.id}
                   onClick={() => nav(`/lobby/${m.join_code}`)}
-                  className="w-full text-left bg-card rounded-2xl px-4 py-4 border border-border/60 transition-all hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.99]"
+                  className="w-full text-left bg-card rounded-xl px-4 py-4 border border-border transition-all hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.99]"
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">

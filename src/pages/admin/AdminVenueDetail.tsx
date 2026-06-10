@@ -229,7 +229,7 @@ export default function AdminVenueDetail() {
       </div>
 
       {/* Image gallery */}
-      <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5 space-y-3">
+      <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5 space-y-3">
         <h2 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
           <ImageIcon className="w-4 h-4 text-emerald-400" /> Photos
         </h2>
@@ -249,7 +249,7 @@ export default function AdminVenueDetail() {
       {/* Details grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Venue info */}
-        <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5 space-y-3">
+        <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5 space-y-3">
           <h2 className="text-sm font-semibold text-slate-300">Venue details</h2>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
@@ -306,7 +306,7 @@ export default function AdminVenueDetail() {
         </div>
 
         {/* Owner */}
-        <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5 space-y-3">
+        <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5 space-y-3">
           <h2 className="text-sm font-semibold text-slate-300">Owner</h2>
           {owner ? (
             <div className="space-y-2 text-sm">
@@ -333,7 +333,7 @@ export default function AdminVenueDetail() {
       </div>
 
       {/* Pricing */}
-      <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5 space-y-3">
+      <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5 space-y-3">
         <h2 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
           <TrendingUp className="w-4 h-4 text-emerald-400" /> Pricing rules
         </h2>
@@ -359,22 +359,22 @@ export default function AdminVenueDetail() {
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-2xl p-4 text-center">
+        <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-4 text-center">
           <p className="text-2xl font-display font-bold text-emerald-400">{upcoming.length}</p>
           <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold mt-1">Upcoming</p>
         </div>
-        <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-2xl p-4 text-center">
+        <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-4 text-center">
           <p className="text-2xl font-display font-bold text-emerald-400">{completed.length}</p>
           <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold mt-1">Completed</p>
         </div>
-        <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-2xl p-4 text-center">
+        <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-4 text-center">
           <p className="text-2xl font-display font-bold text-emerald-400">₵{totalCompletedEarnings.toFixed(0)}</p>
           <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold mt-1">Total earnings</p>
         </div>
       </div>
 
       {/* Upcoming matches */}
-      <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5 space-y-3">
+      <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5 space-y-3">
         <h2 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
           <Calendar className="w-4 h-4 text-emerald-400" /> Upcoming matches
         </h2>
@@ -404,7 +404,7 @@ export default function AdminVenueDetail() {
       </div>
 
       {/* Completed matches */}
-      <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5 space-y-3">
+      <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5 space-y-3">
         <h2 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
           <CheckCircle className="w-4 h-4 text-emerald-400" /> Completed matches
         </h2>

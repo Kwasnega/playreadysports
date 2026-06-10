@@ -94,7 +94,7 @@ export const LobbyChat = ({ matchCode, matchId, isOrganizer = true, teamColorA, 
 
   return (
     <div
-      className="rounded-3xl overflow-hidden border border-border"
+      className="rounded-xl overflow-hidden border border-border"
       style={{ boxShadow: "var(--shadow-card)" }}
     >
       <div className="flex items-center justify-between px-5 py-4 bg-card">
@@ -115,7 +115,7 @@ export const LobbyChat = ({ matchCode, matchId, isOrganizer = true, teamColorA, 
         </div>
       </div>
       {showInvite && (
-        <div className="px-4 pb-3 pt-1 bg-card border-b border-border/60 space-y-2">
+        <div className="px-4 pb-3 pt-1 bg-card border-b border-border space-y-2">
           <p className="text-[11px] font-semibold text-muted-foreground">Invite others to this match</p>
           <div className="flex gap-2">
             <code className="flex-1 text-[11px] bg-secondary rounded-xl px-3 py-2 truncate">{lobbyUrl}</code>
@@ -125,7 +125,7 @@ export const LobbyChat = ({ matchCode, matchId, isOrganizer = true, teamColorA, 
           </div>
           <button
             onClick={sendInvite}
-            className="w-full text-[11px] font-semibold bg-primary/10 text-primary rounded-xl py-2 flex items-center justify-center gap-1.5"
+            className="w-full text-[11px] font-semibold bg-primary/8 border border-primary/15 text-primary rounded-xl py-2 flex items-center justify-center gap-1.5"
           >
             <MessageCircle className="w-3.5 h-3.5" /> Post invite link to chat
           </button>
@@ -184,7 +184,7 @@ export const LobbyChat = ({ matchCode, matchId, isOrganizer = true, teamColorA, 
                     onTouchStart={() => startLongPress(m.id)}
                     onTouchEnd={cancelLongPress}
                     onContextMenu={(e) => { if (isOrganizer) { e.preventDefault(); setActionFor(m.id); } }}
-                    className={`max-w-[78%] rounded-2xl px-3.5 py-2 select-none backdrop-blur-sm ${
+                    className={`max-w-[78%] rounded-xl px-3.5 py-2 select-none backdrop-blur-sm ${
                       mine
                         ? "bg-primary text-primary-foreground rounded-br-md shadow-sm"
                         : "bg-card/90 text-foreground rounded-bl-md border border-border"
@@ -210,7 +210,7 @@ export const LobbyChat = ({ matchCode, matchId, isOrganizer = true, teamColorA, 
                       <div className="mt-2 -mx-1 pt-2 border-t border-border/40 flex gap-2">
                         <button
                           onClick={(e) => { e.stopPropagation(); pin(m.id); }}
-                          className="text-[11px] font-semibold inline-flex items-center gap-1 bg-primary text-primary-foreground rounded-full px-2.5 py-1"
+                          className="text-[11px] font-semibold inline-flex items-center gap-1 bg-primary text-primary-foreground-lg px-2.5 py-1"
                         >
                           <Pin className="w-3 h-3" /> Pin message
                         </button>
@@ -238,7 +238,7 @@ export const LobbyChat = ({ matchCode, matchId, isOrganizer = true, teamColorA, 
             <button
               type="submit"
               disabled={!text.trim() || !user}
-              className="w-9 h-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-40"
+              className="w-9 h-9 rounded-lg bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-40"
               aria-label="Send"
             >
               <Send className="w-4 h-4" />

@@ -21,8 +21,8 @@ function StatCard({ label, value, icon: Icon, index, trend }: { label: string; v
   const trendStr = trend == null ? null : `${trendPos ? "+" : ""}${Number(trend || 0).toFixed(0)}%`;
   return (
     <div className="relative group">
-      <div className={`absolute inset-0 bg-gradient-to-br ${g.from} ${g.to} rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
-      <div className="relative bg-white/[0.03] backdrop-blur-sm border border-white/[0.06] rounded-2xl p-6 hover:border-white/[0.12] transition-all duration-300">
+      <div className={`absolute inset-0 bg-gradient-to-br ${g.from} ${g.to} rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
+      <div className="relative bg-white/[0.03] backdrop-blur-sm border border-white/[0.06] rounded-xl p-6 hover:border-white/[0.12] transition-all duration-300">
         <div className="flex items-start justify-between mb-4">
           <div className={`w-10 h-10 rounded-xl ${g.iconBg} flex items-center justify-center`}>
             <Icon className={`w-5 h-5 ${g.iconColor}`} />
@@ -206,7 +206,7 @@ export default function AdminOverview() {
       {loading ? (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 animate-pulse">
+            <div key={i} className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-6 animate-pulse">
               <div className="w-10 h-10 rounded-xl bg-white/5 mb-4" />
               <div className="h-8 bg-white/5 rounded w-24 mb-2" />
               <div className="h-3 bg-white/5 rounded w-32" />
@@ -222,7 +222,7 @@ export default function AdminOverview() {
       )}
 
       {/* Maintenance mode toggle */}
-      <div className={`relative bg-white/[0.03] backdrop-blur-sm border rounded-2xl p-6 transition-all ${maintenanceMode ? "border-rose-500/30" : "border-white/[0.06] hover:border-white/[0.12]"}`}>
+      <div className={`relative bg-white/[0.03] backdrop-blur-sm border rounded-xl p-6 transition-all ${maintenanceMode ? "border-rose-500/30" : "border-white/[0.06] hover:border-white/[0.12]"}`}>
         <div className="flex items-center justify-between">
           <div>
             <h2 className={`text-lg font-semibold ${maintenanceMode ? "text-rose-400" : "text-white"}`}>Maintenance Mode</h2>
@@ -243,7 +243,7 @@ export default function AdminOverview() {
       </div>
 
       {/* Chart */}
-      <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.06] rounded-2xl p-6 hover:border-white/[0.12] transition-all">
+      <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.06] rounded-xl p-6 hover:border-white/[0.12] transition-all">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-lg font-semibold text-white">Match Creation Trend</h2>
@@ -269,7 +269,7 @@ export default function AdminOverview() {
       </div>
 
       {/* Recent transactions */}
-      <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.06] rounded-2xl overflow-hidden hover:border-white/[0.12] transition-all">
+      <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.06] rounded-xl overflow-hidden hover:border-white/[0.12] transition-all">
         <div className="px-6 py-5 border-b border-white/[0.06] flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-white">Recent Transactions</h2>
@@ -331,7 +331,7 @@ export default function AdminOverview() {
       {/* Reset confirmation modal */}
       {resetOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => { setResetOpen(false); setConfirmText(""); }}>
-          <div className="bg-[#0F172A] border border-rose-500/20 rounded-2xl p-6 w-full max-w-sm shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-[#0F172A] border border-rose-500/20 rounded-xl p-6 w-full max-w-sm shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center">
                 <AlertTriangle className="w-5 h-5 text-rose-400" />
@@ -373,7 +373,7 @@ export default function AdminOverview() {
       {/* Commission rate settings modal */}
       {settingsOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setSettingsOpen(false)}>
-          <div className="bg-[#0F172A] border border-white/10 rounded-2xl p-6 w-full max-w-sm shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-[#0F172A] border border-white/10 rounded-xl p-6 w-full max-w-sm shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
                 <Percent className="w-5 h-5 text-blue-400" />

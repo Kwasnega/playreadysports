@@ -62,15 +62,15 @@ export const LobbyTeamsTab = (props: LobbyTeamsTabProps) => {
           <h2 className="font-display font-bold text-xl tracking-tight">Teams · {coreCount}/{maxCore}</h2>
           <span className="text-xs text-muted-foreground">{corePaidCount} paid</span>
         </div>
-        <div className="rounded-2xl bg-secondary/50 px-4 py-3 text-xs text-muted-foreground text-center">
+        <div className="rounded-xl bg-secondary/50 px-4 py-3 text-xs text-muted-foreground text-center">
           🔄 <strong className="text-foreground">Winner stays on.</strong> Loser rotates to back of queue.
         </div>
         {teams.length === 0 ? (
-          <div className="bg-card rounded-2xl p-5 text-center text-sm text-muted-foreground border border-border/60">No players have joined yet.</div>
+          <div className="bg-card rounded-xl p-5 text-center text-sm text-muted-foreground border border-border">No players have joined yet.</div>
         ) : (
           <div className="space-y-3">
             {teams.map(([teamName, players]) => (
-              <div key={teamName} className="bg-card rounded-2xl border border-border/60 overflow-hidden">
+              <div key={teamName} className="bg-card rounded-xl border border-border overflow-hidden">
                 <div className="px-4 py-2.5 bg-secondary/60 flex items-center justify-between">
                   <span className="text-sm font-bold capitalize">{teamName}</span>
                   <span className="text-[11px] text-muted-foreground">{players.length} player{players.length !== 1 ? "s" : ""}</span>
@@ -104,7 +104,7 @@ export const LobbyTeamsTab = (props: LobbyTeamsTabProps) => {
             <h2 className="font-display font-bold text-base tracking-tight mb-2">Spare · {spareList.length}</h2>
             <div className="space-y-1">
               {spareList.map((p) => (
-                <button key={p.id} onClick={() => { const t = p.username || p.user_id; if (t) openProfile(t); }} className="w-full flex items-center gap-3 px-3 py-2 bg-card rounded-xl border border-border/60 text-left hover:bg-secondary/50 transition-colors">
+                <button key={p.id} onClick={() => { const t = p.username || p.user_id; if (t) openProfile(t); }} className="w-full flex items-center gap-3 px-3 py-2 bg-card rounded-xl border border-border text-left hover:bg-secondary/50 transition-colors">
                   {p.avatar_url ? (
                     <img src={p.avatar_url} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
                   ) : (
@@ -143,7 +143,7 @@ export const LobbyTeamsTab = (props: LobbyTeamsTabProps) => {
           </div>
           <div className="space-y-2">
             {joinRequests.map((r) => (
-              <div key={r.id} className="bg-card rounded-2xl p-3 flex items-center gap-3" style={{ boxShadow: "var(--shadow-card)" }}>
+              <div key={r.id} className="bg-card rounded-xl p-3 flex items-center gap-3" style={{ boxShadow: "var(--shadow-card)" }}>
                 {r.avatar_url ? (
                   <img src={r.avatar_url} alt={r.full_name ?? ""} className="w-10 h-10 rounded-full object-cover" />
                 ) : (
@@ -154,7 +154,7 @@ export const LobbyTeamsTab = (props: LobbyTeamsTabProps) => {
                   <p className="text-xs text-muted-foreground">{r.team || "No team"}</p>
                 </div>
                 <button onClick={() => rejectRequest(r.id, r.full_name ?? r.username ?? "Player")} className="w-9 h-9 rounded-full bg-secondary text-destructive flex items-center justify-center" aria-label="Decline"><X className="w-4 h-4" /></button>
-                <button onClick={() => acceptRequest(r.id, coreList)} className="w-9 h-9 rounded-full bg-foreground text-background flex items-center justify-center" aria-label="Accept"><UserCheck className="w-4 h-4" /></button>
+                <button onClick={() => acceptRequest(r.id, coreList)} className="w-9 h-9 rounded-lg bg-primary text-primary-foreground flex items-center justify-center" aria-label="Accept"><UserCheck className="w-4 h-4" /></button>
               </div>
             ))}
           </div>
@@ -169,7 +169,7 @@ export const LobbyTeamsTab = (props: LobbyTeamsTabProps) => {
         </div>
         <div className="grid grid-cols-2 gap-3">
           {/* Team A */}
-          <div className="bg-card rounded-2xl border border-border/60 overflow-hidden">
+          <div className="bg-card rounded-xl border border-border overflow-hidden">
             <div className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-white text-center" style={{ backgroundColor: TEAM_HEX[colorA.toLowerCase()] ?? "#dc2626" }}>{colorA}</div>
             <ul className="divide-y divide-border/50">
               {teamAPlayers.map((p, i) => (
@@ -200,7 +200,7 @@ export const LobbyTeamsTab = (props: LobbyTeamsTabProps) => {
           </div>
 
           {/* Team B */}
-          <div className="bg-card rounded-2xl border border-border/60 overflow-hidden">
+          <div className="bg-card rounded-xl border border-border overflow-hidden">
             <div className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-white text-center" style={{ backgroundColor: TEAM_HEX[colorB.toLowerCase()] ?? "#2563eb" }}>{colorB}</div>
             <ul className="divide-y divide-border/50">
               {teamBPlayers.map((p, i) => (

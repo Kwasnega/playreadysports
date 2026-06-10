@@ -158,7 +158,7 @@ export default function VenueOwnerCalendar({
 
   return (
     <>
-      <section className="bg-card rounded-2xl border border-border/60 p-5">
+      <section className="bg-card rounded-xl border border-border p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-display font-bold text-base">Booking calendar</h2>
           <div className="flex items-center gap-1">
@@ -297,7 +297,7 @@ export default function VenueOwnerCalendar({
                       <div className="flex gap-1.5">
                         <button
                           onClick={() => { setDayModalOpen(false); navigate(`/lobby/${m.join_code}`); }}
-                          className="text-[10px] font-semibold bg-primary/10 text-primary rounded-full px-2.5 py-1"
+                          className="text-[10px] font-semibold bg-primary/8 border border-primary/15 text-primary rounded-full px-2.5 py-1"
                         >
                           Lobby
                         </button>

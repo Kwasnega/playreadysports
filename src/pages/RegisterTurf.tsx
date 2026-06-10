@@ -70,7 +70,7 @@ const RegisterTurf = () => {
       </header>
 
       <div className="max-w-[680px] mx-auto px-5 pt-4 space-y-5">
-        <section className="rounded-3xl tile-cool p-5 flex items-start gap-3">
+        <section className="rounded-xl tile-cool p-5 flex items-start gap-3">
           <ShieldCheck className="w-5 h-5 mt-0.5 shrink-0" />
           <div>
             <p className="font-display font-bold text-base tracking-tight">Verification required</p>
@@ -123,7 +123,7 @@ const RegisterTurf = () => {
                     key={a}
                     type="button"
                     onClick={() => toggle(a)}
-                    className={`text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${on ? "bg-foreground text-background" : "bg-secondary text-muted-foreground"}`}
+                    className={`text-xs font-semibold px-3 py-1.5 rounded-lg bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}
                   >{a}</button>
                 );
               })}
@@ -137,7 +137,7 @@ const RegisterTurf = () => {
           <button
             type="submit"
             disabled={busy}
-            className="w-full h-12 rounded-2xl bg-foreground text-background font-display font-bold tracking-tight inline-flex items-center justify-center gap-2 disabled:opacity-60 mt-2"
+            className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-display font-bold tracking-tight inline-flex items-center justify-center gap-2 disabled:opacity-60 mt-2"
           >
             {busy && <Loader2 className="w-4 h-4 animate-spin" />}
             Submit for verification
@@ -154,9 +154,9 @@ const RegisterTurf = () => {
 };
 
 const inputCls =
-  "mt-1 w-full h-11 px-3 rounded-2xl bg-secondary text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground/20";
+  "mt-1 w-full h-11 px-3 rounded-xl bg-secondary text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground/20";
 const textareaCls =
-  "mt-1 w-full px-3 py-2 rounded-2xl bg-secondary text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20";
+  "mt-1 w-full px-3 py-2 rounded-xl bg-secondary text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20";
 
 const Field = ({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) => (
   <div>

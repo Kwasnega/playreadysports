@@ -48,8 +48,8 @@ export function AdminCheckinLog() {
   useEffect(() => { load(); }, []);
 
   return (
-    <div className="bg-card rounded-2xl border border-border/60 overflow-hidden">
-      <div className="px-5 py-4 border-b border-border/60 flex items-center gap-2">
+    <div className="bg-card rounded-xl border border-border overflow-hidden">
+      <div className="px-5 py-4 border-b border-border flex items-center gap-2">
         <QrCode className="w-4 h-4 text-primary" />
         <h3 className="font-display font-bold text-sm flex-1">QR Check-in Log</h3>
         <button onClick={load} className="p-1.5 rounded-lg hover:bg-secondary" aria-label="Refresh">

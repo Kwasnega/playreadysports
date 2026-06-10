@@ -101,7 +101,7 @@ const EditProfile = () => {
 
   return (
     <main className="min-h-screen bg-background pb-10">
-      <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b border-border/60">
+      <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b border-border">
         <div className="max-w-[680px] mx-auto px-5 h-14 flex items-center gap-3">
           <button onClick={() => navigate(-1)} className="p-2 -ml-2 rounded-full hover:bg-secondary">
             <ArrowLeft className="w-5 h-5" />
@@ -123,7 +123,7 @@ const EditProfile = () => {
             )}
             <button
               onClick={() => fileRef.current?.click()}
-              className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-foreground text-background flex items-center justify-center shadow-lg"
+              className="absolute bottom-0 right-0 w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center shadow-lg"
             >
               <Camera className="w-4 h-4" />
             </button>
@@ -147,7 +147,7 @@ const EditProfile = () => {
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder="Your full name"
-              className="w-full bg-secondary rounded-2xl px-4 py-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-foreground"
+              className="w-full bg-secondary rounded-xl px-4 py-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-foreground"
             />
           </Field>
 
@@ -157,7 +157,7 @@ const EditProfile = () => {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Unique username"
-                className="w-full bg-secondary rounded-2xl px-4 py-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-foreground pr-10"
+                className="w-full bg-secondary rounded-xl px-4 py-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-foreground pr-10"
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2">
                 {checkingUsername ? (
@@ -175,7 +175,7 @@ const EditProfile = () => {
             <select
               value={city}
               onChange={(e) => setCity(e.target.value)}
-              className="w-full bg-secondary rounded-2xl px-4 py-3 text-sm font-semibold outline-none appearance-none focus:ring-2 focus:ring-foreground"
+              className="w-full bg-secondary rounded-xl px-4 py-3 text-sm font-semibold outline-none appearance-none focus:ring-2 focus:ring-foreground"
             >
               <option value="">Select city</option>
               {CITIES.map((c) => (
@@ -188,7 +188,7 @@ const EditProfile = () => {
             <select
               value={position}
               onChange={(e) => setPosition(e.target.value)}
-              className="w-full bg-secondary rounded-2xl px-4 py-3 text-sm font-semibold outline-none appearance-none focus:ring-2 focus:ring-foreground"
+              className="w-full bg-secondary rounded-xl px-4 py-3 text-sm font-semibold outline-none appearance-none focus:ring-2 focus:ring-foreground"
             >
               <option value="">Select position</option>
               {POSITIONS.map((p) => (
@@ -202,7 +202,7 @@ const EditProfile = () => {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="+233..."
-              className="w-full bg-secondary rounded-2xl px-4 py-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-foreground"
+              className="w-full bg-secondary rounded-xl px-4 py-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-foreground"
             />
           </Field>
 
@@ -212,7 +212,7 @@ const EditProfile = () => {
               onChange={(e) => setBio(e.target.value)}
               placeholder="A little about yourself..."
               rows={3}
-              className="w-full bg-secondary rounded-2xl px-4 py-3 text-sm font-semibold outline-none resize-none focus:ring-2 focus:ring-foreground"
+              className="w-full bg-secondary rounded-xl px-4 py-3 text-sm font-semibold outline-none resize-none focus:ring-2 focus:ring-foreground"
             />
           </Field>
         </div>
@@ -220,7 +220,7 @@ const EditProfile = () => {
         <button
           onClick={save}
           disabled={saving || (usernameAvail === false && username !== (profile?.username ?? ""))}
-          className="w-full h-14 rounded-full bg-foreground text-background text-sm font-bold disabled:opacity-40 active:scale-[0.99]"
+          className="w-full h-14 rounded-lg bg-primary text-primary-foreground text-sm font-bold disabled:opacity-40 active:scale-[0.99]"
         >
           {saving ? "Saving…" : "Save changes"}
         </button>

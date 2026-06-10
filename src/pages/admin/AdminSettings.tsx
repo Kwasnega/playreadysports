@@ -160,7 +160,7 @@ export default function AdminSettings() {
         </p>
       </div>
 
-      <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 space-y-5 max-w-lg">
+      <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-6 space-y-5 max-w-lg">
         {loading ? (
           <div className="h-32 animate-pulse bg-white/5 rounded-xl" />
         ) : (
@@ -196,7 +196,7 @@ export default function AdminSettings() {
         </button>
       </div>
 
-      <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5 max-w-lg text-xs text-slate-400 leading-relaxed">
+      <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5 max-w-lg text-xs text-slate-400 leading-relaxed">
         <p className="font-semibold text-slate-300 mb-2">Escrow release formula</p>
         <p>
           Gross = entry fee times paid core players. Organizer receives the incentive as Play wallet credits.

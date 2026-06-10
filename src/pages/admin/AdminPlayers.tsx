@@ -490,9 +490,9 @@ export default function AdminPlayers() {
           <div className="space-y-6 p-1">
             <div className="flex items-start gap-5">
               {profile.avatar_url ? (
-                <img src={profile.avatar_url} alt="" className="w-20 h-20 rounded-2xl object-cover ring-2 ring-white/10" />
+                <img src={profile.avatar_url} alt="" className="w-20 h-20 rounded-xl object-cover ring-2 ring-white/10" />
               ) : (
-                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-lg font-bold text-slate-300 ring-2 ring-white/10">
+                <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-lg font-bold text-slate-300 ring-2 ring-white/10">
                   {(profile.full_name || profile.username || "?").slice(0, 2).toUpperCase()}
                 </div>
               )}
@@ -818,7 +818,7 @@ export default function AdminPlayers() {
       </div>
 
       {/* Table */}
-      <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.06] rounded-2xl overflow-hidden hover:border-white/[0.12] transition-all">
+      <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.06] rounded-xl overflow-hidden hover:border-white/[0.12] transition-all">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -917,7 +917,7 @@ export default function AdminPlayers() {
       {/* Ban modal */}
       {banModalOpen && banTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setBanModalOpen(false)}>
-          <div className="bg-[#0F172A] border border-white/10 rounded-2xl p-6 w-full max-w-md space-y-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-[#0F172A] border border-white/10 rounded-xl p-6 w-full max-w-md space-y-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div>
               <h2 className="text-lg font-bold text-white">Ban Player</h2>
               <p className="text-sm text-slate-400 mt-1">{banTarget.full_name || banTarget.username}</p>
@@ -953,7 +953,7 @@ export default function AdminPlayers() {
       {/* Deep profile modal */}
       {detailModalOpen && detailPlayer && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 md:p-6" onClick={() => setDetailModalOpen(false)}>
-          <div className="bg-[#0F172A] border border-white/10 rounded-2xl w-full max-w-5xl max-h-[92vh] overflow-hidden flex flex-col shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-[#0F172A] border border-white/10 rounded-xl w-full max-w-5xl max-h-[92vh] overflow-hidden flex flex-col shadow-2xl" onClick={(e) => e.stopPropagation()}>
             {/* Modal header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
               <div className="flex items-center gap-3">

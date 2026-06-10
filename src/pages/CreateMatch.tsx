@@ -329,7 +329,7 @@ const CreateMatch = () => {
                     key={f}
                     onClick={() => setMatchFormat(f)}
                     className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
-                      matchFormat === f ? "bg-foreground text-background" : "bg-secondary"
+                      matchFormat === f ? "bg-primary text-primary-foreground" : "bg-secondary"
                     }`}
                   >
                     {f}
@@ -380,14 +380,14 @@ const CreateMatch = () => {
                     <li key={v.id}>
                       <button
                         onClick={() => setVenueId(v.id)}
-                        className={`w-full flex items-center gap-3 py-4 text-left rounded-2xl px-3 -mx-3 transition-colors ${
+                        className={`w-full flex items-center gap-3 py-4 text-left rounded-xl px-3 -mx-3 transition-colors ${
                           active ? "bg-secondary" : ""
                         }`}
                       >
                         {v.image_urls && v.image_urls.length > 0 ? (
-                          <img src={v.image_urls[0]} alt="" className="w-14 h-14 rounded-xl object-cover border border-border/60 shrink-0" />
+                          <img src={v.image_urls[0]} alt="" className="w-14 h-14 rounded-xl object-cover border border-border shrink-0" />
                         ) : (
-                          <div className="w-14 h-14 rounded-xl bg-muted border border-border/60 flex items-center justify-center shrink-0">
+                          <div className="w-14 h-14 rounded-xl bg-muted border border-border flex items-center justify-center shrink-0">
                             <MapPin className="w-5 h-5 text-muted-foreground" />
                           </div>
                         )}
@@ -431,7 +431,7 @@ const CreateMatch = () => {
                                   key={i}
                                   src={url}
                                   alt={`${v.name} ${i + 1}`}
-                                  className="h-32 w-auto rounded-xl object-cover border border-border/60 snap-start shrink-0"
+                                  className="h-32 w-auto rounded-xl object-cover border border-border snap-start shrink-0"
                                 />
                               ))}
                             </div>
@@ -507,14 +507,14 @@ const CreateMatch = () => {
         {!created && step === 2 && (
           <div className="space-y-5">
             {/* Title */}
-            <div className="bg-card rounded-3xl p-5" style={{ boxShadow: "var(--shadow-card)" }}>
+            <div className="bg-card rounded-xl p-5" style={{ boxShadow: "var(--shadow-card)" }}>
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Match title</p>
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Sunday Kickabout"
                 maxLength={60}
-                className="w-full bg-secondary rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground"
+                className="w-full bg-secondary rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground"
               />
               {errors.title && <p className="text-[11px] text-red-600 font-semibold mt-2">{errors.title}</p>}
             </div>
@@ -531,14 +531,14 @@ const CreateMatch = () => {
             {errors.maxCore && <p className="text-[11px] text-red-600 font-semibold mt-1 px-1">{errors.maxCore}</p>}
 
             {/* Date */}
-            <div className="bg-card rounded-3xl p-5" style={{ boxShadow: "var(--shadow-card)" }}>
+            <div className="bg-card rounded-xl p-5" style={{ boxShadow: "var(--shadow-card)" }}>
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Date</p>
               <input
                 type="date"
                 value={matchDate}
                 min={format(new Date(), "yyyy-MM-dd")}
                 onChange={(e) => setMatchDate(e.target.value)}
-                className="w-full bg-secondary rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground mb-3"
+                className="w-full bg-secondary rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground mb-3"
               />
               <div className="flex gap-2">
                 {[
@@ -552,7 +552,7 @@ const CreateMatch = () => {
                     onClick={() => setMatchDate(btn.get())}
                     className={`flex-1 rounded-xl py-2 text-[11px] font-bold transition-colors ${
                       matchDate === btn.get()
-                        ? "bg-foreground text-background"
+                        ? "bg-primary text-primary-foreground"
                         : "bg-secondary text-muted-foreground hover:bg-secondary/80"
                     }`}
                   >
@@ -563,13 +563,13 @@ const CreateMatch = () => {
             </div>
 
             {/* Time */}
-            <div className="bg-card rounded-3xl p-5" style={{ boxShadow: "var(--shadow-card)" }}>
+            <div className="bg-card rounded-xl p-5" style={{ boxShadow: "var(--shadow-card)" }}>
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Kickoff time</p>
               <div className="flex items-center gap-3">
                 <select
                   value={matchHour}
                   onChange={(e) => setMatchHour(Number(e.target.value))}
-                  className="flex-1 bg-secondary rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground appearance-none"
+                  className="flex-1 bg-secondary rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground appearance-none"
                 >
                   {hours.map((h) => (
                     <option key={h} value={h}>{String(h).padStart(2, "0")}</option>
@@ -579,7 +579,7 @@ const CreateMatch = () => {
                 <select
                   value={matchMinute}
                   onChange={(e) => setMatchMinute(Number(e.target.value))}
-                  className="flex-1 bg-secondary rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground appearance-none"
+                  className="flex-1 bg-secondary rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground appearance-none"
                 >
                   {MINUTES.map((m) => (
                     <option key={m} value={m}>{String(m).padStart(2, "0")}</option>
@@ -607,15 +607,15 @@ const CreateMatch = () => {
             </div>
 
             {/* Duration */}
-            <div className="bg-card rounded-3xl p-5" style={{ boxShadow: "var(--shadow-card)" }}>
+            <div className="bg-card rounded-xl p-5" style={{ boxShadow: "var(--shadow-card)" }}>
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Duration</p>
               <div className="flex gap-2">
                 {DURATIONS.map((d) => (
                   <button
                     key={d}
                     onClick={() => setDuration(d)}
-                    className={`flex-1 rounded-2xl py-2.5 text-sm font-semibold transition-colors ${
-                      duration === d ? "bg-foreground text-background" : "bg-secondary"
+                    className={`flex-1 rounded-xl py-2.5 text-sm font-semibold transition-colors ${
+                      duration === d ? "bg-primary text-primary-foreground" : "bg-secondary"
                     }`}
                   >
                     {d} min
@@ -625,12 +625,12 @@ const CreateMatch = () => {
             </div>
 
             {/* Entry fee */}
-            <div className="bg-card rounded-3xl p-5" style={{ boxShadow: "var(--shadow-card)" }}>
+            <div className="bg-card rounded-xl p-5" style={{ boxShadow: "var(--shadow-card)" }}>
               {/* Always-visible hint when venue has a price but toggle is off */}
               {basePerPlayer > 0 && !entryFeeEnabled && (() => {
                 const playerCount = matchFormat ? parseInt(matchFormat.split("v")[0], 10) * (mode === "gala" ? 8 : 2) : 0;
                 return (
-                  <div className="mb-3 rounded-2xl bg-primary/5 border border-primary/20 px-3 py-2.5">
+                  <div className="mb-3 rounded-xl bg-primary/5 border border-primary/20 px-3 py-2.5">
                     <p className="text-[11px] text-primary font-semibold">
                       💡 This venue costs ₵{(selectedVenue as any).price_per_hour}/hr
                       {playerCount > 0 && <> · suggested <span className="font-bold">₵{basePerPlayer}/player</span> for {playerCount} players</>}
@@ -640,7 +640,7 @@ const CreateMatch = () => {
                 );
               })()}
               {venueCost > 0 && !entryFeeEnabled && (
-                <div className="mb-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 px-3 py-2.5">
+                <div className="mb-3 rounded-xl bg-amber-500/10 border border-amber-500/20 px-3 py-2.5">
                   <p className="text-[11px] text-amber-700 font-semibold">
                     Since this match is free for players, you will pay ₵{venueCost.toFixed(0)} from your wallet to cover the venue booking.
                   </p>
@@ -665,7 +665,7 @@ const CreateMatch = () => {
                 <div className="space-y-2">
                   {basePerPlayer > 0 ? (
                     /* Breakdown card — venue has a price_per_hour */
-                    <div className="rounded-2xl bg-secondary/60 p-3 space-y-2">
+                    <div className="rounded-xl bg-secondary/60 p-3 space-y-2">
                       <p className="text-[11px] font-semibold text-muted-foreground">Venue cost breakdown</p>
                       {(() => {
                         const pricePerHr = Number((selectedVenue as any).price_per_hour) || 0;
@@ -702,7 +702,7 @@ const CreateMatch = () => {
                         </div>
                       </div>
                       {errors.profitAmount && <p className="text-[11px] text-red-600 font-semibold">{errors.profitAmount}</p>}
-                      <div className="border-t border-border/60 pt-2 flex items-center justify-between">
+                      <div className="border-t border-border pt-2 flex items-center justify-between">
                         <span className="text-[11px] font-semibold text-muted-foreground">Players pay</span>
                         <span className="text-base font-bold text-primary">₵{entryFee}/player</span>
                       </div>
@@ -722,7 +722,7 @@ const CreateMatch = () => {
                           const num = Number(val);
                           setEntryFee(isNaN(num) ? 0 : Math.max(0, num));
                         }}
-                        className="flex-1 bg-secondary rounded-2xl px-4 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground"
+                        className="flex-1 bg-secondary rounded-xl px-4 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground"
                         placeholder="0"
                       />
                       <span className="text-sm text-muted-foreground">/player</span>
@@ -747,7 +747,7 @@ const CreateMatch = () => {
             </div>
 
             {/* Notes */}
-            <div className="bg-card rounded-3xl p-5" style={{ boxShadow: "var(--shadow-card)" }}>
+            <div className="bg-card rounded-xl p-5" style={{ boxShadow: "var(--shadow-card)" }}>
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Notes (optional)</p>
               <textarea
                 value={notes}
@@ -755,20 +755,20 @@ const CreateMatch = () => {
                 placeholder="Bring bibs, white tees, etc."
                 rows={3}
                 maxLength={300}
-                className="w-full bg-secondary rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground resize-none"
+                className="w-full bg-secondary rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground resize-none"
               />
               <p className="text-[11px] text-muted-foreground mt-1 text-right">{notes.length}/300</p>
             </div>
 
             {/* HIDDEN — Gala team name: re-enable when gala feature is released */}
             {false && mode === "gala" && (
-              <div className="bg-card rounded-3xl p-5" style={{ boxShadow: "var(--shadow-card)" }}>
+              <div className="bg-card rounded-xl p-5" style={{ boxShadow: "var(--shadow-card)" }}>
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Your team name</p>
                 <input
                   value={teamName}
                   onChange={(e) => setTeamName(e.target.value)}
                   placeholder="e.g. Lightning XI"
-                  className="w-full bg-secondary rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground"
+                  className="w-full bg-secondary rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground"
                 />
                 <p className="text-[11px] text-muted-foreground mt-2 leading-snug">
                   You'll captain this team. Other captains bring their squads to fill the gala.
@@ -777,7 +777,7 @@ const CreateMatch = () => {
             )}
 
             {/* Live summary */}
-            <div className="bg-card rounded-3xl p-5 space-y-2" style={{ boxShadow: "var(--shadow-card)" }}>
+            <div className="bg-card rounded-xl p-5 space-y-2" style={{ boxShadow: "var(--shadow-card)" }}>
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Summary</p>
               <SummaryRow label="Title" value={title || "—"} />
               <SummaryRow label="Sport" value="Football" />
@@ -796,21 +796,21 @@ const CreateMatch = () => {
         {/* ============ CREATED — share screen ============ */}
         {created && (
           <div className="space-y-4">
-            <div className="bg-card rounded-3xl p-6 text-center" style={{ boxShadow: "var(--shadow-card)" }}>
-              <div className="w-14 h-14 rounded-full bg-foreground text-background mx-auto flex items-center justify-center mb-3">
+            <div className="bg-card rounded-xl p-6 text-center" style={{ boxShadow: "var(--shadow-card)" }}>
+              <div className="w-14 h-14 rounded-lg bg-primary text-primary-foreground mx-auto flex items-center justify-center mb-3">
                 <Check className="w-7 h-7" />
               </div>
               <h2 className="font-display font-bold text-3xl tracking-tight mb-1">You're set</h2>
               <p className="text-sm text-muted-foreground mb-5">
                 {type === "private" ? "Share the code with your players." : "Live on the match feed."}
               </p>
-              <div className="tile-cool rounded-2xl p-4 mb-4">
+              <div className="tile-cool rounded-xl p-4 mb-4">
                 <p className="text-[10px] uppercase tracking-widest opacity-70 font-semibold">Match code</p>
                 <p className="font-display font-bold text-3xl tracking-tight mt-1">{createdCode}</p>
               </div>
               <button
                 onClick={() => setShareOpen(true)}
-                className="w-full bg-foreground text-background rounded-full py-3.5 text-sm font-semibold flex items-center justify-center gap-2 mb-3"
+                className="w-full bg-primary text-primary-foreground-lg py-3.5 text-sm font-semibold flex items-center justify-center gap-2 mb-3"
               >
                 <Share2 className="w-4 h-4" /> Share match
               </button>
@@ -858,7 +858,7 @@ const CreateMatch = () => {
             <button
               onClick={next}
               disabled={!canNext() || creating}
-              className="flex-1 inline-flex items-center justify-center gap-2 h-12 rounded-full bg-foreground text-background text-sm font-semibold disabled:opacity-40 active:scale-[0.99]"
+              className="flex-1 inline-flex items-center justify-center gap-2 h-12 rounded-lg bg-[hsl(var(--gold))] text-[hsl(var(--gold-foreground))] text-sm font-semibold disabled:opacity-40 active:scale-[0.99]"
             >
               {creating ? "Creating…" : step === STEP_LABELS.length - 1 ? "Create match" : "Continue"}
               {!creating && <ArrowRight className="w-4 h-4" />}
@@ -910,12 +910,12 @@ const SegmentedTwo = <T extends string>({
         <button
           key={o.id}
           onClick={() => onChange(o.id)}
-          className={`text-left rounded-2xl p-4 transition-all border ${
-            active ? "bg-foreground text-background border-foreground" : "bg-secondary border-transparent"
+          className={`text-left rounded-xl p-4 transition-all border ${
+            active ? "bg-primary text-primary-foreground border-foreground" : "bg-secondary border-transparent"
           }`}
         >
           <span className={`w-9 h-9 rounded-xl inline-flex items-center justify-center mb-2 ${
-            active ? "bg-background/15" : "bg-foreground text-background"
+            active ? "bg-background/15" : "bg-primary text-primary-foreground"
           }`}>
             <o.icon className="w-4 h-4" strokeWidth={2.4} />
           </span>
@@ -930,7 +930,7 @@ const SegmentedTwo = <T extends string>({
 const Counter = ({ label, value, onChange, min, max, help }: {
   label: string; value: number; onChange: (n: number) => void; min: number; max: number; help?: string;
 }) => (
-  <div className="bg-card rounded-3xl p-5" style={{ boxShadow: "var(--shadow-card)" }}>
+  <div className="bg-card rounded-xl p-5" style={{ boxShadow: "var(--shadow-card)" }}>
     <div className="flex items-center justify-between gap-3">
       <div className="flex-1">
         <p className="text-sm font-semibold">{label}</p>

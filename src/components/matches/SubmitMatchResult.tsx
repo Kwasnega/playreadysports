@@ -132,7 +132,7 @@ export function SubmitMatchResult({
   if (matchStatus === "completed" && isParticipant) {
     if (disputeRaised) {
       return (
-        <div className="rounded-3xl border border-border/60 bg-card p-6 text-center space-y-3">
+        <div className="rounded-xl border border-border bg-card p-6 text-center space-y-3">
           <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto">
             <AlertTriangle className="w-6 h-6 text-amber-400" />
           </div>
@@ -146,7 +146,7 @@ export function SubmitMatchResult({
 
     if (!disputeWindowOpen) {
       return (
-        <div className="rounded-3xl border border-border/60 bg-card p-5 text-center space-y-2">
+        <div className="rounded-xl border border-border bg-card p-5 text-center space-y-2">
           <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto" />
           <p className="text-sm text-muted-foreground">Match result finalised. Dispute window closed.</p>
         </div>
@@ -154,7 +154,7 @@ export function SubmitMatchResult({
     }
 
     return (
-      <div className="rounded-3xl border border-border/60 bg-card p-5 space-y-4">
+      <div className="rounded-xl border border-border bg-card p-5 space-y-4">
         <div className="flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 text-amber-400" />
           <h3 className="font-display font-bold text-sm">Challenge Result</h3>
@@ -208,7 +208,7 @@ export function SubmitMatchResult({
 
   if (submitted) {
     return (
-      <div className="rounded-3xl border border-border/60 bg-card p-6 text-center space-y-3">
+      <div className="rounded-xl border border-border bg-card p-6 text-center space-y-3">
         <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto">
           <Trophy className="w-6 h-6 text-emerald-500" />
         </div>
@@ -222,7 +222,7 @@ export function SubmitMatchResult({
   }
 
   return (
-    <div className="rounded-3xl border border-border/60 bg-card p-5 space-y-4">
+    <div className="rounded-xl border border-border bg-card p-5 space-y-4">
       <div className="flex items-center gap-2">
         <Trophy className="w-4 h-4 text-primary" />
         <h3 className="font-display font-bold text-sm">Submit Match Result</h3>
@@ -232,7 +232,7 @@ export function SubmitMatchResult({
         <button
           onClick={() => handleSubmit("reds")}
           disabled={submitting}
-          className="h-12 rounded-xl bg-primary/10 text-primary font-semibold text-sm flex items-center justify-center gap-2 hover:bg-primary/20 transition-colors disabled:opacity-50"
+          className="h-12 rounded-xl bg-primary/8 border border-primary/15 text-primary font-semibold text-sm flex items-center justify-center gap-2 hover:bg-primary/20 transition-colors disabled:opacity-50"
         >
           {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
           {teamAName} Won
@@ -241,7 +241,7 @@ export function SubmitMatchResult({
         <button
           onClick={() => handleSubmit("blues")}
           disabled={submitting}
-          className="h-12 rounded-xl bg-primary/10 text-primary font-semibold text-sm flex items-center justify-center gap-2 hover:bg-primary/20 transition-colors disabled:opacity-50"
+          className="h-12 rounded-xl bg-primary/8 border border-primary/15 text-primary font-semibold text-sm flex items-center justify-center gap-2 hover:bg-primary/20 transition-colors disabled:opacity-50"
         >
           {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
           {teamBName} Won

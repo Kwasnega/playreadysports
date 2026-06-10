@@ -331,7 +331,7 @@ export default function AdminCalendar() {
       </div>
 
       {/* Calendar Grid */}
-      <div className="bg-[#0B1120] border border-white/[0.06] rounded-2xl p-4">
+      <div className="bg-[#0B1120] border border-white/[0.06] rounded-xl p-4">
         {loading ? (
           <div className="h-80 flex items-center justify-center gap-2 text-slate-400 text-sm">
             <Loader2 className="w-5 h-5 animate-spin" /> Loading…
@@ -392,7 +392,7 @@ export default function AdminCalendar() {
 
       {/* Selected Day Detail */}
       {selectedDay && (
-        <div className="mt-6 bg-[#0B1120] border border-white/[0.06] rounded-2xl p-4">
+        <div className="mt-6 bg-[#0B1120] border border-white/[0.06] rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-bold text-white">
               {new Date(selectedDay + "T00:00:00").toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}
@@ -462,7 +462,7 @@ export default function AdminCalendar() {
       {/* Create Match Modal */}
       {createDate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-[#0B1120] border border-white/[0.08] rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div className="bg-[#0B1120] border border-white/[0.08] rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-white">Create Match</h3>
               <button onClick={() => setCreateDate(null)} className="p-1 rounded-lg hover:bg-white/[0.06] text-slate-400"><X className="w-5 h-5" /></button>
@@ -549,7 +549,7 @@ export default function AdminCalendar() {
       {/* Match Detail / Edit Modal */}
       {detailMatch && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-[#0B1120] border border-white/[0.08] rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div className="bg-[#0B1120] border border-white/[0.08] rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-white">Match Details</h3>
               <button onClick={() => setDetailMatch(null)} className="p-1 rounded-lg hover:bg-white/[0.06] text-slate-400"><X className="w-5 h-5" /></button>

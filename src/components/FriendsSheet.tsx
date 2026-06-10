@@ -181,7 +181,7 @@ export const FriendsSheet = ({ trigger }: Props) => {
             >
               {t.label}
               {t.count ? (
-                <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] px-1 rounded-full bg-primary text-primary-foreground text-[8px] font-bold leading-[14px] text-center">
+                <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] px-1 rounded-lg bg-primary text-primary-foreground text-[8px] font-bold leading-[14px] text-center">
                   {t.count}
                 </span>
               ) : null}
@@ -223,7 +223,7 @@ export const FriendsSheet = ({ trigger }: Props) => {
                 <button
                   onClick={() => handleSendRequest(p.id)}
                   disabled={sendingTo === p.id}
-                  className="p-2 rounded-full bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-50"
+                  className="p-2 rounded-full bg-primary/8 border border-primary/15 text-primary hover:bg-primary/20 disabled:opacity-50"
                 >
                   {sendingTo === p.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
                 </button>
@@ -331,7 +331,7 @@ export const FriendsSheet = ({ trigger }: Props) => {
                     <button
                       onClick={() => handleSendRequest(p.id)}
                       disabled={sendingTo === p.id}
-                      className="p-2 rounded-full bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-50"
+                      className="p-2 rounded-full bg-primary/8 border border-primary/15 text-primary hover:bg-primary/20 disabled:opacity-50"
                     >
                       {sendingTo === p.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
                     </button>

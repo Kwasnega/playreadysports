@@ -117,7 +117,7 @@ export default function AdminCreateOwner() {
         </p>
       </div>
 
-      <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 space-y-4">
+      <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-6 space-y-4">
         <input
           placeholder="Email"
           type="email"
@@ -168,7 +168,7 @@ export default function AdminCreateOwner() {
       </div>
 
       {tempPassword && (
-        <div className="bg-amber-500/10 border border-amber-500/25 rounded-2xl p-4">
+        <div className="bg-amber-500/10 border border-amber-500/25 rounded-xl p-4">
           <p className="text-sm font-semibold text-amber-200">Temporary password</p>
           <p className="text-xs text-amber-300/80 mt-1">Share securely with the owner. They should change it after first login.</p>
           <div className="flex items-center gap-2 mt-3">
@@ -199,7 +199,7 @@ export default function AdminCreateOwner() {
         ) : owners.length === 0 ? (
           <p className="text-sm text-slate-500">No turf owners yet.</p>
         ) : (
-          <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl overflow-hidden">
+          <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>

@@ -68,7 +68,7 @@ export const LobbyMatchTab = (props: LobbyMatchTabProps) => {
   return (
     <>
       {/* Countdown */}
-      <div className={`rounded-3xl p-6 text-center ${isLive ? "bg-emerald-500/10" : "tile-cool"}`}>
+      <div className={`rounded-xl p-6 text-center ${isLive ? "bg-emerald-500/10" : "tile-cool"}`}>
         <p className="text-xs uppercase tracking-[0.18em] font-semibold opacity-70">{isLive ? "" : "Kickoff in"}</p>
         <p className={`font-display font-bold text-5xl mt-2 tracking-tight leading-none ${isLive ? "text-emerald-600 animate-pulse" : "animate-kickoff-pulse"}`}>
           {countdownMain}
@@ -77,7 +77,7 @@ export const LobbyMatchTab = (props: LobbyMatchTabProps) => {
       </div>
 
       {/* Match facts */}
-      <div className="bg-card rounded-3xl p-5 space-y-3" style={{ boxShadow: "var(--shadow-card)" }}>
+      <div className="bg-card rounded-xl p-5 space-y-3" style={{ boxShadow: "var(--shadow-card)" }}>
         <FactRow icon={MapPin} label="Venue" value={`${venue?.name ?? "Venue"} · ${venue?.city ?? ""}`} />
         <FactRow icon={Clock} label="Kickoff" value={match ? getFormattedTime(match.match_date) : "—"} />
         <FactRow icon={Users} label="Format" value={`${matchMode === "gala" ? "Gala" : "Two-team"} · ${match?.format ?? "?"}`} />
@@ -87,10 +87,10 @@ export const LobbyMatchTab = (props: LobbyMatchTabProps) => {
 
       {/* Weather forecast */}
       {weather && (
-        <div className={`rounded-2xl p-4 flex items-center justify-between ${
+        <div className={`rounded-xl p-4 flex items-center justify-between ${
           weather.rainChance > 40
             ? "bg-blue-500/[0.07] border border-blue-500/20"
-            : "bg-card border border-border/60"
+            : "bg-card border border-border"
         }`} style={{ boxShadow: "var(--shadow-card)" }}>
           <div className="flex items-center gap-3">
             {weather.icon ? (
@@ -115,7 +115,7 @@ export const LobbyMatchTab = (props: LobbyMatchTabProps) => {
 
       {/* Venue images */}
       {venue?.image_urls && venue.image_urls.length > 0 && (
-        <div className="rounded-3xl overflow-hidden border border-border/60" style={{ boxShadow: "var(--shadow-card)" }}>
+        <div className="rounded-xl overflow-hidden border border-border" style={{ boxShadow: "var(--shadow-card)" }}>
           <div className="relative aspect-[16/9]">
             <img src={venue.image_urls[0]} alt={venue.name} className="w-full h-full object-cover" />
             {venue.image_urls.length > 1 && (
@@ -126,7 +126,7 @@ export const LobbyMatchTab = (props: LobbyMatchTabProps) => {
       )}
 
       {/* Status banner */}
-      <div className={`rounded-3xl p-5 ${allPaid ? "tile-cool" : "tile-cream"}`}>
+      <div className={`rounded-xl p-5 ${allPaid ? "tile-cool" : "tile-cream"}`}>
         <div className="flex items-start gap-3">
           {allPaid ? <Check className="w-5 h-5 shrink-0 mt-0.5" /> : <Clock className="w-5 h-5 shrink-0 mt-0.5" />}
           <div>
@@ -140,7 +140,7 @@ export const LobbyMatchTab = (props: LobbyMatchTabProps) => {
 
       {/* QR check-in */}
       {showCheckIn && userParticipant?.status === "active" && match?.status !== "cancelled" && match?.status !== "completed" && (userParticipant.payment_status === "paid" || (match.entry_fee ?? 0) <= 0) && (
-        <div className="rounded-3xl border border-border/60 bg-card p-5 space-y-3" style={{ boxShadow: "var(--shadow-card)" }}>
+        <div className="rounded-xl border border-border bg-card p-5 space-y-3" style={{ boxShadow: "var(--shadow-card)" }}>
           <div className="flex items-center gap-2">
             <QrCode className="w-4 h-4 text-primary" />
             <h2 className="font-display font-bold text-base tracking-tight">Pitch check-in</h2>
@@ -149,9 +149,9 @@ export const LobbyMatchTab = (props: LobbyMatchTabProps) => {
             <p className="text-sm text-emerald-600 font-medium flex items-center gap-2"><Check className="w-4 h-4" /> You are checked in at the venue.</p>
           ) : scanning ? (
             <div className="space-y-3">
-              <div className="relative aspect-square rounded-2xl overflow-hidden border border-border bg-black">
+              <div className="relative aspect-square rounded-xl overflow-hidden border border-border bg-black">
                 <video className="w-full h-full object-cover" playsInline muted />
-                <div className="absolute inset-0 border-2 border-dashed border-white/30 rounded-2xl m-8" />
+                <div className="absolute inset-0 border-2 border-dashed border-white/30 rounded-xl m-8" />
               </div>
               <p className="text-xs text-muted-foreground text-center">Point camera at the venue QR code</p>
               <button type="button" onClick={stopScan} className="w-full py-2.5 rounded-full bg-secondary text-sm font-semibold">Cancel scan</button>
@@ -159,7 +159,7 @@ export const LobbyMatchTab = (props: LobbyMatchTabProps) => {
           ) : (
             <>
               <p className="text-xs text-muted-foreground leading-relaxed">Tap the camera button to scan the venue QR code and check in.</p>
-              <button type="button" onClick={startScan} disabled={checkInBusy} className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground font-semibold rounded-full px-4 py-3 text-sm disabled:opacity-50">
+              <button type="button" onClick={startScan} disabled={checkInBusy} className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground-lg px-4 py-3 text-sm disabled:opacity-50">
                 <Camera className="w-4 h-4" />{checkInBusy ? "Checking in…" : "Scan QR code"}
               </button>
               <div className="pt-2 border-t border-border/40">
@@ -202,7 +202,7 @@ export const LobbyMatchTab = (props: LobbyMatchTabProps) => {
 
       {/* Winning team picker */}
       {match?.status === "completed" && isOrganizer && matchMode !== "gala" && (
-        <div className="bg-card rounded-3xl p-5 border border-border/60 space-y-3" style={{ boxShadow: "var(--shadow-card)" }}>
+        <div className="bg-card rounded-xl p-5 border border-border space-y-3" style={{ boxShadow: "var(--shadow-card)" }}>
           <div className="flex items-center gap-2">
             <Flag className="w-4 h-4 text-amber-500" />
             <h2 className="font-display font-bold text-base tracking-tight">{match.winning_team ? "Result recorded" : "Record result"}</h2>
@@ -233,7 +233,7 @@ export const LobbyMatchTab = (props: LobbyMatchTabProps) => {
 
       {/* Post-match reviews */}
       {match?.status === "completed" && userParticipant && (
-        <div className="bg-card rounded-3xl p-5 border border-border/60 space-y-4" style={{ boxShadow: "var(--shadow-card)" }}>
+        <div className="bg-card rounded-xl p-5 border border-border space-y-4" style={{ boxShadow: "var(--shadow-card)" }}>
           <div className="flex items-center gap-2">
             <Star className="w-4 h-4 text-amber-500" />
             <h2 className="font-display font-bold text-lg tracking-tight">Rate your teammates</h2>
@@ -273,7 +273,7 @@ export const LobbyMatchTab = (props: LobbyMatchTabProps) => {
                   </button>
                 ))}
               </div>
-              <textarea value={reviewComment} onChange={(e) => setReviewComment(e.target.value)} placeholder="Optional comment..." rows={2} className="w-full bg-secondary rounded-2xl px-4 py-3 text-sm outline-none resize-none" />
+              <textarea value={reviewComment} onChange={(e) => setReviewComment(e.target.value)} placeholder="Optional comment..." rows={2} className="w-full bg-secondary rounded-xl px-4 py-3 text-sm outline-none resize-none" />
               <div className="flex gap-2">
                 <button onClick={() => setReviewTarget(null)} className="flex-1 h-11 rounded-full bg-secondary text-sm font-semibold">Cancel</button>
                 <button onClick={async () => {
@@ -287,7 +287,7 @@ export const LobbyMatchTab = (props: LobbyMatchTabProps) => {
                   } else {
                     toast.error("Already reviewed this player");
                   }
-                }} disabled={reviewRating === 0 || reviewing} className="flex-1 h-11 rounded-full bg-foreground text-background text-sm font-semibold disabled:opacity-40">{reviewing ? "Submitting…" : "Submit"}</button>
+                }} disabled={reviewRating === 0 || reviewing} className="flex-1 h-11 rounded-lg bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40">{reviewing ? "Submitting…" : "Submit"}</button>
               </div>
             </div>
           )}

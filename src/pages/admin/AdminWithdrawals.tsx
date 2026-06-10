@@ -332,7 +332,7 @@ export default function AdminWithdrawals() {
               <RefreshCw className={`w-3.5 h-3.5 ${venueLoading ? "animate-spin" : ""}`} /> Refresh
             </button>
           </div>
-          <div className="bg-[#0B1120] border border-white/[0.06] rounded-2xl overflow-hidden">
+          <div className="bg-[#0B1120] border border-white/[0.06] rounded-xl overflow-hidden">
             {venueLoading ? (
               <div className="p-10 flex flex-col items-center gap-3">
                 <Loader2 className="w-6 h-6 text-emerald-400 animate-spin" />
@@ -452,7 +452,7 @@ export default function AdminWithdrawals() {
       </div>
 
       {/* Table */}
-      <div className="bg-[#0B1120] border border-white/[0.06] rounded-2xl overflow-hidden">
+      <div className="bg-[#0B1120] border border-white/[0.06] rounded-xl overflow-hidden">
         {loading ? (
           <div className="p-10 flex flex-col items-center gap-3">
             <Loader2 className="w-6 h-6 text-emerald-400 animate-spin" />

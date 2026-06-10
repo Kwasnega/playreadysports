@@ -26,7 +26,7 @@ const WalletPage = () => {
         </p>
         <button
           onClick={() => openAuth("signin")}
-          className="bg-foreground text-background font-bold rounded-full px-6 py-3 transition-transform active:scale-95"
+          className="bg-primary text-primary-foreground-lg px-6 py-3 transition-transform active:scale-95"
         >
           Sign in
         </button>
@@ -51,7 +51,7 @@ const WalletPage = () => {
 
   return (
     <main className="min-h-screen bg-background pb-10">
-      <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b border-border/60">
+      <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b border-border">
         <div className="max-w-[680px] mx-auto px-5 h-14 flex items-center gap-3">
           <button onClick={() => nav(-1)} className="p-2 -ml-2 rounded-full hover:bg-secondary" aria-label="Back">
             <ArrowLeft className="w-5 h-5" />
@@ -62,7 +62,7 @@ const WalletPage = () => {
 
       <div className="max-w-[680px] mx-auto px-5 pt-6 space-y-8">
         {/* Balance Card */}
-        <div className="bg-foreground text-background rounded-3xl p-6 relative overflow-hidden shadow-2xl">
+        <div className="bg-primary text-primary-foreground rounded-xl p-6 relative overflow-hidden shadow-2xl">
           <div className="absolute -right-6 -top-6 w-32 h-32 bg-background/10 rounded-full blur-2xl pointer-events-none" />
           
           <div className="flex items-center gap-2 text-background/80 mb-2">
@@ -87,10 +87,10 @@ const WalletPage = () => {
                 <button
                   key={amt}
                   onClick={() => { setSelectedAmount(amt); setCustomAmount(""); }}
-                  className={`py-3 rounded-2xl font-bold transition-all ${
+                  className={`py-3 rounded-xl font-bold transition-all ${
                     selectedAmount === amt
-                      ? "bg-foreground text-background ring-2 ring-foreground ring-offset-2 ring-offset-background"
-                      : "bg-secondary text-foreground hover:bg-secondary/80"
+                      ? "bg-primary text-primary-foreground ring-2 ring-foreground ring-offset-2 ring-offset-background"
+                      : "bg-[hsl(var(--gold))] text-[hsl(var(--gold-foreground))] hover:opacity-90"
                   }`}
                 >
                   ₵{amt}
@@ -107,7 +107,7 @@ const WalletPage = () => {
                   value={customAmount}
                   onChange={(e) => { setCustomAmount(e.target.value); setSelectedAmount(null); }}
                   placeholder="Custom amount (Min ₵10)"
-                  className="w-full bg-secondary rounded-2xl py-3 pl-8 pr-4 font-bold outline-none focus:ring-2 focus:ring-foreground focus:ring-offset-2 focus:ring-offset-background transition-all"
+                  className="w-full bg-secondary rounded-xl py-3 pl-8 pr-4 font-bold outline-none focus:ring-2 focus:ring-foreground focus:ring-offset-2 focus:ring-offset-background transition-all"
                 />
               </div>
             </div>
@@ -115,7 +115,7 @@ const WalletPage = () => {
             <button
               onClick={handleTopUp}
               disabled={!isAmountValid || toppingUp}
-              className="w-full h-14 bg-foreground text-background rounded-full font-bold flex items-center justify-center gap-2 disabled:opacity-50 transition-all active:scale-[0.98]"
+              className="w-full h-14 bg-primary text-primary-foreground-lg font-bold flex items-center justify-center gap-2 disabled:opacity-50 transition-all active:scale-[0.98]"
             >
               {toppingUp ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
               {toppingUp ? "Processing..." : `Top Up ${isAmountValid ? '₵' + (selectedAmount || customAmount) : ''}`}
@@ -141,7 +141,7 @@ const WalletPage = () => {
               ))}
             </div>
           ) : transactions.length === 0 ? (
-            <div className="text-center py-10 border border-dashed border-border/60 rounded-3xl">
+            <div className="text-center py-10 border border-dashed border-border rounded-xl">
               <p className="text-muted-foreground text-sm">No transactions yet.</p>
             </div>
           ) : (

@@ -169,7 +169,7 @@ export default function AdminVenues() {
       </div>
 
       {pendingVenues.length > 0 && (
-        <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-5 space-y-4">
+        <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-5 space-y-4">
           <h2 className="text-sm font-semibold text-amber-300">Pending venue submissions ({pendingVenues.length})</h2>
           <ul className="space-y-3">
             {pendingVenues.map((v) => (
@@ -209,7 +209,7 @@ export default function AdminVenues() {
 
       {rejectingId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setRejectingId(null)}>
-          <div className="bg-[#0F172A] border border-white/10 rounded-2xl p-6 w-full max-w-md space-y-4" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-[#0F172A] border border-white/10 rounded-xl p-6 w-full max-w-md space-y-4" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-white">Reject venue</h3>
             <textarea
               placeholder="Reason (optional)"
@@ -231,7 +231,7 @@ export default function AdminVenues() {
         </div>
       )}
 
-      <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.06] rounded-2xl overflow-hidden hover:border-white/[0.12] transition-all">
+      <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.06] rounded-xl overflow-hidden hover:border-white/[0.12] transition-all">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -310,7 +310,7 @@ export default function AdminVenues() {
       {/* Add venue modal */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => { setModalOpen(false); setPreviewImages([]); }}>
-          <div className="bg-[#0F172A] border border-white/10 rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-[#0F172A] border border-white/10 rounded-xl p-6 w-full max-w-md space-y-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div>
               <h2 className="text-lg font-bold text-white">Add Venue</h2>
               <p className="text-sm text-slate-400 mt-1">Create a new pitch or venue</p>
@@ -393,7 +393,7 @@ export default function AdminVenues() {
       {/* Edit venue images modal */}
       {editVenue && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setEditVenue(null)}>
-          <div className="bg-[#0F172A] border border-white/10 rounded-2xl p-6 w-full max-w-lg shadow-2xl max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-[#0F172A] border border-white/10 rounded-xl p-6 w-full max-w-lg shadow-2xl max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 className="text-lg font-bold text-white">{editVenue.name}</h2>

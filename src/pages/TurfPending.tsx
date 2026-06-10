@@ -31,8 +31,8 @@ const TurfPending = () => {
       </header>
 
       <div className="max-w-[680px] mx-auto px-5 pt-6 space-y-5">
-        <section className="rounded-3xl tile-ink p-7 text-center">
-          <div className="w-14 h-14 mx-auto rounded-2xl bg-background/15 flex items-center justify-center">
+        <section className="rounded-xl tile-ink p-7 text-center">
+          <div className="w-14 h-14 mx-auto rounded-xl bg-background/15 flex items-center justify-center">
             <ShieldCheck className="w-7 h-7" strokeWidth={2.2} />
           </div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] opacity-80 mt-5">
@@ -52,13 +52,13 @@ const TurfPending = () => {
         </section>
 
         {pending.length > 0 && (
-          <section className="bg-card rounded-3xl p-5" style={{ boxShadow: "var(--shadow-card)" }}>
+          <section className="bg-card rounded-xl p-5" style={{ boxShadow: "var(--shadow-card)" }}>
             <h3 className="font-display font-bold text-base tracking-tight inline-flex items-center gap-2">
               <Clock className="w-4 h-4 text-warning" /> Pending review
             </h3>
             <ul className="mt-3 space-y-2">
               {pending.map(t => (
-                <li key={t.id} className="flex items-start gap-3 rounded-2xl bg-secondary p-3">
+                <li key={t.id} className="flex items-start gap-3 rounded-xl bg-secondary p-3">
                   <MapPin className="w-4 h-4 mt-0.5 shrink-0 text-muted-foreground" />
                   <div className="min-w-0">
                     <p className="font-semibold text-sm truncate">{t.name}</p>
@@ -71,7 +71,7 @@ const TurfPending = () => {
         )}
 
         {rejected.length > 0 && (
-          <section className="rounded-3xl bg-destructive/10 p-4 text-xs text-foreground">
+          <section className="rounded-xl bg-destructive/10 p-4 text-xs text-foreground">
             <p className="font-semibold">{rejected.length} submission{rejected.length > 1 ? "s" : ""} couldn't be verified.</p>
             <p className="text-muted-foreground mt-0.5">Please double-check the details and try again.</p>
           </section>
@@ -79,7 +79,7 @@ const TurfPending = () => {
 
         <Link
           to="/turf/register"
-          className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-2xl bg-foreground text-background font-display font-bold tracking-tight"
+          className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-xl bg-primary text-primary-foreground font-display font-bold tracking-tight"
         >
           <Plus className="w-4 h-4" /> Register another astroturf
         </Link>

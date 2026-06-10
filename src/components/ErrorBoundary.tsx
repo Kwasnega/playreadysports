@@ -34,7 +34,7 @@ export class ErrorBoundary extends Component<Props, State> {
       if (this.props.fallback) return this.props.fallback;
       return (
         <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-5 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-red-500/10 flex items-center justify-center">
+          <div className="w-14 h-14 rounded-xl bg-red-500/10 flex items-center justify-center">
             <AlertTriangle className="w-7 h-7 text-red-400" />
           </div>
           <h1 className="font-bold text-xl">Something went wrong</h1>
@@ -49,7 +49,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <div className="flex gap-3 mt-2">
             <button
               onClick={this.handleRetry}
-              className="px-5 py-2.5 bg-foreground text-background rounded-full text-sm font-bold hover:opacity-90 transition-all"
+              className="px-5 py-2.5 bg-primary text-primary-foreground-lg text-sm font-bold hover:opacity-90 transition-all"
             >
               Try again
             </button>

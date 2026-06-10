@@ -61,7 +61,7 @@ const Nav = () => {
           <ThemeToggle />
           <NotificationsBell />
           {user && (
-            <Link to="/wallet" className="ml-1 inline-flex items-center gap-1.5 bg-secondary text-foreground rounded-full px-2.5 py-1.5 text-xs font-semibold hover:bg-secondary/80">
+            <Link to="/wallet" className="ml-1 inline-flex items-center gap-1.5 bg-[hsl(var(--gold))] text-[hsl(var(--gold-foreground))] rounded-full px-2.5 py-1.5 text-xs font-semibold hover:opacity-90">
               <Wallet className="w-3.5 h-3.5" />
               <span>₵{balance.toFixed(2)}</span>
             </Link>
@@ -83,7 +83,7 @@ const Nav = () => {
           ) : (
             <button
               onClick={() => openAuth("signin")}
-              className="ml-1 inline-flex items-center gap-1.5 bg-foreground text-background rounded-full px-3.5 py-1.5 text-xs font-semibold"
+              className="ml-1 inline-flex items-center gap-1.5 bg-[hsl(var(--gold))] text-[hsl(var(--gold-foreground))]-lg px-3.5 py-1.5 text-xs font-semibold"
             >
               <LogIn className="w-3.5 h-3.5" /> Sign in
             </button>
@@ -108,9 +108,9 @@ const Hero = ({ liveCount }: { liveCount: number }) => {
         </h1>
         <a
           href="#near-you"
-          className="inline-flex items-center gap-2 mt-4 bg-primary/10 text-primary rounded-full pl-2.5 pr-3.5 py-1.5 text-[12px] font-semibold hover:bg-primary/15 transition-colors"
+          className="inline-flex items-center gap-2 mt-4 bg-primary/8 border border-primary/15 text-primary rounded-full pl-2.5 pr-3.5 py-1.5 text-[12px] font-semibold hover:bg-primary/15 transition-colors"
         >
-          <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground inline-flex items-center justify-center">
+          <span className="w-5 h-5 rounded-lg bg-primary text-primary-foreground inline-flex items-center justify-center">
             <Zap className="w-3 h-3" strokeWidth={2.6} />
           </span>
           {liveCount > 0
@@ -137,10 +137,10 @@ const QuickActions = () => {
         <div className="grid grid-cols-2 gap-3">
           <button
             onClick={goJoin}
-            className="group relative text-left rounded-2xl bg-secondary hover:bg-secondary/80 transition-all active:scale-[0.99] p-5 min-h-[124px] overflow-hidden"
+            className="group relative text-left rounded-xl bg-secondary hover:bg-secondary/80 transition-all active:scale-[0.99] p-5 min-h-[124px] overflow-hidden"
           >
             <div className="flex items-center gap-3">
-              <span className="w-11 h-11 rounded-xl bg-foreground text-background inline-flex items-center justify-center">
+              <span className="w-11 h-11 rounded-xl bg-primary text-primary-foreground inline-flex items-center justify-center">
                 <UserPlus className="w-5 h-5" strokeWidth={2.4} />
               </span>
               <span className="font-display font-bold text-base">Join match</span>
@@ -151,7 +151,7 @@ const QuickActions = () => {
           </button>
           <button
             onClick={goCreate}
-            className="group relative text-left rounded-2xl bg-foreground text-background hover:bg-foreground/90 transition-all active:scale-[0.99] p-5 min-h-[124px] overflow-hidden"
+            className="group relative text-left rounded-xl bg-primary text-primary-foreground hover:bg-foreground/90 transition-all active:scale-[0.99] p-5 min-h-[124px] overflow-hidden"
           >
             <div className="flex items-center gap-3">
               <span className="w-11 h-11 rounded-xl bg-background/15 inline-flex items-center justify-center">
@@ -166,15 +166,15 @@ const QuickActions = () => {
         </div>
         <button
           onClick={goCode}
-          className="w-full inline-flex items-center justify-between gap-2 h-12 rounded-2xl bg-primary/10 hover:bg-primary/15 transition-colors px-4 active:scale-[0.99]"
+          className="w-full inline-flex items-center justify-between gap-2 h-12 rounded-xl bg-primary/10 hover:bg-primary/15 transition-colors px-4 active:scale-[0.99]"
         >
           <span className="inline-flex items-center gap-2.5">
-            <span className="w-7 h-7 rounded-lg bg-primary text-primary-foreground inline-flex items-center justify-center">
+            <span className="w-7 h-7 rounded-lg bg-[hsl(var(--gold))] text-[hsl(var(--gold-foreground))] inline-flex items-center justify-center">
               <KeyRound className="w-3.5 h-3.5" strokeWidth={2.6} />
             </span>
             <span className="text-sm font-semibold text-foreground">Have a code?</span>
           </span>
-          <span className="text-[11px] font-semibold text-primary">Enter →</span>
+          <span className="text-[11px] font-semibold bg-[hsl(var(--gold))] text-[hsl(var(--gold-foreground))] rounded-full px-2 py-0.5">Enter →</span>
         </button>
       </div>
     </section>
@@ -209,7 +209,7 @@ const MobileTabs = () => {
               <Users className="w-5 h-5" />
               <span className="text-[10px] font-semibold">Friends</span>
               {pendingRequests.length > 0 && (
-                <span className="absolute -top-1.5 right-2 min-w-[16px] h-[16px] px-1 rounded-full bg-primary text-primary-foreground text-[8px] font-bold leading-[16px] text-center">
+                <span className="absolute -top-1.5 right-2 min-w-[16px] h-[16px] px-1 rounded-lg bg-primary text-primary-foreground text-[8px] font-bold leading-[16px] text-center">
                   {pendingRequests.length > 9 ? "9+" : pendingRequests.length}
                 </span>
               )}
@@ -303,7 +303,7 @@ function transformMatches(
 const LiveStatsBar = ({ matches, players }: { matches: number; players: number }) => (
   <section className="px-5 pt-3 pb-1">
     <div className="max-w-[680px] mx-auto">
-      <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3.5 py-1.5 text-xs font-semibold text-primary">
+      <div className="inline-flex items-center gap-2 rounded-full bg-primary/8 border border-primary/15 px-3.5 py-1.5 text-xs font-semibold text-primary">
         <span>⚽</span>
         <span>
           {matches} match{matches === 1 ? "" : "es"} tonight · {players} player{players === 1 ? "" : "s"} online
@@ -331,7 +331,7 @@ const RecommendationsRail = ({ recommendations, loading }: { recommendations: an
             <button
               key={m.id}
               onClick={() => navigate(`/lobby/${m.join_code}`)}
-              className="flex-shrink-0 w-[260px] bg-card rounded-2xl border border-border/60 p-4 text-left hover:border-primary/40 transition-all"
+              className="flex-shrink-0 w-[260px] bg-card rounded-xl border border-border p-4 text-left hover:border-primary/30 transition-all"
               style={{ boxShadow: "var(--shadow-card)" }}
             >
               <div className="flex items-center justify-between mb-2">

@@ -114,7 +114,7 @@ export default function AdminReports() {
         ))}
       </div>
 
-      <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.06] rounded-2xl overflow-hidden hover:border-white/[0.12] transition-all">
+      <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.06] rounded-xl overflow-hidden hover:border-white/[0.12] transition-all">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>

@@ -104,7 +104,7 @@ function NomineeRow({
         "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition-all",
         selected
           ? "border-primary bg-primary/5"
-          : "border-border/60 bg-card hover:bg-secondary/50",
+          : "border-border bg-card hover:bg-secondary/50",
         disabled && "opacity-50 cursor-not-allowed"
       )}
     >
@@ -311,7 +311,7 @@ export function MatchVotingModal({
   if (checkingVoted) {
     return (
       <Dialog open={isOpen} onOpenChange={(o) => !o && handleClose()}>
-        <DialogContent className="max-w-md rounded-3xl p-6">
+        <DialogContent className="max-w-md rounded-xl p-6">
           <DialogTitle className="sr-only">Loading voting data</DialogTitle>
           <div className="flex items-center justify-center py-10">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -325,7 +325,7 @@ export function MatchVotingModal({
   if (isExpired) {
     return (
       <Dialog open={isOpen} onOpenChange={(o) => !o && handleClose()}>
-        <DialogContent className="max-w-md rounded-3xl p-0 overflow-hidden">
+        <DialogContent className="max-w-md rounded-xl p-0 overflow-hidden">
           <DialogTitle className="sr-only">Voting closed</DialogTitle>
           <div className="p-8 text-center space-y-4">
             <div className="w-14 h-14 rounded-full bg-secondary flex items-center justify-center mx-auto">
@@ -337,7 +337,7 @@ export function MatchVotingModal({
             </div>
             <button
               onClick={handleClose}
-              className="w-full h-11 rounded-full bg-foreground text-background text-sm font-bold"
+              className="w-full h-11 rounded-lg bg-primary text-primary-foreground text-sm font-bold"
             >
               Close
             </button>
@@ -351,7 +351,7 @@ export function MatchVotingModal({
   if (alreadyVoted) {
     return (
       <Dialog open={isOpen} onOpenChange={(o) => !o && handleClose()}>
-        <DialogContent className="max-w-md rounded-3xl p-0 overflow-hidden">
+        <DialogContent className="max-w-md rounded-xl p-0 overflow-hidden">
           <DialogTitle className="sr-only">Already voted</DialogTitle>
           <div className="p-8 text-center space-y-4">
             <div className="w-14 h-14 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto">
@@ -365,7 +365,7 @@ export function MatchVotingModal({
             </div>
             <button
               onClick={handleClose}
-              className="w-full h-11 rounded-full bg-foreground text-background text-sm font-bold"
+              className="w-full h-11 rounded-lg bg-primary text-primary-foreground text-sm font-bold"
             >
               Close
             </button>
@@ -379,7 +379,7 @@ export function MatchVotingModal({
   if (submitted) {
     return (
       <Dialog open={isOpen} onOpenChange={(o) => !o && handleClose()}>
-        <DialogContent className="max-w-md rounded-3xl p-0 overflow-hidden">
+        <DialogContent className="max-w-md rounded-xl p-0 overflow-hidden">
           <DialogTitle className="sr-only">Votes submitted</DialogTitle>
           <div className="p-8 text-center space-y-4">
             <div className="w-14 h-14 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto">
@@ -393,7 +393,7 @@ export function MatchVotingModal({
             </div>
             <button
               onClick={handleClose}
-              className="w-full h-11 rounded-full bg-foreground text-background text-sm font-bold"
+              className="w-full h-11 rounded-lg bg-primary text-primary-foreground text-sm font-bold"
             >
               Close
             </button>
@@ -406,7 +406,7 @@ export function MatchVotingModal({
   /* ---- voting form ---- */
   return (
     <Dialog open={isOpen} onOpenChange={(o) => !o && handleClose()}>
-      <DialogContent className="max-w-lg rounded-3xl p-0 overflow-hidden max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-lg rounded-xl p-0 overflow-hidden max-h-[90vh] overflow-y-auto">
         <DialogHeader className="px-6 pt-6 pb-2">
           <div className="flex items-center justify-between">
             <DialogTitle className="font-display font-bold text-xl tracking-tight">
@@ -455,7 +455,7 @@ export function MatchVotingModal({
             className={cn(
               "w-full h-12 rounded-full text-sm font-bold inline-flex items-center justify-center gap-2 transition-all",
               canSubmit
-                ? "bg-foreground text-background hover:opacity-90 active:scale-[0.99]"
+                ? "bg-primary text-primary-foreground hover:opacity-90 active:scale-[0.99]"
                 : "bg-secondary text-muted-foreground cursor-not-allowed"
             )}
           >

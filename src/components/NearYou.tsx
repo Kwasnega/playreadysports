@@ -129,9 +129,9 @@ export const NearYou = ({
 
   // Skeleton card that matches the real card shape
   const SkeletonCard = () => (
-    <div className="bg-card rounded-2xl px-4 py-4 border border-border/60 animate-pulse">
+    <div className="bg-card rounded-xl px-4 py-4 border border-border animate-pulse">
       <div className="flex items-center gap-3">
-        <div className="shrink-0 w-[68px] border-r border-border/60 pr-3 space-y-2">
+        <div className="shrink-0 w-[68px] border-r border-border pr-3 space-y-2">
           <div className="h-3 bg-secondary rounded w-10" />
           <div className="h-7 bg-secondary rounded w-12" />
         </div>
@@ -176,16 +176,15 @@ export const NearYou = ({
             ))}
           </ul>
         ) : filtered.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border/70 py-10 px-5 text-center space-y-3">
+          <div className="rounded-xl border border-dashed border-border/70 py-10 px-5 text-center space-y-3">
             <Sparkles className="w-5 h-5 text-muted-foreground mx-auto" />
             <p className="text-sm text-muted-foreground">
               Nothing nearby right now. Be first — create a match.
             </p>
             <Link
               to="/create"
-              className="inline-flex items-center justify-center gap-2 bg-foreground text-background rounded-full px-5 py-2.5 text-sm font-semibold hover:bg-foreground/90 transition-colors"
-            >
-              Create match
+              className="inline-flex items-center justify-center gap-2 bg-[hsl(var(--gold))] text-[hsl(var(--gold-foreground))]-lg px-5 py-2.5 text-sm font-semibold hover:bg-foreground/90 transition-colors"
+            >Create match
             </Link>
           </div>
         ) : (
@@ -203,7 +202,7 @@ export const NearYou = ({
         {variant === "curated" && !isLoading && filtered.length > 0 && (
           <Link
             to="/join"
-            className="mt-4 w-full inline-flex items-center justify-center gap-2 h-12 rounded-2xl bg-secondary hover:bg-secondary/80 text-sm font-semibold transition-colors active:scale-[0.99]"
+            className="mt-4 w-full inline-flex items-center justify-center gap-2 h-12 rounded-xl bg-secondary hover:bg-secondary/80 text-sm font-semibold transition-colors active:scale-[0.99]"
           >
             Browse all matches
             <ArrowRight className="w-4 h-4" />
@@ -225,8 +224,8 @@ const splitTime = (t: string): { when: string; time: string } => {
 
 const Chip = ({ children, tone = "default" }: { children: React.ReactNode; tone?: "default" | "warn" | "live" }) => {
   const cls =
-    tone === "warn" ? "bg-warn/15 text-warn"
-    : tone === "live" ? "bg-live/15 text-live"
+    tone === "warn" ? "bg-warning/15 text-warning border border-warning/25"
+    : tone === "live" ? "bg-destructive/12 text-destructive border border-destructive/25"
     : "bg-secondary text-foreground/75";
   return (
     <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-semibold ${cls}`}>
@@ -236,10 +235,10 @@ const Chip = ({ children, tone = "default" }: { children: React.ReactNode; tone?
 };
 
 const TimeBlock = ({ when, time, accent }: { when: string; time: string; accent?: "warn" | "live" | null }) => (
-  <div className="shrink-0 w-[68px] text-left border-r border-border/60 pr-3">
+  <div className="shrink-0 w-[68px] text-left border-r border-border pr-3">
     {when && <p className="text-xs font-semibold text-muted-foreground tracking-tight">{when}</p>}
     <p className={`font-display font-extrabold text-[26px] leading-[1.05] tabular-nums tracking-tight mt-0.5 ${
-      accent === "live" ? "text-live" : accent === "warn" ? "text-warn" : "text-foreground"
+      accent === "live" ? "text-live" : accent === "warn" ? "text-warn" : "text-primary"
     }`}>
       {time}
     </p>
@@ -252,7 +251,7 @@ const RowShell = ({
   return (
     <Link
       to={to}
-      className="relative block bg-card rounded-2xl px-4 py-4 border border-border/60 transition-all duration-200 hover:-translate-y-0.5 hover:border-border hover:shadow-lg active:scale-[0.99]"
+      className="relative block bg-card rounded-xl px-4 py-4 border border-border transition-all duration-200 hover:-translate-y-0.5 hover:border-border hover:shadow-lg active:scale-[0.99]"
     >
       {children}
     </Link>
@@ -262,7 +261,7 @@ const RowShell = ({
 const JoinCTA = ({ label = "Join", onClick }: { label?: string; onClick?: (e: React.MouseEvent) => void }) => (
   <button
     onClick={onClick}
-    className="shrink-0 inline-flex items-center gap-1 bg-foreground text-background rounded-full pl-4 pr-3 h-10 text-sm font-bold transition-all hover:bg-foreground/90 active:scale-95"
+    className="shrink-0 inline-flex items-center gap-1 bg-primary text-primary-foreground-lg pl-4 pr-3 h-10 text-sm font-bold transition-all hover:bg-foreground/90 active:scale-95"
   >
     {label}
     <ArrowRight className="w-4 h-4" strokeWidth={2.4} />
@@ -300,7 +299,7 @@ const FriendAvatarStack = ({ count, avatars }: { count?: number; avatars?: strin
 const ManageCTA = ({ onClick }: { onClick?: (e: React.MouseEvent) => void }) => (
   <button
     onClick={onClick}
-    className="shrink-0 inline-flex items-center gap-1 bg-emerald-600 text-white rounded-full pl-4 pr-3 h-10 text-sm font-bold transition-all hover:bg-emerald-700 active:scale-95"
+    className="shrink-0 inline-flex items-center gap-1 bg-[hsl(var(--gold))] text-[hsl(var(--gold-foreground))] text-white rounded-full pl-4 pr-3 h-10 text-sm font-bold transition-all hover:bg-emerald-700 active:scale-95"
   >
     Manage
     <ArrowRight className="w-4 h-4" strokeWidth={2.4} />
@@ -308,7 +307,7 @@ const ManageCTA = ({ onClick }: { onClick?: (e: React.MouseEvent) => void }) => 
 );
 
 const JoinedCTA = () => (
-  <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full pl-3 pr-3 h-10 text-sm font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+  <span className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-primary/10 text-primary border border-primary/20 dark:bg-emerald-900/30 dark:text-emerald-400">
     <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
     Joined
   </span>
@@ -405,7 +404,7 @@ const TwoTeamRow = ({ s }: { s: TwoTeamOpening }) => {
 const LiveRow = ({ s }: { s: LiveScore }) => (
   <RowShell to={`#`} accent="live">
     <div className="flex items-center gap-3">
-      <div className="shrink-0 w-[68px] border-r border-border/60 pr-3 text-left">
+      <div className="shrink-0 w-[68px] border-r border-border pr-3 text-left">
         <p className="text-xs font-semibold text-live tracking-tight inline-flex items-center gap-1">
           <Radio className="w-3 h-3 animate-pulse" /> {s.minute}
         </p>

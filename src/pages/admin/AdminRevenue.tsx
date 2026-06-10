@@ -127,25 +127,25 @@ export default function AdminRevenue() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-[#0B1120] border border-white/[0.06] rounded-2xl p-4">
+        <div className="bg-[#0B1120] border border-white/[0.06] rounded-xl p-4">
           <div className="flex items-center gap-2 text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
             <Wallet className="w-3.5 h-3.5" /> Gross Revenue
           </div>
           <p className="text-2xl font-display font-bold text-white">₵{totals.gross.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
         </div>
-        <div className="bg-[#0B1120] border border-white/[0.06] rounded-2xl p-4">
+        <div className="bg-[#0B1120] border border-white/[0.06] rounded-xl p-4">
           <div className="flex items-center gap-2 text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
             <PiggyBank className="w-3.5 h-3.5" /> Refunds (cancelled)
           </div>
           <p className="text-2xl font-display font-bold text-red-400">₵{totals.refunds.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
         </div>
-        <div className="bg-[#0B1120] border border-white/[0.06] rounded-2xl p-4">
+        <div className="bg-[#0B1120] border border-white/[0.06] rounded-xl p-4">
           <div className="flex items-center gap-2 text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
             <BarChart3 className="w-3.5 h-3.5" /> Net Revenue
           </div>
           <p className="text-2xl font-display font-bold text-emerald-400">₵{totals.net.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
         </div>
-        <div className="bg-[#0B1120] border border-white/[0.06] rounded-2xl p-4">
+        <div className="bg-[#0B1120] border border-white/[0.06] rounded-xl p-4">
           <div className="flex items-center gap-2 text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
             {totals.trend >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
             Trend
@@ -157,7 +157,7 @@ export default function AdminRevenue() {
       </div>
 
       {/* Chart */}
-      <div className="bg-[#0B1120] border border-white/[0.06] rounded-2xl p-5">
+      <div className="bg-[#0B1120] border border-white/[0.06] rounded-xl p-5">
         <h3 className="text-sm font-bold text-white mb-4">Daily Net Revenue</h3>
         {loading ? (
           <div className="h-64 flex items-center justify-center gap-2 text-slate-400 text-sm">

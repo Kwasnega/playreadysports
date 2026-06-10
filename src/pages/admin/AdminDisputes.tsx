@@ -147,7 +147,7 @@ export default function AdminDisputes() {
       </div>
 
       {/* Table */}
-      <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.06] rounded-2xl overflow-hidden">
+      <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.06] rounded-xl overflow-hidden">
         {loading ? (
           <div className="py-16 flex items-center justify-center">
             <div className="w-6 h-6 border-2 border-white/10 border-t-emerald-400 rounded-full animate-spin" />
@@ -253,7 +253,7 @@ export default function AdminDisputes() {
           onClick={() => setNoteModal(null)}
         >
           <div
-            className="bg-[#0F172A] border border-white/10 rounded-2xl p-6 w-full max-w-sm shadow-2xl"
+            className="bg-[#0F172A] border border-white/10 rounded-xl p-6 w-full max-w-sm shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-lg font-bold text-white mb-1 capitalize">{noteModal.action} dispute</h2>
@@ -282,7 +282,7 @@ export default function AdminDisputes() {
                 disabled={processing[noteModal.id]}
                 className={`flex-1 py-2.5 rounded-xl text-white text-sm font-semibold transition-all disabled:opacity-50 ${
                   noteModal.action === "resolved"
-                    ? "bg-emerald-600 hover:bg-emerald-500"
+                    ? "bg-[hsl(var(--gold))] text-[hsl(var(--gold-foreground))] hover:bg-emerald-500"
                     : "bg-slate-600 hover:bg-slate-500"
                 }`}
               >

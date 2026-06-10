@@ -26,7 +26,7 @@ export function PaymentModal({ open, matchName, matchCode, entryFee, walletBalan
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="bg-card w-full max-w-[420px] sm:rounded-3xl rounded-t-3xl p-6 space-y-5 border border-border/60"
+        className="bg-card w-full max-w-[420px] sm:rounded-xl rounded-t-3xl p-6 space-y-5 border border-border"
         onClick={(e) => e.stopPropagation()}
         style={{ boxShadow: "var(--shadow-card)" }}
       >
@@ -42,7 +42,7 @@ export function PaymentModal({ open, matchName, matchCode, entryFee, walletBalan
         </div>
 
         {/* Match details */}
-        <div className="bg-secondary/40 rounded-2xl p-4 space-y-2">
+        <div className="bg-secondary/40 rounded-xl p-4 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Match code</span>
             <span className="font-mono font-semibold text-sm">{matchCode}</span>
@@ -79,7 +79,7 @@ export function PaymentModal({ open, matchName, matchCode, entryFee, walletBalan
           <button
             onClick={handlePay}
             disabled={paying || !hasEnough}
-            className="w-full bg-foreground text-background font-semibold rounded-full px-4 py-3.5 text-sm flex items-center justify-center gap-2 disabled:opacity-60"
+            className="w-full bg-primary text-primary-foreground-lg px-4 py-3.5 text-sm flex items-center justify-center gap-2 disabled:opacity-60"
           >
             <Wallet className="w-4 h-4" />
             {paying ? "Processing…" : `Pay ₵${entryFee}`}

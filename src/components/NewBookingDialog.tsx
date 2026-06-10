@@ -76,7 +76,7 @@ export const NewBookingDialog = ({ trigger, defaultPitchId, defaultDate, pitches
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="max-w-md rounded-3xl">
+      <DialogContent className="max-w-md rounded-xl">
         <DialogHeader>
           <DialogTitle className="font-display font-bold text-xl tracking-tight">New booking</DialogTitle>
         </DialogHeader>
@@ -86,7 +86,7 @@ export const NewBookingDialog = ({ trigger, defaultPitchId, defaultDate, pitches
             <select
               value={pitchId}
               onChange={e => onPitchChange(e.target.value)}
-              className="mt-1 w-full h-11 px-3 rounded-2xl bg-secondary text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground/20"
+              className="mt-1 w-full h-11 px-3 rounded-xl bg-secondary text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground/20"
             >
               {list.map(p => <option key={p.id} value={p.id}>{p.name} · ₵{p.hourlyRate}/hr</option>)}
             </select>
@@ -99,7 +99,7 @@ export const NewBookingDialog = ({ trigger, defaultPitchId, defaultDate, pitches
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
-                    className={cn("mt-1 w-full h-11 justify-start text-left font-semibold rounded-2xl", !date && "text-muted-foreground")}
+                    className={cn("mt-1 w-full h-11 justify-start text-left font-semibold rounded-xl", !date && "text-muted-foreground")}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {date ? format(date, "d MMM") : "Pick"}
@@ -112,7 +112,7 @@ export const NewBookingDialog = ({ trigger, defaultPitchId, defaultDate, pitches
             </div>
             <div>
               <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Status</label>
-              <div className="mt-1 grid grid-cols-2 gap-1 bg-secondary rounded-2xl p-1 h-11">
+              <div className="mt-1 grid grid-cols-2 gap-1 bg-secondary rounded-xl p-1 h-11">
                 {(["booked", "tentative"] as BookingStatus[]).map(s => (
                   <button
                     type="button"
@@ -120,7 +120,7 @@ export const NewBookingDialog = ({ trigger, defaultPitchId, defaultDate, pitches
                     onClick={() => setStatus(s)}
                     className={cn(
                       "rounded-xl text-xs font-semibold capitalize transition-colors",
-                      status === s ? "bg-foreground text-background" : "text-muted-foreground",
+                      status === s ? "bg-primary text-primary-foreground" : "text-muted-foreground",
                     )}
                   >{s}</button>
                 ))}
@@ -134,7 +134,7 @@ export const NewBookingDialog = ({ trigger, defaultPitchId, defaultDate, pitches
               <select
                 value={hour}
                 onChange={e => setHour(Number(e.target.value))}
-                className="mt-1 w-full h-11 px-3 rounded-2xl bg-secondary text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground/20"
+                className="mt-1 w-full h-11 px-3 rounded-xl bg-secondary text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground/20"
               >
                 {HOURS.map(h => <option key={h} value={h}>{String(h).padStart(2, "0")}:00</option>)}
               </select>
@@ -144,7 +144,7 @@ export const NewBookingDialog = ({ trigger, defaultPitchId, defaultDate, pitches
               <select
                 value={duration}
                 onChange={e => onDurationChange(Number(e.target.value))}
-                className="mt-1 w-full h-11 px-3 rounded-2xl bg-secondary text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground/20"
+                className="mt-1 w-full h-11 px-3 rounded-xl bg-secondary text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground/20"
               >
                 {[1, 2, 3, 4].map(d => <option key={d} value={d}>{d}h</option>)}
               </select>
@@ -159,7 +159,7 @@ export const NewBookingDialog = ({ trigger, defaultPitchId, defaultDate, pitches
               maxLength={80}
               required
               placeholder="e.g. Kwame Mensah"
-              className="mt-1 w-full h-11 px-3 rounded-2xl bg-secondary text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground/20"
+              className="mt-1 w-full h-11 px-3 rounded-xl bg-secondary text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground/20"
             />
           </div>
 
@@ -171,7 +171,7 @@ export const NewBookingDialog = ({ trigger, defaultPitchId, defaultDate, pitches
                 onChange={e => setPhone(e.target.value)}
                 maxLength={30}
                 placeholder="0244 ••• •••"
-                className="mt-1 w-full h-11 px-3 rounded-2xl bg-secondary text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground/20"
+                className="mt-1 w-full h-11 px-3 rounded-xl bg-secondary text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground/20"
               />
             </div>
             <div>
@@ -181,14 +181,14 @@ export const NewBookingDialog = ({ trigger, defaultPitchId, defaultDate, pitches
                 min={0}
                 value={price}
                 onChange={e => setPrice(Number(e.target.value))}
-                className="mt-1 w-full h-11 px-3 rounded-2xl bg-secondary text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground/20"
+                className="mt-1 w-full h-11 px-3 rounded-xl bg-secondary text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground/20"
               />
             </div>
           </div>
 
           <div>
             <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Payment</label>
-            <div className="mt-1 grid grid-cols-3 gap-1 bg-secondary rounded-2xl p-1 h-11">
+            <div className="mt-1 grid grid-cols-3 gap-1 bg-secondary rounded-xl p-1 h-11">
               {(["paid", "deposit", "unpaid"] as PaymentStatus[]).map(p => (
                 <button
                   type="button"
@@ -196,7 +196,7 @@ export const NewBookingDialog = ({ trigger, defaultPitchId, defaultDate, pitches
                   onClick={() => setPayment(p)}
                   className={cn(
                     "rounded-xl text-xs font-semibold capitalize transition-colors",
-                    payment === p ? "bg-foreground text-background" : "text-muted-foreground",
+                    payment === p ? "bg-primary text-primary-foreground" : "text-muted-foreground",
                   )}
                 >{p}</button>
               ))}
@@ -211,14 +211,14 @@ export const NewBookingDialog = ({ trigger, defaultPitchId, defaultDate, pitches
               maxLength={280}
               rows={2}
               placeholder="Optional"
-              className="mt-1 w-full px-3 py-2 rounded-2xl bg-secondary text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20"
+              className="mt-1 w-full px-3 py-2 rounded-xl bg-secondary text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20"
             />
           </div>
 
           <button
             type="submit"
             disabled={busy}
-            className="w-full h-12 rounded-2xl bg-foreground text-background font-display font-bold tracking-tight inline-flex items-center justify-center gap-2 disabled:opacity-60 mt-1"
+            className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-display font-bold tracking-tight inline-flex items-center justify-center gap-2 disabled:opacity-60 mt-1"
           >
             {busy && <Loader2 className="w-4 h-4 animate-spin" />}
             Save booking

@@ -81,7 +81,7 @@ export const NotificationsBell = () => {
         >
           <Bell className="w-5 h-5" />
           {user && unreadCount > 0 && (
-            <span className="absolute top-1 right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold leading-[18px] text-center">
+            <span className="absolute top-1 right-1 min-w-[18px] h-[18px] px-1 rounded-lg bg-primary text-primary-foreground text-[10px] font-bold leading-[18px] text-center">
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           )}
@@ -90,7 +90,7 @@ export const NotificationsBell = () => {
       <PopoverContent
         align="end"
         sideOffset={8}
-        className="w-[340px] p-0 rounded-2xl overflow-hidden"
+        className="w-[340px] p-0 rounded-xl overflow-hidden"
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <p className="font-display font-bold text-sm">Notifications</p>

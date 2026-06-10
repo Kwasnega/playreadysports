@@ -80,7 +80,7 @@ const ReportModal = ({
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
-      <div className="bg-card rounded-3xl p-6 w-full max-w-sm space-y-4 shadow-2xl">
+      <div className="bg-card rounded-xl p-6 w-full max-w-sm space-y-4 shadow-2xl">
         <div className="flex items-center gap-2">
           <Flag className="w-5 h-5 text-destructive" />
           <h2 className="font-display font-bold text-lg">Report player</h2>
@@ -91,7 +91,7 @@ const ReportModal = ({
           onChange={(e) => setReason(e.target.value)}
           placeholder="Describe the issue..."
           rows={3}
-          className="w-full bg-secondary rounded-2xl px-4 py-3 text-sm outline-none resize-none"
+          className="w-full bg-secondary rounded-xl px-4 py-3 text-sm outline-none resize-none"
         />
         <div className="flex gap-2">
           <button onClick={onClose} className="flex-1 h-12 rounded-full bg-secondary text-sm font-semibold">Cancel</button>
@@ -172,7 +172,7 @@ const PlayerProfile = () => {
 
   return (
     <main className="min-h-screen bg-background pb-10">
-      <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b border-border/60">
+      <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b border-border">
         <div className="max-w-[680px] mx-auto px-5 h-14 flex items-center gap-3">
           <button onClick={() => navigate(-1)} className="p-2 -ml-2 rounded-full hover:bg-secondary">
             <ArrowLeft className="w-5 h-5" />
@@ -224,7 +224,7 @@ const PlayerProfile = () => {
                     </span>
                   )}
                   {profile.position && (
-                    <span className="text-[11px] font-semibold bg-primary/10 text-primary rounded-full px-2 py-0.5">
+                    <span className="text-[11px] font-semibold bg-primary/8 border border-primary/15 text-primary rounded-full px-2 py-0.5">
                       {POSITIONS[profile.position] ?? profile.position}
                     </span>
                   )}
@@ -239,7 +239,7 @@ const PlayerProfile = () => {
                       <button
                         onClick={handleAddFriend}
                         disabled={friendLoading}
-                        className="inline-flex items-center gap-1.5 text-[11px] font-semibold bg-primary/10 text-primary hover:bg-primary/20 rounded-full px-3 py-1.5 disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 text-[11px] font-semibold bg-primary/8 border border-primary/15 text-primary hover:bg-primary/20 rounded-full px-3 py-1.5 disabled:opacity-50"
                       >
                         {friendLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserPlus className="w-3 h-3" />}
                         Add friend
@@ -317,7 +317,7 @@ const PlayerProfile = () => {
                     <li key={m.id}>
                       <Link
                         to={`/lobby/${m.join_code}`}
-                        className="flex items-center gap-3 bg-card rounded-2xl px-4 py-3 border border-border/60 hover:bg-secondary/50 transition-colors"
+                        className="flex items-center gap-3 bg-card rounded-xl px-4 py-3 border border-border hover:bg-secondary/50 transition-colors"
                       >
                         <span className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center shrink-0">
                           <Swords className="w-4 h-4 text-foreground/60" />
@@ -329,7 +329,7 @@ const PlayerProfile = () => {
                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
                           m.status === "completed" ? "bg-success/15 text-success" :
                           m.status === "cancelled" ? "bg-destructive/10 text-destructive" :
-                          "bg-primary/10 text-primary"
+                          "bg-primary/8 border border-primary/15 text-primary"
                         }`}>
                           {m.status}
                         </span>
@@ -351,7 +351,7 @@ const PlayerProfile = () => {
               ) : (
                 <ul className="space-y-3">
                   {reviews.map((r) => (
-                    <li key={r.id} className="bg-card rounded-2xl p-4 border border-border/60">
+                    <li key={r.id} className="bg-card rounded-xl p-4 border border-border">
                       <div className="flex items-center gap-3 mb-2">
                         {r.reviewer_avatar ? (
                           <img src={r.reviewer_avatar} alt="" className="w-8 h-8 rounded-full object-cover" />
@@ -397,7 +397,7 @@ const StatCard = ({
   label: string;
   value: string;
 }) => (
-  <div className="bg-card rounded-2xl p-3 border border-border/60 text-center">
+  <div className="bg-card rounded-xl p-3 border border-border text-center">
     <Icon className="w-4 h-4 text-muted-foreground mx-auto mb-1" />
     <p className="font-display font-bold text-lg leading-none">{value}</p>
     <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider font-semibold">{label}</p>

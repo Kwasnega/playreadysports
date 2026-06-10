@@ -2,193 +2,233 @@
 @tailwind components;
 @tailwind utilities;
 
-/* PlayReady Sports — warm editorial design system
-   Cyan #00E5FF reserved as accent. Surfaces are warm cream / deep ink.
-   Inspired by Life360 (soft pill tabs, gentle surfaces) +
-   Preply (chunky display headlines, confident contrast).
+/* PlayReady Sports — Chelsea FC design system
+   Navy #0A1F6E primary. Gold #FFD700 accent.
+   Clean white cards, light blue-tinted surfaces.
    All colors HSL.
 */
 
 @layer base {
   :root {
-    --background: 38 40% 96%;
-    --foreground: 222 30% 10%;
+    /* Page background — off-white with a cool blue tint */
+    --background: 220 30% 97%;
+    --foreground: 228 60% 12%;
 
+    /* Cards — pure white, clean */
     --card: 0 0% 100%;
-    --card-foreground: 222 30% 10%;
+    --card-foreground: 228 60% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 30% 10%;
+    --popover-foreground: 228 60% 12%;
 
-    /* Brand cyan — used sparingly for live state, key CTAs, tint blocks */
-    --primary: 187 100% 50%;
-    --primary-foreground: 222 30% 10%;
-    --primary-hover: 187 90% 45%;
+    /* Chelsea navy — primary actions, navbar, hero */
+    --primary: 228 82% 24%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 228 82% 20%;
 
-    --ink: 222 30% 10%;
-    --ink-foreground: 38 40% 96%;
+    /* Gold — accent CTAs, wallet balance, live chips */
+    --gold: 51 100% 50%;
+    --gold-foreground: 228 82% 12%;
 
-    /* Warm tinted secondary surface (Life360-like) */
-    --secondary: 36 32% 90%;
-    --secondary-foreground: 222 30% 10%;
+    /* Ink = navy for headings, emphasis */
+    --ink: 228 82% 24%;
+    --ink-foreground: 0 0% 100%;
 
-    --muted: 36 28% 92%;
-    --muted-foreground: 222 12% 40%;
+    /* Secondary surface — light blue-gray */
+    --secondary: 220 28% 93%;
+    --secondary-foreground: 228 60% 18%;
 
-    --accent: 187 100% 50%;
-    --accent-foreground: 222 30% 10%;
+    --muted: 220 24% 95%;
+    --muted-foreground: 228 20% 45%;
 
-    --destructive: 4 75% 55%;
+    --accent: 51 100% 50%;
+    --accent-foreground: 228 82% 12%;
+
+    --destructive: 4 75% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 152 55% 40%;
-    --warning: 30 95% 55%;
+    --success: 152 55% 36%;
+    --warning: 30 95% 50%;
 
-    --border: 36 22% 84%;
-    --input: 36 22% 84%;
-    --ring: 187 100% 45%;
+    --border: 220 22% 88%;
+    --input: 220 22% 88%;
+    --ring: 228 82% 35%;
 
-    --radius: 1.25rem;
+    /* Slightly tighter radius — Chelsea editorial feel */
+    --radius: 0.75rem;
 
-    /* Editorial accent surfaces — used for hero blocks and feature pills */
-    --surface-warm: 18 65% 88%;       /* peach */
-    --surface-warm-ink: 16 50% 22%;
-    --surface-cool: 187 70% 90%;      /* soft cyan */
-    --surface-cool-ink: 200 50% 18%;
-    --surface-cream: 40 50% 92%;      /* deeper cream */
-    --surface-cream-ink: 30 35% 22%;
+    /* Accent surfaces */
+    --surface-navy: 228 82% 24%;
+    --surface-navy-ink: 0 0% 100%;
+    --surface-gold: 51 100% 50%;
+    --surface-gold-ink: 228 82% 12%;
+    --surface-blue: 220 40% 90%;
+    --surface-blue-ink: 228 60% 18%;
 
-    /* Legacy tint aliases — biased to warm */
-    --tint-mint: 152 45% 88%;
-    --tint-peach: 18 65% 88%;
-    --tint-lilac: 270 35% 90%;
-    --tint-sky: 187 70% 90%;
-    --tint-sun: 38 90% 86%;
+    --shadow-card: 0 1px 3px hsl(228 60% 12% / 0.06), 0 4px 14px hsl(228 60% 12% / 0.07);
+    --shadow-lift: 0 4px 8px hsl(228 60% 12% / 0.08), 0 14px 28px hsl(228 60% 12% / 0.12);
 
-    --shadow-card: 0 1px 2px hsl(222 30% 10% / 0.04), 0 6px 18px hsl(222 30% 10% / 0.05);
-    --shadow-lift: 0 4px 8px hsl(222 30% 10% / 0.06), 0 16px 32px hsl(222 30% 10% / 0.10);
-
-    --sidebar-background: 38 40% 96%;
-    --sidebar-foreground: 222 30% 10%;
-    --sidebar-primary: 187 100% 50%;
-    --sidebar-primary-foreground: 222 30% 10%;
-    --sidebar-accent: 36 32% 90%;
-    --sidebar-accent-foreground: 222 30% 10%;
-    --sidebar-border: 36 22% 84%;
-    --sidebar-ring: 187 100% 45%;
+    --sidebar-background: 228 82% 20%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 51 100% 50%;
+    --sidebar-primary-foreground: 228 82% 12%;
+    --sidebar-accent: 228 60% 28%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 228 60% 28%;
+    --sidebar-ring: 51 100% 50%;
   }
 
+  /* Dark mode — deep navy, kept for users who toggle */
   .dark {
-    --background: 222 30% 7%;
-    --foreground: 38 35% 95%;
+    --background: 228 45% 8%;
+    --foreground: 220 25% 94%;
 
-    --card: 222 26% 11%;
-    --card-foreground: 38 35% 95%;
+    --card: 228 40% 12%;
+    --card-foreground: 220 25% 94%;
 
-    --popover: 222 26% 11%;
-    --popover-foreground: 38 35% 95%;
+    --popover: 228 40% 12%;
+    --popover-foreground: 220 25% 94%;
 
-    --primary: 187 100% 55%;
-    --primary-foreground: 222 30% 8%;
-    --primary-hover: 187 90% 60%;
+    --primary: 228 70% 55%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 228 70% 60%;
 
-    --ink: 38 35% 95%;
-    --ink-foreground: 222 30% 8%;
+    --gold: 51 100% 52%;
+    --gold-foreground: 228 82% 10%;
 
-    --secondary: 222 18% 16%;
-    --secondary-foreground: 38 35% 95%;
+    --ink: 220 25% 94%;
+    --ink-foreground: 228 45% 8%;
 
-    --muted: 222 18% 14%;
-    --muted-foreground: 38 8% 65%;
+    --secondary: 228 30% 18%;
+    --secondary-foreground: 220 25% 94%;
 
-    --accent: 187 100% 55%;
-    --accent-foreground: 222 30% 8%;
+    --muted: 228 30% 15%;
+    --muted-foreground: 220 12% 60%;
+
+    --accent: 51 100% 52%;
+    --accent-foreground: 228 82% 10%;
 
     --destructive: 4 70% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 152 55% 48%;
-    --warning: 30 95% 60%;
+    --success: 152 55% 44%;
+    --warning: 30 95% 58%;
 
-    --border: 222 18% 18%;
-    --input: 222 18% 18%;
-    --ring: 187 100% 55%;
+    --border: 228 28% 20%;
+    --input: 228 28% 20%;
+    --ring: 228 70% 55%;
 
-    --surface-warm: 16 40% 22%;
-    --surface-warm-ink: 18 70% 88%;
-    --surface-cool: 200 45% 18%;
-    --surface-cool-ink: 187 70% 88%;
-    --surface-cream: 30 25% 18%;
-    --surface-cream-ink: 38 50% 92%;
-
-    --tint-mint: 152 35% 18%;
-    --tint-peach: 16 40% 22%;
-    --tint-lilac: 270 22% 22%;
-    --tint-sky: 200 45% 18%;
-    --tint-sun: 38 40% 22%;
-
-    --sidebar-background: 222 30% 7%;
-    --sidebar-foreground: 38 35% 95%;
-    --sidebar-primary: 187 100% 55%;
-    --sidebar-primary-foreground: 222 30% 8%;
-    --sidebar-accent: 222 18% 16%;
-    --sidebar-accent-foreground: 38 35% 95%;
-    --sidebar-border: 222 18% 18%;
-    --sidebar-ring: 187 100% 55%;
+    --sidebar-background: 228 45% 8%;
+    --sidebar-foreground: 220 25% 94%;
+    --sidebar-primary: 51 100% 52%;
+    --sidebar-primary-foreground: 228 82% 10%;
+    --sidebar-accent: 228 30% 18%;
+    --sidebar-accent-foreground: 220 25% 94%;
+    --sidebar-border: 228 28% 20%;
+    --sidebar-ring: 51 100% 52%;
   }
 }
 
 @layer components {
+
+  /* Gold glow ring for story highlights */
   .story-ring-neon {
-    background: hsl(var(--primary));
+    background: hsl(var(--gold));
     box-shadow:
-      0 0 6px hsl(var(--primary) / 0.7),
-      0 0 14px hsl(var(--primary) / 0.55),
-      0 0 28px hsl(var(--primary) / 0.35);
+      0 0 6px hsl(var(--gold) / 0.7),
+      0 0 14px hsl(var(--gold) / 0.5),
+      0 0 28px hsl(var(--gold) / 0.3);
     animation: nitro-pulse 2.2s ease-in-out infinite;
   }
 
   @keyframes nitro-pulse {
-    0%, 100% {
+
+    0%,
+    100% {
       box-shadow:
-        0 0 6px hsl(var(--primary) / 0.7),
-        0 0 14px hsl(var(--primary) / 0.55),
-        0 0 26px hsl(var(--primary) / 0.3);
+        0 0 6px hsl(var(--gold) / 0.7),
+        0 0 14px hsl(var(--gold) / 0.5),
+        0 0 26px hsl(var(--gold) / 0.25);
     }
+
     50% {
       box-shadow:
-        0 0 10px hsl(var(--primary) / 0.9),
-        0 0 22px hsl(var(--primary) / 0.7),
-        0 0 40px hsl(var(--primary) / 0.5);
+        0 0 10px hsl(var(--gold) / 0.9),
+        0 0 22px hsl(var(--gold) / 0.65),
+        0 0 40px hsl(var(--gold) / 0.4);
     }
   }
 
   @keyframes kickoff-pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.85; transform: scale(1.02); }
+
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    50% {
+      opacity: 0.85;
+      transform: scale(1.02);
+    }
   }
+
   .animate-kickoff-pulse {
     animation: kickoff-pulse 1.8s ease-in-out infinite;
   }
 
   @keyframes cta-pulse {
-    0%, 100% { box-shadow: 0 0 12px rgba(16,185,129,0.35); transform: scale(1); }
-    50% { box-shadow: 0 0 28px rgba(16,185,129,0.6); transform: scale(1.015); }
+
+    0%,
+    100% {
+      box-shadow: 0 0 12px hsl(var(--gold) / 0.35);
+      transform: scale(1);
+    }
+
+    50% {
+      box-shadow: 0 0 28px hsl(var(--gold) / 0.6);
+      transform: scale(1.015);
+    }
   }
+
   .animate-cta-pulse {
     animation: cta-pulse 1.6s ease-in-out infinite;
   }
 
   @keyframes bell-shake {
-    0%   { transform: rotate(0deg); }
-    15%  { transform: rotate(-12deg); }
-    30%  { transform: rotate(12deg); }
-    45%  { transform: rotate(-10deg); }
-    60%  { transform: rotate(10deg); }
-    75%  { transform: rotate(-6deg); }
-    90%  { transform: rotate(6deg); }
-    100% { transform: rotate(0deg); }
+    0% {
+      transform: rotate(0deg);
+    }
+
+    15% {
+      transform: rotate(-12deg);
+    }
+
+    30% {
+      transform: rotate(12deg);
+    }
+
+    45% {
+      transform: rotate(-10deg);
+    }
+
+    60% {
+      transform: rotate(10deg);
+    }
+
+    75% {
+      transform: rotate(-6deg);
+    }
+
+    90% {
+      transform: rotate(6deg);
+    }
+
+    100% {
+      transform: rotate(0deg);
+    }
   }
+
   .animate-bell-shake {
     animation: bell-shake 0.5s ease-in-out;
   }
@@ -198,15 +238,23 @@
   * {
     @apply border-border;
   }
-  html { scroll-behavior: smooth; }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "ss01", "cv11";
   }
 
-  /* Editorial display — chunky, characterful */
-  .font-display { letter-spacing: -0.02em; }
-  h1.display, h2.display, .display-xl {
+  .font-display {
+    letter-spacing: -0.02em;
+  }
+
+  h1.display,
+  h2.display,
+  .display-xl {
     @apply font-display font-bold;
     letter-spacing: -0.035em;
     line-height: 0.98;
@@ -215,14 +263,15 @@
 
 @layer components {
   .card-soft {
-    @apply bg-card rounded-3xl border border-border;
+    @apply bg-card rounded-xl border border-border;
     box-shadow: var(--shadow-card);
   }
 
   .card-lift {
-    @apply bg-card rounded-3xl border border-border transition-all duration-300;
+    @apply bg-card rounded-xl border border-border transition-all duration-300;
     box-shadow: var(--shadow-card);
   }
+
   .card-lift:hover {
     box-shadow: var(--shadow-lift);
     transform: translateY(-2px);
@@ -232,39 +281,59 @@
     @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold;
   }
 
-  /* Soft pill tab — Life360 style */
+  /* Pill tab — navy active state */
   .pill-tab {
-    @apply inline-flex items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition-colors;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors;
     background: hsl(var(--secondary));
     color: hsl(var(--muted-foreground));
   }
+
   .pill-tab[data-active="true"] {
     background: hsl(var(--ink));
     color: hsl(var(--ink-foreground));
   }
 
-  /* Editorial tile — flat colored block with chunky type */
-  .tile-warm {
-    background: hsl(var(--surface-warm));
-    color: hsl(var(--surface-warm-ink));
+  /* Tile variants */
+  .tile-navy {
+    background: hsl(var(--surface-navy));
+    color: hsl(var(--surface-navy-ink));
   }
-  .tile-cool {
-    background: hsl(var(--surface-cool));
-    color: hsl(var(--surface-cool-ink));
+
+  .tile-gold {
+    background: hsl(var(--surface-gold));
+    color: hsl(var(--surface-gold-ink));
   }
-  .tile-cream {
-    background: hsl(var(--surface-cream));
-    color: hsl(var(--surface-cream-ink));
+
+  .tile-blue {
+    background: hsl(var(--surface-blue));
+    color: hsl(var(--surface-blue-ink));
   }
+
   .tile-ink {
     background: hsl(var(--ink));
     color: hsl(var(--ink-foreground));
+  }
+
+  /* Legacy aliases */
+  .tile-warm {
+    background: hsl(var(--tint-peach));
+    color: hsl(var(--surface-navy));
+  }
+
+  .tile-cool {
+    background: hsl(var(--tint-sky));
+    color: hsl(var(--surface-navy));
+  }
+
+  .tile-cream {
+    background: hsl(var(--tint-sun));
+    color: hsl(var(--surface-navy));
   }
 }
 
 @layer utilities {
   .underline-wave {
-    background-image: linear-gradient(transparent calc(100% - 6px), hsl(var(--primary)) 6px);
+    background-image: linear-gradient(transparent calc(100% - 6px), hsl(var(--gold)) 6px);
     background-repeat: no-repeat;
     background-size: 100% 100%;
     background-position: 0 100%;
@@ -272,10 +341,15 @@
   }
 
   .dot-pattern {
-    background-image: radial-gradient(hsl(220 10% 70% / 0.4) 1px, transparent 1px);
+    background-image: radial-gradient(hsl(228 60% 12% / 0.12) 1px, transparent 1px);
     background-size: 18px 18px;
   }
 
-  .scrollbar-none::-webkit-scrollbar { display: none; }
-  .scrollbar-none { scrollbar-width: none; }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
 }

@@ -127,7 +127,7 @@ function VenueOwnerLoginGate({ onSuccess }: { onSuccess: () => void }) {
     <div className="min-h-screen bg-background flex items-center justify-center px-5">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
-          <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center mx-auto mb-4">
+          <div className="w-14 h-14 rounded-xl bg-emerald-500/10 flex items-center justify-center mx-auto mb-4">
             <Building2 className="w-7 h-7 text-emerald-500" />
           </div>
           <h1 className="font-display font-bold text-2xl tracking-tight">Turf Owner Login</h1>
@@ -153,7 +153,7 @@ function VenueOwnerLoginGate({ onSuccess }: { onSuccess: () => void }) {
           <button
             type="submit"
             disabled={busy}
-            className="w-full h-11 rounded-full bg-foreground text-background text-sm font-bold disabled:opacity-40 active:scale-[0.98] transition-all"
+            className="w-full h-11 rounded-lg bg-primary text-primary-foreground text-sm font-bold disabled:opacity-40 active:scale-[0.98] transition-all"
           >
             {busy ? "Signing in…" : "Sign in"}
           </button>
@@ -652,7 +652,7 @@ export default function VenueOwnerDashboard() {
         <p className="text-sm text-muted-foreground text-center max-w-xs">
           This page is for turf owners only. Contact your admin if you need venue owner access.
         </p>
-        <button onClick={() => signOut()} className="mt-2 px-6 py-2.5 bg-foreground text-background rounded-full text-sm font-bold">
+        <button onClick={() => signOut()} className="mt-2 px-6 py-2.5 bg-primary text-primary-foreground-lg text-sm font-bold">
           Sign out
         </button>
       </div>
@@ -685,7 +685,7 @@ export default function VenueOwnerDashboard() {
 
         {/* 2. Venue hero with swipeable gallery */}
         {verifiedVenues.length > 0 && (
-          <section className="bg-card rounded-2xl border border-border/60 overflow-hidden">
+          <section className="bg-card rounded-xl border border-border overflow-hidden">
             {/* Swipeable image gallery */}
             {verifiedVenues[0].image_urls && verifiedVenues[0].image_urls.length > 0 ? (
               <div className="relative">
@@ -751,7 +751,7 @@ export default function VenueOwnerDashboard() {
         )}
 
         {/* 3. Prominent Net Earnings */}
-        <section className="bg-emerald-500/[0.06] border border-emerald-500/20 rounded-2xl p-6">
+        <section className="bg-emerald-500/[0.06] border border-emerald-500/20 rounded-xl p-6">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700/70">Net Earnings (est.)</p>
@@ -776,7 +776,7 @@ export default function VenueOwnerDashboard() {
                 <button
                   onClick={() => setWithdrawOpen(true)}
                   disabled={venueBalance < 10}
-                  className="text-sm font-bold bg-emerald-600 text-white rounded-full px-6 py-2.5 transition-colors hover:bg-emerald-500 disabled:opacity-40 shadow-sm"
+                  className="text-sm font-bold bg-[hsl(var(--gold))] text-[hsl(var(--gold-foreground))] text-white rounded-full px-6 py-2.5 transition-colors hover:bg-emerald-500 disabled:opacity-40 shadow-sm"
                 >
                   Withdraw
                 </button>
@@ -785,7 +785,7 @@ export default function VenueOwnerDashboard() {
                 </span>
               </div>
             </div>
-            <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center shrink-0">
+            <div className="w-14 h-14 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
               <Wallet className="w-7 h-7 text-emerald-500" />
             </div>
           </div>
@@ -793,7 +793,7 @@ export default function VenueOwnerDashboard() {
 
         {/* 4. Venue details summary */}
         {verifiedVenues.length > 0 && (
-          <section className="bg-card rounded-2xl border border-border/60 p-5 space-y-4">
+          <section className="bg-card rounded-xl border border-border p-5 space-y-4">
             <h3 className="font-display font-bold text-sm flex items-center gap-2">
               <Building2 className="w-4 h-4 text-muted-foreground" /> Venue Details
             </h3>
@@ -856,7 +856,7 @@ export default function VenueOwnerDashboard() {
 
         {/* 5. Pending venues */}
         {pendingVenues.length > 0 && (
-          <section className="rounded-3xl bg-amber-500/10 border border-amber-500/20 p-4 flex items-start gap-3">
+          <section className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-4 flex items-start gap-3">
             <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
             <div className="text-xs leading-relaxed">
               <p className="font-semibold text-foreground">
@@ -868,7 +868,7 @@ export default function VenueOwnerDashboard() {
         )}
 
         {/* 6. Today's matches */}
-        <section className="bg-card rounded-2xl border border-border/60 p-5">
+        <section className="bg-card rounded-xl border border-border p-5">
           <h2 className="font-display font-bold text-base mb-3 flex items-center gap-2">
             <Calendar className="w-4 h-4" /> Today at your venue
           </h2>
@@ -889,7 +889,7 @@ export default function VenueOwnerDashboard() {
                   }
                 };
                 return (
-                  <div key={m.id} className="flex items-center gap-3 rounded-xl border border-border/60 p-3">
+                  <div key={m.id} className="flex items-center gap-3 rounded-xl border border-border p-3">
                     <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                       <span className="text-[10px] font-bold">{m.join_code.slice(0, 2).toUpperCase()}</span>
                     </div>
@@ -911,7 +911,7 @@ export default function VenueOwnerDashboard() {
                       </button>
                       <button
                         onClick={() => openQr(m)}
-                        className="text-[10px] font-bold bg-foreground text-background rounded-full px-2.5 py-1.5 hover:bg-foreground/90 transition-colors"
+                        className="text-[10px] font-bold bg-primary text-primary-foreground-lg px-2.5 py-1.5 hover:bg-foreground/90 transition-colors"
                       >
                         QR
                       </button>
@@ -932,7 +932,7 @@ export default function VenueOwnerDashboard() {
         />
 
         {/* 8. Popular kickoff hours */}
-        <section className="bg-card rounded-2xl border border-border/60 p-5">
+        <section className="bg-card rounded-xl border border-border p-5">
           <h2 className="font-display font-bold text-base mb-1 flex items-center gap-2">
             <TrendingUp className="w-4 h-4" /> Popular kickoff hours
           </h2>
@@ -951,7 +951,7 @@ export default function VenueOwnerDashboard() {
 
         {/* 9. Per-venue pricing & blockout */}
         {venues.filter((v) => v.status === "verified").map((v) => (
-          <section key={v.id} className="bg-card rounded-2xl border border-border/60 p-5 space-y-4">
+          <section key={v.id} className="bg-card rounded-xl border border-border p-5 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-display font-bold text-sm flex items-center gap-2">
                 <Building2 className="w-4 h-4" /> {v.name}
@@ -1027,7 +1027,7 @@ export default function VenueOwnerDashboard() {
             <button
               type="button"
               onClick={() => saveVenuePricing(v)}
-              className="w-full rounded-full bg-foreground text-background text-xs font-semibold py-2.5"
+              className="w-full rounded-lg bg-primary text-primary-foreground text-xs font-semibold py-2.5"
             >
               Save pricing
             </button>
@@ -1046,7 +1046,7 @@ export default function VenueOwnerDashboard() {
         {loading ? (
           <div className="space-y-4 animate-pulse">
             {[1, 2].map((i) => (
-              <div key={i} className="bg-card rounded-2xl p-5 border border-border/60">
+              <div key={i} className="bg-card rounded-xl p-5 border border-border">
                 <div className="h-4 bg-secondary rounded w-32 mb-3" />
                 <div className="h-3 bg-secondary rounded w-full" />
               </div>
@@ -1061,15 +1061,15 @@ export default function VenueOwnerDashboard() {
             </p>
             <button
               onClick={() => setAddVenueOpen(true)}
-              className="inline-flex items-center gap-1.5 mt-4 bg-foreground text-background rounded-full px-4 py-2 text-xs font-semibold"
+              className="inline-flex items-center gap-1.5 mt-4 bg-primary text-primary-foreground-lg px-4 py-2 text-xs font-semibold"
             >
               <Plus className="w-3.5 h-3.5" /> Register a venue
             </button>
           </div>
         ) : (
           earnings.map((venue) => (
-            <section key={venue.venueId} className="bg-card rounded-2xl border border-border/60 overflow-hidden">
-              <div className="px-5 py-4 border-b border-border/60 flex items-center justify-between">
+            <section key={venue.venueId} className="bg-card rounded-xl border border-border overflow-hidden">
+              <div className="px-5 py-4 border-b border-border flex items-center justify-between">
                 <div>
                   <h2 className="font-display font-bold text-base">{venue.venueName}</h2>
                   <p className="text-[11px] text-muted-foreground">
@@ -1111,7 +1111,7 @@ export default function VenueOwnerDashboard() {
         {/* Register new venue — subtle footer CTA */}
         <button
           onClick={() => setAddVenueOpen(true)}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border border-dashed border-border bg-secondary/40 text-sm font-semibold text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-dashed border-border bg-secondary/40 text-sm font-semibold text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
         >
           <Plus className="w-4 h-4" /> Register a new venue
         </button>
@@ -1155,7 +1155,7 @@ export default function VenueOwnerDashboard() {
           ) : (
             <ul className="space-y-2">
               {roster.map((p) => (
-                <li key={p.id} className="flex items-center gap-3 rounded-xl border border-border/60 p-2.5">
+                <li key={p.id} className="flex items-center gap-3 rounded-xl border border-border p-2.5">
                   {p.profiles?.avatar_url ? (
                     <img src={p.profiles.avatar_url} alt="" className="w-11 h-11 rounded-full object-cover shrink-0" />
                   ) : (
@@ -1217,7 +1217,7 @@ export default function VenueOwnerDashboard() {
                     onClick={() => setWithdrawProvider(p)}
                     className={`py-2 rounded-xl text-xs font-bold capitalize transition-colors ${
                       withdrawProvider === p
-                        ? "bg-foreground text-background"
+                        ? "bg-primary text-primary-foreground"
                         : "bg-secondary text-muted-foreground hover:bg-secondary/80"
                     }`}
                   >
@@ -1241,7 +1241,7 @@ export default function VenueOwnerDashboard() {
             <button
               onClick={handleWithdrawRequest}
               disabled={withdrawing || parseFloat(withdrawAmt) < 10 || withdrawPhone.trim().length < 9}
-              className="w-full h-11 bg-foreground text-background rounded-full text-sm font-bold disabled:opacity-40 transition-all active:scale-[0.98]"
+              className="w-full h-11 bg-primary text-primary-foreground-lg text-sm font-bold disabled:opacity-40 transition-all active:scale-[0.98]"
             >
               {withdrawing ? "Submitting…" : "Submit Request"}
             </button>
@@ -1308,7 +1308,7 @@ export default function VenueOwnerDashboard() {
               <button
                 onClick={addBlockout}
                 disabled={savingBlockout || !blockoutDate}
-                className="w-full h-10 rounded-full bg-foreground text-background text-xs font-bold disabled:opacity-40"
+                className="w-full h-10 rounded-lg bg-primary text-primary-foreground text-xs font-bold disabled:opacity-40"
               >
                 {savingBlockout ? "Saving…" : "Add blockout"}
               </button>
@@ -1320,7 +1320,7 @@ export default function VenueOwnerDashboard() {
                 <p className="text-sm text-muted-foreground text-center py-4">No blockouts set for this venue.</p>
               ) : (
                 blockouts.map((b) => (
-                  <div key={b.id} className="flex items-center justify-between rounded-xl border border-border/60 px-3 py-2.5">
+                  <div key={b.id} className="flex items-center justify-between rounded-xl border border-border px-3 py-2.5">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold">{b.block_date}</p>
                       <p className="text-[11px] text-muted-foreground">
@@ -1527,7 +1527,7 @@ export default function VenueOwnerDashboard() {
             <button
               onClick={handleAddVenue}
               disabled={addingVenue || !venueForm.name.trim() || !venueForm.city.trim()}
-              className="w-full h-11 bg-foreground text-background rounded-full text-sm font-bold disabled:opacity-40 transition-all active:scale-[0.98]"
+              className="w-full h-11 bg-primary text-primary-foreground-lg text-sm font-bold disabled:opacity-40 transition-all active:scale-[0.98]"
             >
               {addingVenue ? "Submitting…" : "Submit for verification"}
             </button>

@@ -38,9 +38,9 @@ export const CityPrompt = ({ onDone, onSkip }: Props) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="w-full max-w-sm bg-background rounded-3xl p-6 shadow-2xl space-y-5">
+      <div className="w-full max-w-sm bg-background rounded-xl p-6 shadow-2xl space-y-5">
         <div className="flex items-start justify-between">
-          <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
+          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
             <MapPin className="w-6 h-6 text-primary" />
           </div>
           <button onClick={onSkip} className="p-2 rounded-full hover:bg-secondary">
@@ -60,7 +60,7 @@ export const CityPrompt = ({ onDone, onSkip }: Props) => {
               onClick={() => setSelected(city)}
               className={`px-3.5 py-2 rounded-full text-sm font-semibold transition-all ${
                 selected === city
-                  ? "bg-foreground text-background"
+                  ? "bg-primary text-primary-foreground"
                   : "bg-secondary text-foreground hover:bg-secondary/70"
               }`}
             >
@@ -72,13 +72,13 @@ export const CityPrompt = ({ onDone, onSkip }: Props) => {
           <button
             onClick={save}
             disabled={!selected || saving}
-            className="flex-1 h-12 rounded-2xl bg-foreground text-background font-bold text-sm disabled:opacity-40 hover:bg-foreground/90 transition-colors"
+            className="flex-1 h-12 rounded-xl bg-primary text-primary-foreground font-bold text-sm disabled:opacity-40 hover:bg-foreground/90 transition-colors"
           >
             {saving ? "Saving..." : "Set location"}
           </button>
           <button
             onClick={onSkip}
-            className="px-5 h-12 rounded-2xl bg-secondary text-foreground font-semibold text-sm hover:bg-secondary/70"
+            className="px-5 h-12 rounded-xl bg-secondary text-foreground font-semibold text-sm hover:bg-secondary/70"
           >
             Skip
           </button>

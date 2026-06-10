@@ -71,7 +71,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
           if (!open) handleClose(false);
         }}
       >
-        <AlertDialogContent className="rounded-3xl border-border/40">
+        <AlertDialogContent className="rounded-xl border-border/40">
           <AlertDialogHeader>
             <AlertDialogTitle>{state?.title}</AlertDialogTitle>
             <AlertDialogDescription>{state?.description}</AlertDialogDescription>
