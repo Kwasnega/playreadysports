@@ -127,11 +127,11 @@ function VenueOwnerLoginGate({ onSuccess }: { onSuccess: () => void }) {
     <div className="min-h-screen bg-background flex items-center justify-center px-5">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
-          <div className="w-14 h-14 rounded-xl bg-emerald-500/10 flex items-center justify-center mx-auto mb-4">
-            <Building2 className="w-7 h-7 text-emerald-500" />
+          <div className="w-14 h-14 rounded-full border-2 border-foreground bg-background flex items-center justify-center mx-auto mb-4">
+            <Building2 className="w-7 h-7 text-foreground" />
           </div>
-          <h1 className="font-display font-bold text-2xl tracking-tight">Turf Owner Login</h1>
-          <p className="text-sm text-muted-foreground mt-1">Sign in to manage your venues and earnings.</p>
+          <h1 className="font-display font-black text-2xl tracking-tight uppercase">Turf Owner Login</h1>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">Sign in to manage your venues and earnings.</p>
         </div>
         <form onSubmit={handleLogin} className="space-y-3">
           <input
@@ -139,7 +139,7 @@ function VenueOwnerLoginGate({ onSuccess }: { onSuccess: () => void }) {
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-foreground/20"
+            className="w-full h-12 rounded-xl border-2 border-border bg-background px-4 py-3 text-sm font-bold outline-none focus:border-foreground transition-colors"
             required
           />
           <input
@@ -147,19 +147,19 @@ function VenueOwnerLoginGate({ onSuccess }: { onSuccess: () => void }) {
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-foreground/20"
+            className="w-full h-12 rounded-xl border-2 border-border bg-background px-4 py-3 text-sm font-bold outline-none focus:border-foreground transition-colors"
             required
           />
           <button
             type="submit"
             disabled={busy}
-            className="w-full h-11 rounded-lg bg-primary text-primary-foreground text-sm font-bold disabled:opacity-40 active:scale-[0.98] transition-all"
+            className="w-full h-12 rounded-full bg-foreground text-background text-[11px] font-black uppercase tracking-widest disabled:opacity-40 active:scale-[0.98] transition-all shadow-sm"
           >
-            {busy ? "Signing in…" : "Sign in"}
+            {busy ? "SIGNING IN…" : "SIGN IN"}
           </button>
         </form>
-        <p className="text-[11px] text-muted-foreground text-center">
-          Need an account? Contact your admin to create a turf owner account for you.
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground text-center">
+          Need an account? Contact your admin.
         </p>
       </div>
     </div>
@@ -645,15 +645,15 @@ export default function VenueOwnerDashboard() {
   if (!isTurfOwner) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-5 bg-background">
-        <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center">
-          <TrendingUp className="w-7 h-7 text-red-500" />
+        <div className="w-16 h-16 rounded-full border-2 border-foreground flex items-center justify-center">
+          <TrendingUp className="w-7 h-7 text-foreground" />
         </div>
-        <h1 className="font-display font-bold text-xl">Access Denied</h1>
-        <p className="text-sm text-muted-foreground text-center max-w-xs">
+        <h1 className="font-display font-black uppercase tracking-tight text-xl">Access Denied</h1>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground text-center max-w-xs">
           This page is for turf owners only. Contact your admin if you need venue owner access.
         </p>
-        <button onClick={() => signOut()} className="mt-2 px-6 py-2.5 bg-primary text-primary-foreground-lg text-sm font-bold">
-          Sign out
+        <button onClick={() => signOut()} className="mt-2 h-10 px-6 rounded-full bg-foreground text-background text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all">
+          SIGN OUT
         </button>
       </div>
     );
@@ -661,42 +661,42 @@ export default function VenueOwnerDashboard() {
 
   return (
     <main className="min-h-screen bg-background pb-24">
-      <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b border-border/50">
-        <div className="max-w-[680px] mx-auto px-5 h-14 flex items-center gap-3">
-          <Link to="/" className="p-2 -ml-2 rounded-full hover:bg-secondary">
+      <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b-2 border-border">
+        <div className="w-full max-w-[680px] md:max-w-4xl mx-auto px-5 h-16 flex items-center gap-3">
+          <Link to="/" className="w-10 h-10 -ml-2 rounded-full border-2 border-transparent hover:border-border flex items-center justify-center transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </Link>
-          <h1 className="font-display font-bold text-xl tracking-tight flex-1">Owner hub</h1>
+          <h1 className="font-display font-black uppercase tracking-tight text-xl flex-1">Owner hub</h1>
           <ThemeToggle />
-          <button type="button" onClick={() => signOut()} className="text-xs font-semibold text-muted-foreground hover:text-foreground">
-            Out
+          <button type="button" onClick={() => signOut()} className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground">
+            OUT
           </button>
         </div>
       </header>
 
-      <div className="max-w-[680px] mx-auto px-5 py-5 space-y-6">
+      <div className="w-full max-w-[680px] md:max-w-4xl mx-auto px-5 py-6 space-y-8">
         {/* 1. Personalized welcome */}
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Owner Dashboard</p>
-          <h1 className="font-display font-bold text-3xl tracking-tight mt-0.5">
-            Welcome back, Mr. {user?.user_metadata?.full_name || "Owner"}
+          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Owner Dashboard</p>
+          <h1 className="font-display font-black text-3xl tracking-tight mt-1 uppercase">
+            Welcome, {user?.user_metadata?.full_name || "Owner"}
           </h1>
         </div>
 
         {/* 2. Venue hero with swipeable gallery */}
         {verifiedVenues.length > 0 && (
-          <section className="bg-card rounded-xl border border-border overflow-hidden">
+          <section className="bg-card rounded-2xl border-2 border-border overflow-hidden">
             {/* Swipeable image gallery */}
             {verifiedVenues[0].image_urls && verifiedVenues[0].image_urls.length > 0 ? (
-              <div className="relative">
+              <div className="relative border-b-2 border-border">
                 <div
                   id="venue-gallery"
                   className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
                   style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
                 >
                   {verifiedVenues[0].image_urls.map((url, i) => (
-                    <div key={i} className="snap-center shrink-0 w-full">
-                      <img src={url} alt={`${verifiedVenues[0].name} ${i + 1}`} className="w-full h-56 object-cover" />
+                    <div key={i} className="snap-center shrink-0 w-full border-r-2 border-border last:border-r-0">
+                      <img src={url} alt={`${verifiedVenues[0].name} ${i + 1}`} className="w-full h-56 object-cover grayscale-[0.2]" />
                     </div>
                   ))}
                 </div>
@@ -707,7 +707,7 @@ export default function VenueOwnerDashboard() {
                         const el = document.getElementById("venue-gallery");
                         if (el) el.scrollBy({ left: -el.clientWidth, behavior: "smooth" });
                       }}
-                      className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60 transition-colors"
+                      className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full border-2 border-border bg-background text-foreground flex items-center justify-center hover:bg-secondary transition-colors shadow-sm"
                     >
                       <ChevronLeft className="w-4 h-4" />
                     </button>
@@ -716,32 +716,27 @@ export default function VenueOwnerDashboard() {
                         const el = document.getElementById("venue-gallery");
                         if (el) el.scrollBy({ left: el.clientWidth, behavior: "smooth" });
                       }}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60 transition-colors"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full border-2 border-border bg-background text-foreground flex items-center justify-center hover:bg-secondary transition-colors shadow-sm"
                     >
                       <ChevronRight className="w-4 h-4" />
                     </button>
-                    <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
-                      {verifiedVenues[0].image_urls.map((_, i) => (
-                        <div key={i} className="w-1.5 h-1.5 rounded-full bg-white/80" />
-                      ))}
-                    </div>
                   </>
                 )}
               </div>
             ) : (
-              <div className="h-48 flex items-center justify-center bg-emerald-500/5">
-                <Images className="w-12 h-12 text-emerald-500/30" />
+              <div className="h-48 flex items-center justify-center border-b-2 border-border bg-secondary/30 border-dashed">
+                <Images className="w-12 h-12 text-muted-foreground" />
               </div>
             )}
             <div className="p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
-                  <h2 className="font-display font-bold text-2xl tracking-tight truncate">{verifiedVenues[0].name}</h2>
-                  <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1.5">
+                  <h2 className="font-display font-black text-2xl tracking-tight uppercase truncate">{verifiedVenues[0].name}</h2>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1 flex items-center gap-1.5">
                     <MapPin className="w-3 h-3 shrink-0" />
                     {verifiedVenues[0].city}{verifiedVenues[0].area ? `, ${verifiedVenues[0].area}` : ""}
-                    <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600">
-                      Verified
+                    <span className="inline-flex items-center rounded-sm border-2 border-foreground bg-foreground text-background px-1.5 py-0.5 text-[8px] font-black uppercase tracking-widest ml-2">
+                      VERIFIED
                     </span>
                   </p>
                 </div>
@@ -751,53 +746,57 @@ export default function VenueOwnerDashboard() {
         )}
 
         {/* 3. Prominent Net Earnings */}
-        <section className="bg-emerald-500/[0.06] border border-emerald-500/20 rounded-xl p-6">
-          <div className="flex items-start justify-between gap-4">
+        <section className="bg-foreground text-background border-2 border-foreground rounded-2xl p-6 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-background/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/4" />
+          <div className="flex items-start justify-between gap-4 relative z-10">
             <div className="flex-1">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700/70">Net Earnings (est.)</p>
-              <p className="font-display font-bold text-5xl mt-1 text-emerald-600">₵{Number(netEarnings || 0).toFixed(0)}</p>
-              <div className="flex items-center gap-4 mt-3">
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-80">Net Earnings (est.)</p>
+              <p className="font-display font-black text-4xl sm:text-5xl mt-1 tracking-tighter">
+                <span className="opacity-60 text-2xl align-top mr-1 font-sans">₵</span>
+                {Number(netEarnings || 0).toFixed(0)}
+              </p>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4 border-t-2 border-background/20 border-dashed pt-4">
                 <div>
-                  <p className="text-[10px] text-muted-foreground uppercase">Gross (est.)</p>
-                  <p className="text-sm font-bold">₵{Number(totalGross || 0).toFixed(0)}</p>
+                  <p className="text-[9px] font-black uppercase tracking-widest opacity-60">Gross (est.)</p>
+                  <p className="text-sm font-black uppercase tracking-widest">₵{Number(totalGross || 0).toFixed(0)}</p>
                 </div>
-                <div className="w-px h-6 bg-border/60" />
+                <div className="w-px h-6 bg-background/20" />
                 <div>
-                  <p className="text-[10px] text-muted-foreground uppercase">Platform fee</p>
-                  <p className="text-sm font-bold">₵{Number(platformFees || 0).toFixed(0)}</p>
+                  <p className="text-[9px] font-black uppercase tracking-widest opacity-60">Platform fee</p>
+                  <p className="text-sm font-black uppercase tracking-widest">₵{Number(platformFees || 0).toFixed(0)}</p>
                 </div>
-                <div className="w-px h-6 bg-border/60" />
+                <div className="w-px h-6 bg-background/20" />
                 <div>
-                  <p className="text-[10px] text-muted-foreground uppercase">Rate</p>
-                  <p className="text-sm font-bold">{Number((commissionRate || 0) * 100).toFixed(0)}%</p>
+                  <p className="text-[9px] font-black uppercase tracking-widest opacity-60">Rate</p>
+                  <p className="text-sm font-black uppercase tracking-widest">{Number((commissionRate || 0) * 100).toFixed(0)}%</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3 mt-5">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-6">
                 <button
                   onClick={() => setWithdrawOpen(true)}
                   disabled={venueBalance < 10}
-                  className="text-sm font-bold bg-[hsl(var(--gold))] text-[hsl(var(--gold-foreground))] text-white rounded-full px-6 py-2.5 transition-colors hover:bg-emerald-500 disabled:opacity-40 shadow-sm"
+                  className="text-[10px] font-black uppercase tracking-widest bg-background text-foreground border-2 border-background rounded-full px-6 py-3 transition-colors hover:bg-background/90 disabled:opacity-40 shadow-sm"
                 >
-                  Withdraw
+                  WITHDRAW
                 </button>
-                <span className="text-xs text-muted-foreground">
-                  Available: ₵{Number(venueBalance || 0).toFixed(2)}
+                <span className="text-[10px] font-bold uppercase tracking-widest opacity-80 mt-1 sm:mt-0">
+                  AVAILABLE: ₵{Number(venueBalance || 0).toFixed(2)}
                 </span>
               </div>
             </div>
-            <div className="w-14 h-14 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
-              <Wallet className="w-7 h-7 text-emerald-500" />
+            <div className="w-14 h-14 rounded-full border-2 border-background/20 flex items-center justify-center shrink-0">
+              <Wallet className="w-6 h-6 text-background" />
             </div>
           </div>
         </section>
 
         {/* 4. Venue details summary */}
         {verifiedVenues.length > 0 && (
-          <section className="bg-card rounded-xl border border-border p-5 space-y-4">
-            <h3 className="font-display font-bold text-sm flex items-center gap-2">
+          <section className="bg-card rounded-2xl border-2 border-border p-5 space-y-4 shadow-sm">
+            <h3 className="font-display font-black text-sm uppercase tracking-widest flex items-center gap-2">
               <Building2 className="w-4 h-4 text-muted-foreground" /> Venue Details
             </h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {verifiedVenues[0].price_per_hour !== null && (
                 <div className="space-y-1">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
@@ -856,62 +855,63 @@ export default function VenueOwnerDashboard() {
 
         {/* 5. Pending venues */}
         {pendingVenues.length > 0 && (
-          <section className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-4 flex items-start gap-3">
-            <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <section className="rounded-2xl border-2 border-dashed border-border p-4 flex items-start gap-3 bg-secondary/30">
+            <Clock className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
             <div className="text-xs leading-relaxed">
-              <p className="font-semibold text-foreground">
+              <p className="font-display font-black text-sm uppercase tracking-widest text-foreground">
                 {pendingVenues.length} venue{pendingVenues.length > 1 ? "s" : ""} pending verification
               </p>
-              <p className="text-muted-foreground mt-0.5">We will email you when pitches go live.</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">We will email you when pitches go live.</p>
             </div>
           </section>
         )}
 
         {/* 6. Today's matches */}
-        <section className="bg-card rounded-xl border border-border p-5">
-          <h2 className="font-display font-bold text-base mb-3 flex items-center gap-2">
+        <section className="bg-card rounded-2xl border-2 border-border p-5 shadow-sm">
+          <h2 className="font-display font-black text-sm uppercase tracking-widest mb-4 flex items-center gap-2">
             <Calendar className="w-4 h-4" /> Today at your venue
           </h2>
           {todayMatches.length === 0 ? (
-            <div className="text-center py-6">
-              <p className="text-sm text-muted-foreground">No matches scheduled today.</p>
-              <p className="text-[11px] text-muted-foreground mt-1">Your pitch is free — time to promote it.</p>
+            <div className="text-center py-6 border-2 border-dashed border-border rounded-xl bg-secondary/20">
+              <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">No matches scheduled today.</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">Your pitch is free — time to promote it.</p>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {todayMatches.map((m) => {
                 const statusBadge = () => {
                   switch (m.status) {
-                    case "live": return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600">LIVE</span>;
-                    case "full": return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600">FULL</span>;
-                    case "upcoming": return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600">UPCOMING</span>;
-                    default: return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-500/10 text-slate-600">{m.status}</span>;
+                    case "live": return <span className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-sm border-2 border-foreground bg-foreground text-background">LIVE</span>;
+                    case "full": return <span className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-sm border-2 border-foreground bg-foreground text-background">FULL</span>;
+                    case "upcoming": return <span className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-sm border-2 border-foreground text-foreground">UPCOMING</span>;
+                    default: return <span className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-sm border border-border text-muted-foreground">{m.status}</span>;
                   }
                 };
                 return (
-                  <div key={m.id} className="flex items-center gap-3 rounded-xl border border-border p-3">
-                    <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <span className="text-[10px] font-bold">{m.join_code.slice(0, 2).toUpperCase()}</span>
+                  <div key={m.id} className="flex items-center gap-3 rounded-xl border-2 border-border p-3 bg-background hover:border-foreground/40 transition-colors relative overflow-hidden group">
+                    <div className="absolute left-[-6px] top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 border-border bg-background z-10" />
+                    <div className="w-12 h-12 rounded-lg border-2 border-border bg-secondary/30 flex items-center justify-center shrink-0 ml-1">
+                      <span className="text-sm font-display font-black uppercase">{m.join_code.slice(0, 2)}</span>
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold truncate">{m.join_code}</p>
+                        <p className="text-sm font-black uppercase tracking-widest truncate">{m.join_code}</p>
                         {statusBadge()}
                       </div>
-                      <p className="text-[11px] text-muted-foreground">
-                        {getFormattedTime(m.match_date)} · {m.format} · {m.core_paid_count} paid
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">
+                        {getFormattedTime(m.match_date)} · {m.format} · <span className="text-foreground">{m.core_paid_count} PAID</span>
                       </p>
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0">
                       <button
                         onClick={() => openRoster(m)}
-                        className="text-[10px] font-bold bg-secondary rounded-full px-2.5 py-1.5 hover:bg-secondary/80 transition-colors"
+                        className="text-[9px] font-black uppercase tracking-widest border-2 border-border rounded-lg px-3 py-2 hover:border-foreground transition-colors"
                       >
-                        Roster
+                        ROSTER
                       </button>
                       <button
                         onClick={() => openQr(m)}
-                        className="text-[10px] font-bold bg-primary text-primary-foreground-lg px-2.5 py-1.5 hover:bg-foreground/90 transition-colors"
+                        className="text-[9px] font-black uppercase tracking-widest bg-foreground text-background border-2 border-foreground rounded-lg px-3 py-2 hover:bg-background hover:text-foreground transition-colors"
                       >
                         QR
                       </button>
@@ -932,18 +932,18 @@ export default function VenueOwnerDashboard() {
         />
 
         {/* 8. Popular kickoff hours */}
-        <section className="bg-card rounded-xl border border-border p-5">
-          <h2 className="font-display font-bold text-base mb-1 flex items-center gap-2">
+        <section className="bg-card rounded-2xl border-2 border-border p-5 shadow-sm">
+          <h2 className="font-display font-black text-sm uppercase tracking-widest mb-1 flex items-center gap-2">
             <TrendingUp className="w-4 h-4" /> Popular kickoff hours
           </h2>
-          <p className="text-[11px] text-muted-foreground mb-4">Last 90 days at your verified venues (scheduled matches).</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-6">Last 90 days at your verified venues (scheduled matches).</p>
           <div className="h-48 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={heatBuckets}>
-                <XAxis dataKey="hour" tick={{ fontSize: 9 }} interval={2} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 10 }} width={24} />
-                <Tooltip />
-                <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                <XAxis dataKey="hour" tick={{ fontSize: 9, fontWeight: 700, fill: "hsl(var(--muted-foreground))" }} interval={2} axisLine={false} tickLine={false} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 10, fontWeight: 700, fill: "hsl(var(--muted-foreground))" }} width={24} axisLine={false} tickLine={false} />
+                <Tooltip cursor={{ fill: "hsl(var(--secondary))" }} contentStyle={{ borderRadius: "8px", border: "2px solid hsl(var(--border))", boxShadow: "none" }} />
+                <Bar dataKey="count" fill="hsl(var(--foreground))" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -951,32 +951,30 @@ export default function VenueOwnerDashboard() {
 
         {/* 9. Per-venue pricing & blockout */}
         {venues.filter((v) => v.status === "verified").map((v) => (
-          <section key={v.id} className="bg-card rounded-xl border border-border p-5 space-y-4">
+          <section key={v.id} className="bg-card rounded-2xl border-2 border-border p-5 space-y-5 shadow-sm">
             <div className="flex items-center justify-between">
-              <h3 className="font-display font-bold text-sm flex items-center gap-2">
+              <h3 className="font-display font-black text-sm uppercase tracking-widest flex items-center gap-2">
                 <Building2 className="w-4 h-4" /> {v.name}
               </h3>
-              <span className="text-[10px] uppercase font-semibold text-emerald-600">verified</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-foreground border-2 border-foreground px-1.5 py-0.5 rounded-sm">VERIFIED</span>
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              Peak window uses the hour of day in each player&apos;s browser when they schedule — good enough for a first pass.
-            </p>
+            
             {v.open_time && v.close_time && (
-              <p className="text-[11px] font-semibold text-foreground">
-                Hours: {v.open_time.slice(0, 5)} – {v.close_time.slice(0, 5)}
+              <p className="text-[10px] font-bold uppercase tracking-widest text-foreground border-b-2 border-border border-dashed pb-3">
+                HOURS: {v.open_time.slice(0, 5)} – {v.close_time.slice(0, 5)}
               </p>
             )}
 
             <div className="space-y-4">
               <div>
-                <label className="text-[11px] font-semibold text-muted-foreground block mb-1.5">Base price per hour (₵)</label>
+                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-2">Base price / hr (₵)</label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground">₵</span>
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-black text-muted-foreground">₵</span>
                   <input
                     type="number"
                     min={0}
                     step={1}
-                    className="w-full rounded-xl border border-border bg-background pl-8 pr-3 py-2.5 text-sm"
+                    className="w-full h-12 rounded-xl border-2 border-border bg-background pl-9 pr-4 text-sm font-bold outline-none focus:border-foreground transition-colors"
                     value={v.price_per_hour ?? ""}
                     placeholder="0"
                     onChange={(e) => patchVenue(v.id, { price_per_hour: e.target.value === "" ? null : Number(e.target.value) })}
@@ -984,21 +982,21 @@ export default function VenueOwnerDashboard() {
                 </div>
               </div>
               <div>
-                <label className="text-[11px] font-semibold text-muted-foreground block mb-1.5">Peak hours</label>
+                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-2">Peak hours</label>
                 <div className="flex items-center gap-2">
                   <input
                     type="number"
                     min={0} max={23}
-                    className="flex-1 rounded-xl border border-border bg-background px-3 py-2.5 text-sm"
+                    className="flex-1 h-12 rounded-xl border-2 border-border bg-background px-4 text-sm font-bold outline-none focus:border-foreground transition-colors"
                     value={v.surge_peak_start_hour ?? ""}
                     placeholder="Start"
                     onChange={(e) => patchVenue(v.id, { surge_peak_start_hour: e.target.value === "" ? null : Number(e.target.value) })}
                   />
-                  <span className="text-muted-foreground text-sm">—</span>
+                  <span className="text-muted-foreground text-sm font-black">—</span>
                   <input
                     type="number"
                     min={0} max={23}
-                    className="flex-1 rounded-xl border border-border bg-background px-3 py-2.5 text-sm"
+                    className="flex-1 h-12 rounded-xl border-2 border-border bg-background px-4 text-sm font-bold outline-none focus:border-foreground transition-colors"
                     value={v.surge_peak_end_hour ?? ""}
                     placeholder="End"
                     onChange={(e) => patchVenue(v.id, { surge_peak_end_hour: e.target.value === "" ? null : Number(e.target.value) })}
@@ -1006,19 +1004,19 @@ export default function VenueOwnerDashboard() {
                 </div>
               </div>
               <div>
-                <label className="text-[11px] font-semibold text-muted-foreground block mb-1.5">Surge multiplier</label>
+                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-2">Surge multiplier</label>
                 <input
                   type="number"
                   step={0.1}
                   min={1}
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm"
+                  className="w-full h-12 rounded-xl border-2 border-border bg-background px-4 text-sm font-bold outline-none focus:border-foreground transition-colors"
                   value={v.surge_multiplier}
                   onChange={(e) => patchVenue(v.id, { surge_multiplier: Number(e.target.value) || 1 })}
                 />
-                <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
+                <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mt-2 leading-relaxed">
                   During peak hours, players pay the multiplied rate.
                   {v.price_per_hour && v.surge_multiplier > 1 ? (
-                    <> Example: ₵{v.price_per_hour} × {v.surge_multiplier} = <span className="font-semibold text-emerald-600">₵{Number((v.price_per_hour || 0) * v.surge_multiplier).toFixed(0)}/hr</span>.</>
+                    <> Example: ₵{v.price_per_hour} × {v.surge_multiplier} = <span className="font-black text-foreground">₵{Number((v.price_per_hour || 0) * v.surge_multiplier).toFixed(0)}/HR</span>.</>
                   ) : null}
                 </p>
               </div>
@@ -1027,17 +1025,17 @@ export default function VenueOwnerDashboard() {
             <button
               type="button"
               onClick={() => saveVenuePricing(v)}
-              className="w-full rounded-lg bg-primary text-primary-foreground text-xs font-semibold py-2.5"
+              className="w-full h-12 rounded-lg bg-foreground text-background text-[10px] font-black uppercase tracking-widest transition-all active:scale-[0.98] mt-2"
             >
-              Save pricing
+              SAVE PRICING
             </button>
 
             <button
               type="button"
               onClick={() => openBlockoutModal(v.id)}
-              className="w-full rounded-full border border-border bg-secondary text-foreground text-xs font-semibold py-2.5 flex items-center justify-center gap-2"
+              className="w-full h-12 rounded-full border-2 border-border bg-card hover:border-foreground text-foreground text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 mt-2"
             >
-              <Shield className="w-3.5 h-3.5" /> Manage blockout dates
+              <Shield className="w-3.5 h-3.5" /> MANAGE BLOCKOUT DATES
             </button>
           </section>
         ))}

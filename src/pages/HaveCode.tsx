@@ -81,7 +81,7 @@ const CodeBoxes = ({ value, onChange }: { value: string; onChange: (s: string) =
           autoCapitalize="characters"
           aria-label={`Code character ${i + 1}`}
           autoFocus={i === 0}
-          className={`w-12 h-16 text-center font-display font-bold text-3xl bg-background border-2 ${c.trim() ? "border-foreground" : "border-border"} rounded-xl uppercase focus:outline-none focus:border-foreground focus:ring-2 focus:ring-foreground/20 transition-all`}
+          className={`w-12 h-16 text-center font-display font-black text-3xl bg-background border-2 ${c.trim() ? "border-foreground" : "border-border"} rounded-xl uppercase focus:outline-none focus:border-foreground focus:ring-2 focus:ring-foreground/20 transition-all`}
         />
       ))}
     </div>
@@ -176,50 +176,50 @@ const HaveCode = () => {
 
   return (
     <main className="min-h-screen bg-background pb-28">
-      <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md">
-        <div className="max-w-[680px] mx-auto px-5 h-14 flex items-center gap-3">
+      <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b-2 border-border">
+        <div className="max-w-[680px] mx-auto px-5 h-16 flex items-center gap-3">
           <button
             onClick={() => (status === "found" ? reset() : navigate("/"))}
-            className="p-2 -ml-2 rounded-full hover:bg-secondary"
+            className="w-10 h-10 -ml-2 rounded-full border-2 border-transparent hover:border-border flex items-center justify-center transition-colors"
             aria-label="Back"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="font-display font-bold text-xl tracking-tight">Have a code?</h1>
+          <h1 className="font-display font-black text-xl tracking-tight uppercase">Have Code</h1>
         </div>
       </header>
 
       <div className="max-w-[680px] mx-auto px-4 py-5">
         {/* CODE ENTRY */}
         {status !== "found" && (
-          <section className="rounded-xl bg-secondary p-6 text-center">
-            <div className="w-12 h-12 rounded-full bg-foreground/10 mx-auto flex items-center justify-center mb-3">
-              <KeyRound className="w-5 h-5" />
+          <section className="rounded-2xl border-2 border-border bg-card p-6 text-center shadow-sm">
+            <div className="w-12 h-12 rounded-full border-2 border-foreground mx-auto flex items-center justify-center mb-4">
+              <KeyRound className="w-5 h-5 text-foreground" />
             </div>
-            <h2 className="font-display font-bold text-2xl tracking-tight">Enter match code</h2>
-            <p className="text-sm text-muted-foreground mt-1 mb-5">
-              Paste or type the 6-character code your organizer shared.
+            <h2 className="font-display font-black text-2xl tracking-tight uppercase">Enter Match Code</h2>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-2 mb-6">
+              Paste or type the 6-character code.
             </p>
             <CodeBoxes value={code} onChange={setCode} />
 
             {status === "notfound" && (
-              <div className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-destructive">
+              <div className="mt-5 inline-flex items-center gap-1.5 px-3 py-2 border-2 border-foreground bg-background rounded-lg text-[10px] font-black uppercase tracking-widest text-foreground">
                 <AlertCircle className="w-3.5 h-3.5" />
-                No match found for that code. Double-check and try again.
+                Code not found. Try again.
               </div>
             )}
 
             <button
               onClick={lookup}
               disabled={!codeReady || status === "loading"}
-              className="mt-6 w-full inline-flex items-center justify-center gap-2 h-12 rounded-lg bg-primary text-primary-foreground text-sm font-semibold transition-all disabled:opacity-40 active:scale-[0.99]"
+              className="mt-6 w-full h-14 rounded-full bg-foreground border-2 border-foreground text-background text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all disabled:opacity-40 active:scale-[0.98]"
             >
               {status === "loading" ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" /> Looking up…
+                  <Loader2 className="w-4 h-4 animate-spin" /> LOOKING UP…
                 </>
               ) : (
-                "Find match"
+                "FIND MATCH"
               )}
             </button>
           </section>
@@ -229,40 +229,34 @@ const HaveCode = () => {
         {status === "found" && match && (
           <div className="space-y-5">
             {/* Preview card */}
-            <section className="rounded-xl bg-secondary p-5">
-              <div className="flex items-center justify-between gap-3">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-background px-2.5 py-1 text-[11px] font-semibold">
+            <section className="rounded-2xl border-2 border-border bg-card overflow-hidden">
+              <div className="px-5 py-4 border-b-2 border-border border-dashed bg-secondary/40 flex items-center justify-between gap-3">
+                <span className="inline-flex items-center gap-1.5 rounded-sm bg-background border-2 border-border px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-foreground">
                   <KeyRound className="w-3 h-3" /> {match.join_code}
                 </span>
-                <span className="inline-flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider">
+                <span className="inline-flex items-center gap-1.5 rounded-sm bg-foreground text-background px-2 py-0.5 text-[10px] font-black uppercase tracking-widest border-2 border-foreground">
                   {match.match_mode === "gala" ? "Gala" : "Two-team"} · {match.format}
                 </span>
               </div>
 
-              <h2 className="font-display font-bold text-2xl tracking-tight mt-3">
-                {match.venue?.name ?? "Venue"}
-              </h2>
+              <div className="p-5">
+                <h2 className="font-display font-black text-2xl tracking-tight uppercase leading-none mb-4">
+                  {match.venue?.name ?? "Venue"}
+                </h2>
 
-              <div className="mt-3 grid grid-cols-2 gap-y-2 text-xs text-muted-foreground">
-                <div className="inline-flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5" /> {getFormattedTime(match.match_date)}
-                </div>
-                <div className="inline-flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5" /> {match.venue?.area ?? match.venue?.city ?? ""}
-                </div>
-                <div className="inline-flex items-center gap-1.5">
-                  <Users className="w-3.5 h-3.5" /> {totalFilled}/{totalCap} players
-                </div>
-                <div className="inline-flex items-center gap-1.5">
-                  <Swords className="w-3.5 h-3.5" /> ₵{Number(match.entry_fee)} · Host {hostName}
+                <div className="grid grid-cols-2 gap-y-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  <div className="inline-flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-foreground" /> {getFormattedTime(match.match_date)}</div>
+                  <div className="inline-flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-foreground" /> {match.venue?.area ?? match.venue?.city ?? ""}</div>
+                  <div className="inline-flex items-center gap-1.5"><Users className="w-3.5 h-3.5 text-foreground" /> {totalFilled}/{totalCap} PLAYERS</div>
+                  <div className="inline-flex items-center gap-1.5"><Swords className="w-3.5 h-3.5 text-foreground" /> ₵{Number(match.entry_fee)} · HOST {hostName}</div>
                 </div>
               </div>
             </section>
 
             {/* Team picker */}
-            <section>
-              <p className="text-sm text-muted-foreground mb-2">Pick your team</p>
-              <ul className="divide-y divide-border">
+            <section className="bg-card border-2 border-border rounded-2xl p-5">
+              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3 pb-3 border-b-2 border-dashed border-border">Pick your team</p>
+              <ul className="divide-y-2 divide-dashed divide-border">
                 {match.match_mode !== "gala" ? (
                   <>
                     {/* Reds */}
@@ -270,18 +264,18 @@ const HaveCode = () => {
                       <button
                         disabled={redCount >= perSide}
                         onClick={() => setPickedTeam("reds")}
-                        className="w-full flex items-center justify-between py-4 text-left disabled:opacity-50"
+                        className="w-full flex items-center justify-between py-4 text-left disabled:opacity-50 group transition-all"
                       >
                         <div>
-                          <p className="text-base font-semibold">Reds</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {redCount}/{perSide} · {redCount >= perSide ? "Full" : `${perSide - redCount} open`}
+                          <p className="text-lg font-black uppercase tracking-tight text-foreground group-hover:tracking-tighter transition-all">Red Team</p>
+                          <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">
+                            {redCount}/{perSide} · {redCount >= perSide ? "FULL" : `${perSide - redCount} OPEN`}
                           </p>
                         </div>
                         {pickedTeam === "reds" ? (
-                          <Check className="w-5 h-5" />
+                          <div className="w-6 h-6 rounded-full bg-foreground flex items-center justify-center"><Check className="w-3 h-3 text-background" /></div>
                         ) : (
-                          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                          <ChevronRight className="w-5 h-5 text-muted-foreground" />
                         )}
                       </button>
                     </li>
@@ -290,18 +284,18 @@ const HaveCode = () => {
                       <button
                         disabled={blueCount >= perSide}
                         onClick={() => setPickedTeam("blues")}
-                        className="w-full flex items-center justify-between py-4 text-left disabled:opacity-50"
+                        className="w-full flex items-center justify-between py-4 text-left disabled:opacity-50 group transition-all"
                       >
                         <div>
-                          <p className="text-base font-semibold">Blues</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {blueCount}/{perSide} · {blueCount >= perSide ? "Full" : `${perSide - blueCount} open`}
+                          <p className="text-lg font-black uppercase tracking-tight text-foreground group-hover:tracking-tighter transition-all">Blue Team</p>
+                          <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">
+                            {blueCount}/{perSide} · {blueCount >= perSide ? "FULL" : `${perSide - blueCount} OPEN`}
                           </p>
                         </div>
                         {pickedTeam === "blues" ? (
-                          <Check className="w-5 h-5" />
+                          <div className="w-6 h-6 rounded-full bg-foreground flex items-center justify-center"><Check className="w-3 h-3 text-background" /></div>
                         ) : (
-                          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                          <ChevronRight className="w-5 h-5 text-muted-foreground" />
                         )}
                       </button>
                     </li>
@@ -310,16 +304,16 @@ const HaveCode = () => {
                   <li>
                     <button
                       onClick={() => setPickedTeam("__bring__")}
-                      className="w-full flex items-center justify-between py-4 text-left"
+                      className="w-full flex items-center justify-between py-4 text-left group transition-all"
                     >
                       <div>
-                        <p className="text-base font-semibold">Bring my own team</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">Captain a new squad in this gala</p>
+                        <p className="text-lg font-black uppercase tracking-tight text-foreground group-hover:tracking-tighter transition-all">Bring own team</p>
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">Captain a new squad in this gala</p>
                       </div>
                       {pickedTeam === "__bring__" ? (
-                        <Check className="w-5 h-5" />
+                        <div className="w-6 h-6 rounded-full bg-foreground flex items-center justify-center"><Check className="w-3 h-3 text-background" /></div>
                       ) : (
-                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                        <ChevronRight className="w-5 h-5 text-muted-foreground" />
                       )}
                     </button>
                   </li>
@@ -332,20 +326,20 @@ const HaveCode = () => {
 
       {/* Sticky confirm bar */}
       {status === "found" && match && (
-        <div className="fixed bottom-0 inset-x-0 z-30 bg-background/95 backdrop-blur-md border-t border-border">
-          <div className="max-w-[680px] mx-auto px-4 py-3 flex items-center gap-3">
+        <div className="fixed bottom-0 inset-x-0 z-30 bg-background/95 backdrop-blur-md border-t-2 border-border">
+          <div className="max-w-[680px] mx-auto px-4 py-4 flex items-center gap-3">
             <button
               onClick={reset}
-              className="px-4 h-12 rounded-full bg-secondary text-sm font-semibold"
+              className="px-6 h-14 rounded-full border-2 border-border bg-card text-[11px] font-black uppercase tracking-widest text-foreground hover:bg-secondary transition-colors"
             >
-              New code
+              Cancel
             </button>
             <button
               onClick={confirm}
               disabled={!pickedTeam}
-              className="flex-1 inline-flex items-center justify-center gap-2 h-12 rounded-lg bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40 active:scale-[0.99]"
+              className="flex-1 h-14 rounded-full bg-foreground border-2 border-foreground text-background text-[11px] font-black uppercase tracking-widest disabled:opacity-40 transition-transform active:scale-[0.98]"
             >
-              {pickedTeam ? `Join as ${pickedTeam === "__bring__" ? "captain" : pickedTeam}` : "Pick a team"}
+              {pickedTeam ? `JOIN AS ${pickedTeam === "__bring__" ? "CAPTAIN" : pickedTeam.toUpperCase()}` : "PICK A TEAM"}
             </button>
           </div>
         </div>

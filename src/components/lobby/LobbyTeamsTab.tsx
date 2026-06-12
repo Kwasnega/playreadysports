@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Wallet, Zap, X, UserCheck, Check } from "lucide-react";
+import { Users, Wallet, Zap, X, UserCheck, Check, RefreshCw } from "lucide-react";
 import { SlotRow, buildPlayerList, buildSpareList, type LobbyParticipant, type Player } from "./LobbyShared";
 
 interface LobbyTeamsTabProps {
@@ -23,12 +23,6 @@ interface LobbyTeamsTabProps {
   user: any;
   openProfile: (id: string) => void;
 }
-
-const TEAM_HEX: Record<string, string> = {
-  red: "#dc2626", blue: "#2563eb", black: "#1c1917", white: "#a1a1aa",
-  green: "#16a34a", yellow: "#eab308", orange: "#ea580c", purple: "#9333ea",
-  navy: "#1e3a5f", gold: "#ca8a04",
-};
 
 export const LobbyTeamsTab = (props: LobbyTeamsTabProps) => {
   const navigate = useNavigate();
@@ -58,38 +52,43 @@ export const LobbyTeamsTab = (props: LobbyTeamsTabProps) => {
 
     return (
       <>
-        <div className="flex items-center justify-between">
-          <h2 className="font-display font-bold text-xl tracking-tight">Teams · {coreCount}/{maxCore}</h2>
-          <span className="text-xs text-muted-foreground">{corePaidCount} paid</span>
+        <div className="flex items-center justify-between pb-2 border-b-2 border-foreground mb-4">
+          <h2 className="font-display font-black text-2xl uppercase tracking-tighter">Teams</h2>
+          <span className="text-[11px] font-black uppercase tracking-widest text-foreground">{corePaidCount}/{maxCore} Paid</span>
         </div>
-        <div className="rounded-xl bg-secondary/50 px-4 py-3 text-xs text-muted-foreground text-center">
-          🔄 <strong className="text-foreground">Winner stays on.</strong> Loser rotates to back of queue.
+        
+        <div className="rounded-xl border-2 border-border bg-secondary/50 px-4 py-3 flex items-center justify-center gap-2 mb-6">
+          <RefreshCw className="w-4 h-4 text-foreground shrink-0" />
+          <span className="text-[10px] font-black uppercase tracking-widest"><strong className="text-foreground">Winner stays on.</strong> Loser rotates.</span>
         </div>
+
         {teams.length === 0 ? (
-          <div className="bg-card rounded-xl p-5 text-center text-sm text-muted-foreground border border-border">No players have joined yet.</div>
+          <div className="border-2 border-dashed border-border rounded-xl p-8 text-center text-[11px] font-bold uppercase tracking-widest text-muted-foreground bg-secondary/30">
+            No players have joined yet
+          </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {teams.map(([teamName, players]) => (
-              <div key={teamName} className="bg-card rounded-xl border border-border overflow-hidden">
-                <div className="px-4 py-2.5 bg-secondary/60 flex items-center justify-between">
-                  <span className="text-sm font-bold capitalize">{teamName}</span>
-                  <span className="text-[11px] text-muted-foreground">{players.length} player{players.length !== 1 ? "s" : ""}</span>
+              <div key={teamName} className="border-2 border-border rounded-xl bg-card overflow-hidden">
+                <div className="px-4 py-3 border-b-2 border-border border-dashed flex items-center justify-between bg-secondary/40">
+                  <span className="text-sm font-black uppercase tracking-widest">{teamName}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{players.length} Player{players.length !== 1 ? "s" : ""}</span>
                 </div>
-                <ul className="divide-y divide-border/50">
+                <ul className="divide-y-2 divide-border divide-dashed">
                   {players.map((p) => (
                     <li key={p.id}>
-                      <button onClick={() => { const t = p.username || p.user_id; if (t) openProfile(t); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-secondary/50 transition-colors">
+                      <button onClick={() => { const t = p.username || p.user_id; if (t) openProfile(t); }} className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-secondary/50 transition-colors">
                         {p.avatar_url ? (
-                          <img src={p.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
+                          <img src={p.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover grayscale shrink-0 border border-border" />
                         ) : (
-                          <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-[10px] font-bold shrink-0">
+                          <div className="w-8 h-8 rounded-full border border-border bg-background flex items-center justify-center text-[10px] font-bold shrink-0 text-foreground">
                             {(p.full_name || p.username || "?").split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
                           </div>
                         )}
-                        <span className="text-sm font-semibold flex-1 truncate">{p.full_name || p.username || "Player"}</span>
-                        {p.payment_status === "paid" && <Check className="w-3.5 h-3.5 text-success shrink-0" />}
+                        <span className="text-xs font-bold uppercase tracking-wide flex-1 truncate text-foreground">{p.full_name || p.username || "Player"}</span>
+                        {p.payment_status === "paid" && <Check className="w-4 h-4 text-foreground shrink-0" />}
                         {match?.status === "completed" && p.no_show && (
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 shrink-0">No-show</span>
+                          <span className="text-[9px] font-black px-1.5 py-0.5 rounded-sm border border-foreground text-foreground uppercase tracking-widest shrink-0">No-show</span>
                         )}
                       </button>
                     </li>
@@ -99,24 +98,25 @@ export const LobbyTeamsTab = (props: LobbyTeamsTabProps) => {
             ))}
           </div>
         )}
+        
         {spareList.length > 0 && (
-          <section>
-            <h2 className="font-display font-bold text-base tracking-tight mb-2">Spare · {spareList.length}</h2>
-            <div className="space-y-1">
+          <section className="mt-8">
+            <h2 className="font-display font-black text-lg uppercase tracking-tight mb-3">Spare List <span className="text-muted-foreground ml-1">({spareList.length})</span></h2>
+            <div className="space-y-2">
               {spareList.map((p) => (
-                <button key={p.id} onClick={() => { const t = p.username || p.user_id; if (t) openProfile(t); }} className="w-full flex items-center gap-3 px-3 py-2 bg-card rounded-xl border border-border text-left hover:bg-secondary/50 transition-colors">
+                <button key={p.id} onClick={() => { const t = p.username || p.user_id; if (t) openProfile(t); }} className="w-full flex items-center gap-3 px-4 py-3 bg-card rounded-xl border-2 border-border text-left hover:border-foreground transition-all">
                   {p.avatar_url ? (
-                    <img src={p.avatar_url} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
+                    <img src={p.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover grayscale shrink-0 border border-border" />
                   ) : (
-                    <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-[10px] font-bold shrink-0">
+                    <div className="w-8 h-8 rounded-full border border-border bg-background flex items-center justify-center text-[10px] font-bold shrink-0 text-foreground">
                       {(p.full_name || p.username || "?").split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
                     </div>
                   )}
-                  <span className="text-xs font-semibold flex-1 truncate">{p.full_name || p.username || "Player"}</span>
+                  <span className="text-xs font-bold uppercase tracking-wide flex-1 truncate text-foreground">{p.full_name || p.username || "Player"}</span>
                 </button>
               ))}
             </div>
-            <p className="text-[11px] text-muted-foreground mt-2">Spare players step in if a core player drops.</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-3 leading-relaxed">Spare players step in if a core player drops.</p>
           </section>
         )}
       </>
@@ -126,7 +126,6 @@ export const LobbyTeamsTab = (props: LobbyTeamsTabProps) => {
   /* ---- TWO-TEAM VIEW ---- */
   const colorA = (match?.team_color_a ?? "Red");
   const colorB = (match?.team_color_b ?? "Blue");
-  // DB stores team as enum 'reds'/'blues', not the display colour name
   const teamAList = coreList.filter((p) => p.team === "reds");
   const teamBList = coreList.filter((p) => p.team === "blues");
   const teamAPlayers = buildPlayerList(teamAList);
@@ -136,25 +135,25 @@ export const LobbyTeamsTab = (props: LobbyTeamsTabProps) => {
     <>
       {/* Organizer join requests */}
       {isOrganizer && joinRequests.length > 0 && (
-        <section>
-          <div className="flex items-center gap-2 mb-3">
-            <Zap className="w-4 h-4 text-primary" />
-            <h2 className="font-display font-bold text-base tracking-tight">{joinRequests.length} join request{joinRequests.length === 1 ? "" : "s"}</h2>
+        <section className="mb-6">
+          <div className="flex items-center gap-2 mb-3 pb-2 border-b-2 border-dashed border-border">
+            <Zap className="w-4 h-4 text-foreground" />
+            <h2 className="font-display font-black text-lg uppercase tracking-tight">{joinRequests.length} Request{joinRequests.length === 1 ? "" : "s"}</h2>
           </div>
           <div className="space-y-2">
             {joinRequests.map((r) => (
-              <div key={r.id} className="bg-card rounded-xl p-3 flex items-center gap-3" style={{ boxShadow: "var(--shadow-card)" }}>
+              <div key={r.id} className="bg-card rounded-xl border-2 border-border p-3 flex items-center gap-3">
                 {r.avatar_url ? (
-                  <img src={r.avatar_url} alt={r.full_name ?? ""} className="w-10 h-10 rounded-full object-cover" />
+                  <img src={r.avatar_url} alt={r.full_name ?? ""} className="w-10 h-10 rounded-full object-cover grayscale border border-border" />
                 ) : (
-                  <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center"><Users className="w-4 h-4 text-muted-foreground" /></div>
+                  <div className="w-10 h-10 rounded-full border border-border bg-secondary flex items-center justify-center"><Users className="w-4 h-4 text-muted-foreground" /></div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <button onClick={(e) => { e.stopPropagation(); navigate(`/player/${r.username ?? r.full_name}`); }} className="text-sm font-semibold truncate hover:text-primary">{r.full_name ?? r.username ?? "Player"}</button>
-                  <p className="text-xs text-muted-foreground">{r.team || "No team"}</p>
+                  <button onClick={(e) => { e.stopPropagation(); navigate(`/player/${r.username ?? r.full_name}`); }} className="text-xs font-bold uppercase tracking-wide truncate hover:text-muted-foreground text-foreground leading-none mb-1">{r.full_name ?? r.username ?? "Player"}</button>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{r.team || "No team"}</p>
                 </div>
-                <button onClick={() => rejectRequest(r.id, r.full_name ?? r.username ?? "Player")} className="w-9 h-9 rounded-full bg-secondary text-destructive flex items-center justify-center" aria-label="Decline"><X className="w-4 h-4" /></button>
-                <button onClick={() => acceptRequest(r.id, coreList)} className="w-9 h-9 rounded-lg bg-primary text-primary-foreground flex items-center justify-center" aria-label="Accept"><UserCheck className="w-4 h-4" /></button>
+                <button onClick={() => rejectRequest(r.id, r.full_name ?? r.username ?? "Player")} className="w-10 h-10 rounded-full border-2 border-border text-foreground flex items-center justify-center hover:bg-secondary transition-colors" aria-label="Decline"><X className="w-4 h-4" /></button>
+                <button onClick={() => acceptRequest(r.id, coreList)} className="w-10 h-10 rounded-full bg-foreground border-2 border-foreground text-background flex items-center justify-center hover:opacity-90 transition-opacity" aria-label="Accept"><UserCheck className="w-4 h-4" /></button>
               </div>
             ))}
           </div>
@@ -162,93 +161,107 @@ export const LobbyTeamsTab = (props: LobbyTeamsTabProps) => {
       )}
 
       {/* Team rosters */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="font-display font-bold text-xl tracking-tight">Teams · {coreCount}/{maxCore}</h2>
-          <span className="text-xs text-muted-foreground">{corePaidCount} paid</span>
+      <section className="space-y-4">
+        <div className="flex items-center justify-between pb-2 border-b-2 border-foreground">
+          <h2 className="font-display font-black text-2xl uppercase tracking-tighter">Teams</h2>
+          <span className="text-[11px] font-black uppercase tracking-widest text-foreground">{corePaidCount}/{maxCore} Paid</span>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {/* Team A */}
-          <div className="bg-card rounded-xl border border-border overflow-hidden">
-            <div className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-white text-center" style={{ backgroundColor: TEAM_HEX[colorA.toLowerCase()] ?? "#dc2626" }}>{colorA}</div>
-            <ul className="divide-y divide-border/50">
+          <div className="bg-card rounded-2xl border-2 border-border overflow-hidden">
+            <div className="px-3 py-3 text-xs font-black uppercase tracking-widest text-foreground text-center border-b-2 border-border border-dashed bg-secondary/40">
+              {colorA} TEAM
+            </div>
+            <ul className="divide-y-2 divide-border divide-dashed">
               {teamAPlayers.map((p, i) => (
                 <li key={i}>
-                  <button onClick={() => onOpenProfile(p)} className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-secondary/50 transition-colors">
+                  <button onClick={() => onOpenProfile(p)} className="w-full flex items-center gap-2 px-3 py-3 text-left hover:bg-secondary/50 transition-colors">
                     {p.avatar ? (
-                      <img src={p.avatar} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
+                      <img src={p.avatar} alt="" className="w-7 h-7 rounded-full object-cover grayscale shrink-0 border border-border" />
                     ) : (
-                      <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-[10px] font-bold shrink-0">
+                      <div className="w-7 h-7 rounded-full border border-border bg-background flex items-center justify-center text-[9px] font-bold shrink-0 text-foreground">
                         {p.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
                       </div>
                     )}
-                    <span className="text-xs font-semibold truncate flex-1">{p.name}</span>
-                    {p.state === "paid" && <Check className="w-3 h-3 text-success shrink-0" />}
+                    <span className="text-[10px] font-bold uppercase tracking-widest truncate flex-1 text-foreground leading-tight">{p.name}</span>
+                    {p.state === "paid" && <Check className="w-3.5 h-3.5 text-foreground shrink-0" />}
                     {match?.status === "completed" && p.noShow && (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 shrink-0">No-show</span>
+                      <span className="text-[9px] font-black px-1 py-0.5 rounded-sm border border-foreground text-foreground uppercase tracking-widest shrink-0">No-show</span>
                     )}
                   </button>
                 </li>
               ))}
               {Array.from({ length: Math.max(0, sideSize - teamAPlayers.length) }).map((_, i) => (
-                <li key={`open-a-${i}`} className="px-3 py-2 flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-full border-2 border-dashed border-border shrink-0" />
-                  <span className="text-xs text-muted-foreground">Open</span>
+                <li key={`open-a-${i}`} className="px-3 py-3 flex items-center gap-2 bg-secondary/20">
+                  <div className="w-7 h-7 rounded-full border-2 border-dashed border-border shrink-0 bg-card" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Open</span>
                 </li>
               ))}
             </ul>
           </div>
 
           {/* Team B */}
-          <div className="bg-card rounded-xl border border-border overflow-hidden">
-            <div className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-white text-center" style={{ backgroundColor: TEAM_HEX[colorB.toLowerCase()] ?? "#2563eb" }}>{colorB}</div>
-            <ul className="divide-y divide-border/50">
+          <div className="bg-card rounded-2xl border-2 border-border overflow-hidden">
+            <div className="px-3 py-3 text-xs font-black uppercase tracking-widest text-foreground text-center border-b-2 border-border border-dashed bg-secondary/40">
+              {colorB} TEAM
+            </div>
+            <ul className="divide-y-2 divide-border divide-dashed">
               {teamBPlayers.map((p, i) => (
                 <li key={i}>
-                  <button onClick={() => onOpenProfile(p)} className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-secondary/50 transition-colors">
+                  <button onClick={() => onOpenProfile(p)} className="w-full flex items-center gap-2 px-3 py-3 text-left hover:bg-secondary/50 transition-colors">
                     {p.avatar ? (
-                      <img src={p.avatar} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
+                      <img src={p.avatar} alt="" className="w-7 h-7 rounded-full object-cover grayscale shrink-0 border border-border" />
                     ) : (
-                      <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-[10px] font-bold shrink-0">
+                      <div className="w-7 h-7 rounded-full border border-border bg-background flex items-center justify-center text-[9px] font-bold shrink-0 text-foreground">
                         {p.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
                       </div>
                     )}
-                    <span className="text-xs font-semibold truncate flex-1">{p.name}</span>
-                    {p.state === "paid" && <Check className="w-3 h-3 text-success shrink-0" />}
+                    <span className="text-[10px] font-bold uppercase tracking-widest truncate flex-1 text-foreground leading-tight">{p.name}</span>
+                    {p.state === "paid" && <Check className="w-3.5 h-3.5 text-foreground shrink-0" />}
                     {match?.status === "completed" && p.noShow && (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 shrink-0">No-show</span>
+                      <span className="text-[9px] font-black px-1 py-0.5 rounded-sm border border-foreground text-foreground uppercase tracking-widest shrink-0">No-show</span>
                     )}
                   </button>
                 </li>
               ))}
               {Array.from({ length: Math.max(0, sideSize - teamBPlayers.length) }).map((_, i) => (
-                <li key={`open-b-${i}`} className="px-3 py-2 flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-full border-2 border-dashed border-border shrink-0" />
-                  <span className="text-xs text-muted-foreground">Open</span>
+                <li key={`open-b-${i}`} className="px-3 py-3 flex items-center gap-2 bg-secondary/20">
+                  <div className="w-7 h-7 rounded-full border-2 border-dashed border-border shrink-0 bg-card" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Open</span>
                 </li>
               ))}
             </ul>
           </div>
         </div>
 
-        {/* Cover last slot CTA in Teams tab */}
+        {/* Cover last slot CTA */}
         {corePaidCount === maxCore - 1 && (!userParticipant || userParticipant.status !== "active") && match?.status === "upcoming" && (
           <button onClick={() => { if (!user) { openAuth("signin"); return; } if ((match?.entry_fee ?? 0) > 0) handleJoinPaid(); else handleJoinFree(); }} disabled={paying}
-            className="w-full bg-emerald-500 text-white font-semibold rounded-full px-4 py-3.5 text-sm flex items-center justify-center gap-2 disabled:opacity-60 shadow-[0_0_20px_rgba(16,185,129,0.4)] animate-cta-pulse">
+            className="w-full bg-foreground text-background font-black uppercase tracking-widest rounded-full px-4 py-4 text-xs flex items-center justify-center gap-2 disabled:opacity-60 transition-transform active:scale-[0.98]">
             <Wallet className="w-4 h-4" /> Cover last slot · ₵{sharePerPlayer}
           </button>
         )}
       </section>
 
       {sparePlayers.length > 0 && (
-        <section>
-          <h2 className="font-display font-bold text-base tracking-tight mb-2">Spare · {sparePlayers.length}</h2>
-          <div className="flex flex-wrap gap-2">
+        <section className="mt-8">
+          <h2 className="font-display font-black text-lg uppercase tracking-tight mb-3">Spare List <span className="text-muted-foreground ml-1">({sparePlayers.length})</span></h2>
+          <div className="flex flex-col gap-2">
             {sparePlayers.map((p, i) => (
-              <SlotRow key={i} player={p} share={0} onClick={() => { const target = p.username || p.userId; if (target) openProfile(target); }} />
+              <button key={i} onClick={() => { const target = p.username || p.userId; if (target) openProfile(target); }} className="w-full flex items-center gap-3 px-4 py-3 bg-card rounded-xl border-2 border-border text-left hover:border-foreground transition-all">
+                {p.avatar ? (
+                  <img src={p.avatar} alt="" className="w-8 h-8 rounded-full object-cover grayscale shrink-0 border border-border" />
+                ) : (
+                  <div className="w-8 h-8 rounded-full border border-border bg-background flex items-center justify-center text-[10px] font-bold shrink-0 text-foreground">
+                    {(p.name || "?").split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+                  </div>
+                )}
+                <span className="text-xs font-bold uppercase tracking-wide flex-1 truncate text-foreground">{p.name || "Player"}</span>
+              </button>
             ))}
           </div>
-          <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">Spare players pay nothing. They're a buffer in case a core player drops.</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-3 leading-relaxed">Spare players step in if a core drops.</p>
         </section>
       )}
     </>

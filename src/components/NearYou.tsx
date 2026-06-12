@@ -63,8 +63,6 @@ type LiveScore = {
 
 type Item = GalaOpening | TwoTeamOpening | LiveScore;
 
-// Mix of GALA matches that still need teams and two-team (1v1) matches
-// where the organiser is asking for more players. Live score for context.
 const items: Item[] = [
   { kind: "gala", id: "f1", code: "TMA-091", venue: "Tema Mini Pitch", area: "Tema", time: "Sat · 4:00 PM", format: "5", teamsIn: 2, capTeams: 4, pricePerPlayer: 22, km: 5.0 },
   { kind: "two-team", id: "t1", code: "KSI-447", venue: "Bantama Astro", area: "Kumasi", time: "Tonight · 7:30 PM", format: "6v6", filled: 8, cap: 12, pricePerPlayer: 25, km: 1.4 },
@@ -107,7 +105,6 @@ export const NearYou = ({
     );
   });
 
-  // Curated sort: live first, then "Tonight", then weekend, tiebreak by distance.
   if (variant === "curated") {
     const priority = (it: Item): number => {
       if (it.kind === "live") return 0;
@@ -125,23 +122,17 @@ export const NearYou = ({
   }
   if (typeof limit === "number") filtered = filtered.slice(0, limit);
 
-  const headingLabel = variant === "curated" ? "Starting soon" : "Near you";
+  const headingLabel = variant === "curated" ? "Starting Soon" : "Matches Near You";
 
-  // Skeleton card that matches the real card shape
   const SkeletonCard = () => (
-    <div className="bg-card rounded-xl px-4 py-4 border border-border animate-pulse">
-      <div className="flex items-center gap-3">
-        <div className="shrink-0 w-[68px] border-r border-border pr-3 space-y-2">
-          <div className="h-3 bg-secondary rounded w-10" />
-          <div className="h-7 bg-secondary rounded w-12" />
-        </div>
-        <div className="flex-1 space-y-2">
-          <div className="h-4 bg-secondary rounded w-3/4" />
-          <div className="h-3 bg-secondary rounded w-1/2" />
-          <div className="flex gap-1.5 pt-1">
-            <div className="h-5 bg-secondary rounded w-16" />
-            <div className="h-5 bg-secondary rounded w-20" />
-          </div>
+    <div className="flex h-[116px] bg-card rounded-2xl border border-border animate-pulse overflow-hidden">
+      <div className="w-24 border-r border-border bg-secondary/50" />
+      <div className="flex-1 p-4 space-y-3">
+        <div className="h-4 bg-secondary rounded w-3/4" />
+        <div className="h-3 bg-secondary rounded w-1/2" />
+        <div className="flex gap-2">
+          <div className="h-5 bg-secondary rounded w-16" />
+          <div className="h-5 bg-secondary rounded w-20" />
         </div>
       </div>
     </div>
@@ -150,59 +141,59 @@ export const NearYou = ({
   return (
     <section className="px-5 pt-8">
       <div className="max-w-[680px] mx-auto">
-        <div className="flex items-end justify-between mb-4">
+        <div className="flex items-end justify-between mb-5">
           <div>
-            <h2 className="font-display font-bold text-[26px] tracking-tight leading-none">
+            <h2 className="font-display font-black text-2xl tracking-tighter uppercase">
               {headingLabel}
             </h2>
             {variant === "curated" && (
-              <p className="text-xs text-muted-foreground mt-1.5">
-                A quick look at what&apos;s on. Browse all to filter.
+              <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
+                A quick look at what's on
               </p>
             )}
           </div>
           <Link
             to="/join"
-            className="inline-flex items-center gap-1 text-sm font-semibold text-muted-foreground hover:text-foreground shrink-0"
+            className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors shrink-0"
           >
             Browse all <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
 
         {isLoading ? (
-          <ul className="space-y-3">
+          <div className="space-y-3">
             {Array.from({ length: limit ?? 3 }).map((_, i) => (
-              <li key={`skel-${i}`}><SkeletonCard /></li>
+              <SkeletonCard key={`skel-${i}`} />
             ))}
-          </ul>
+          </div>
         ) : filtered.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border/70 py-10 px-5 text-center space-y-3">
-            <Sparkles className="w-5 h-5 text-muted-foreground mx-auto" />
-            <p className="text-sm text-muted-foreground">
-              Nothing nearby right now. Be first — create a match.
+          <div className="rounded-3xl border border-dashed border-border py-10 px-5 text-center space-y-4 bg-card/30">
+            <Sparkles className="w-6 h-6 text-muted-foreground mx-auto" />
+            <p className="text-sm font-bold text-muted-foreground">
+              Nothing nearby right now.<br/>Be first — create a match.
             </p>
             <Link
               to="/create"
-              className="inline-flex items-center justify-center gap-2 bg-[hsl(var(--gold))] text-[hsl(var(--gold-foreground))]-lg px-5 py-2.5 text-sm font-semibold hover:bg-foreground/90 transition-colors"
-            >Create match
+              className="inline-flex items-center justify-center gap-2 bg-foreground text-background rounded-full px-6 h-10 text-xs font-bold hover:bg-foreground/90 transition-colors shadow-sm"
+            >Create Match
             </Link>
           </div>
         ) : (
-          <ul className="space-y-3">
+          <div className="space-y-3">
             {filtered.map(it => (
-              <li key={it.id}>
+              <div key={it.id}>
                 {it.kind === "gala" ? <GalaRow s={it} /> :
                  it.kind === "two-team" ? <TwoTeamRow s={it} /> :
                  <LiveRow s={it} />}
-              </li>
+              </div>
             ))}
-          </ul>
+          </div>
         )}
 
         {variant === "curated" && !isLoading && filtered.length > 0 && (
           <Link
             to="/join"
-            className="mt-4 w-full inline-flex items-center justify-center gap-2 h-12 rounded-xl bg-secondary hover:bg-secondary/80 text-sm font-semibold transition-colors active:scale-[0.99]"
+            className="mt-4 w-full inline-flex items-center justify-center gap-2 h-12 rounded-xl bg-secondary hover:bg-secondary/80 text-sm font-bold transition-colors border border-border"
           >
             Browse all matches
             <ArrowRight className="w-4 h-4" />
@@ -215,7 +206,6 @@ export const NearYou = ({
 
 /* ---- Row primitives ---- */
 
-// Splits "Sat · 4:00 PM" / "Tonight · 7:30 PM" into [when, time] for stacked display.
 const splitTime = (t: string): { when: string; time: string } => {
   const parts = t.split("·").map(s => s.trim());
   if (parts.length === 2) return { when: parts[0], time: parts[1] };
@@ -224,24 +214,27 @@ const splitTime = (t: string): { when: string; time: string } => {
 
 const Chip = ({ children, tone = "default" }: { children: React.ReactNode; tone?: "default" | "warn" | "live" }) => {
   const cls =
-    tone === "warn" ? "bg-warning/15 text-warning border border-warning/25"
-    : tone === "live" ? "bg-destructive/12 text-destructive border border-destructive/25"
-    : "bg-secondary text-foreground/75";
+    tone === "warn" ? "border-foreground text-foreground"
+    : tone === "live" ? "border-foreground text-background bg-foreground"
+    : "border-border text-muted-foreground bg-secondary/50";
   return (
-    <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-semibold ${cls}`}>
+    <span className={`inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest border-[1.5px] ${cls}`}>
       {children}
     </span>
   );
 };
 
 const TimeBlock = ({ when, time, accent }: { when: string; time: string; accent?: "warn" | "live" | null }) => (
-  <div className="shrink-0 w-[68px] text-left border-r border-border pr-3">
-    {when && <p className="text-xs font-semibold text-muted-foreground tracking-tight">{when}</p>}
-    <p className={`font-display font-extrabold text-[26px] leading-[1.05] tabular-nums tracking-tight mt-0.5 ${
-      accent === "live" ? "text-live" : accent === "warn" ? "text-warn" : "text-primary"
-    }`}>
-      {time}
-    </p>
+  <div className="w-[90px] shrink-0 border-r border-border border-dashed bg-secondary/40 flex flex-col items-center justify-center p-2 group-hover:bg-secondary/60 transition-colors">
+    <span className={`text-[10px] font-black uppercase tracking-widest mb-1 ${accent === 'warn' ? 'text-foreground' : 'text-muted-foreground'}`}>{when}</span>
+    <span className={`text-xl font-display font-black tracking-tighter leading-none ${accent === 'live' ? 'text-foreground animate-pulse' : 'text-foreground'}`}>
+      {time.split(' ')[0]}
+    </span>
+    {time.split(' ')[1] && (
+      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">
+        {time.split(' ')[1]}
+      </span>
+    )}
   </div>
 );
 
@@ -251,8 +244,11 @@ const RowShell = ({
   return (
     <Link
       to={to}
-      className="relative block bg-card rounded-xl px-4 py-4 border border-border transition-all duration-200 hover:-translate-y-0.5 hover:border-border hover:shadow-lg active:scale-[0.99]"
+      className="group flex bg-card rounded-2xl border border-border overflow-hidden transition-all duration-200 hover:border-foreground/40 shadow-sm active:scale-[0.99] relative"
     >
+      {/* Sub-stub cutouts for realism */}
+      <div className="absolute left-[84px] top-[-6px] w-3 h-3 rounded-full bg-background border border-border z-10" />
+      <div className="absolute left-[84px] bottom-[-6px] w-3 h-3 rounded-full bg-background border border-border z-10" />
       {children}
     </Link>
   );
@@ -261,17 +257,31 @@ const RowShell = ({
 const JoinCTA = ({ label = "Join", onClick }: { label?: string; onClick?: (e: React.MouseEvent) => void }) => (
   <button
     onClick={onClick}
-    className="shrink-0 inline-flex items-center gap-1 bg-primary text-primary-foreground-lg pl-4 pr-3 h-10 text-sm font-bold transition-all hover:bg-foreground/90 active:scale-95"
+    className="shrink-0 inline-flex items-center justify-center h-8 px-3 rounded-full bg-foreground text-background text-[10px] font-black uppercase tracking-widest transition-all hover:opacity-90 shadow-sm"
   >
     {label}
-    <ArrowRight className="w-4 h-4" strokeWidth={2.4} />
   </button>
+);
+
+const ManageCTA = ({ onClick }: { onClick?: (e: React.MouseEvent) => void }) => (
+  <button
+    onClick={onClick}
+    className="shrink-0 inline-flex items-center justify-center h-8 px-3 rounded-full border-[1.5px] border-foreground text-foreground text-[10px] font-black uppercase tracking-widest transition-all hover:bg-secondary"
+  >
+    Manage
+  </button>
+);
+
+const JoinedCTA = () => (
+  <span className="shrink-0 inline-flex items-center justify-center h-8 px-3 rounded-full border-[1.5px] border-border text-muted-foreground text-[10px] font-black uppercase tracking-widest bg-secondary">
+    Joined
+  </span>
 );
 
 const FriendAvatarStack = ({ count, avatars }: { count?: number; avatars?: string[] }) => {
   if (!count || count === 0) return null;
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1.5 border-l border-border pl-1.5">
       <div className="flex -space-x-1.5">
         {(avatars ?? []).slice(0, 3).map((a, i) =>
           a.startsWith("http") ? (
@@ -279,39 +289,22 @@ const FriendAvatarStack = ({ count, avatars }: { count?: number; avatars?: strin
               key={i}
               src={a}
               alt=""
-              className="w-5 h-5 rounded-full object-cover border border-background"
+              className="w-4 h-4 rounded-full object-cover border border-background"
             />
           ) : (
             <div
               key={i}
-              className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-[8px] font-bold border border-background"
+              className="w-4 h-4 rounded-full bg-secondary flex items-center justify-center text-[7px] font-bold border border-background text-foreground"
             >
               {a?.toUpperCase() || "?"}
             </div>
           )
         )}
       </div>
-      <span className="text-[10px] font-semibold text-primary">{count} friend{count > 1 ? "s" : ""}</span>
+      <span className="text-[9px] font-black uppercase tracking-widest text-foreground">{count} Friend{count > 1 ? "s" : ""}</span>
     </div>
   );
 };
-
-const ManageCTA = ({ onClick }: { onClick?: (e: React.MouseEvent) => void }) => (
-  <button
-    onClick={onClick}
-    className="shrink-0 inline-flex items-center gap-1 bg-[hsl(var(--gold))] text-[hsl(var(--gold-foreground))] text-white rounded-full pl-4 pr-3 h-10 text-sm font-bold transition-all hover:bg-emerald-700 active:scale-95"
-  >
-    Manage
-    <ArrowRight className="w-4 h-4" strokeWidth={2.4} />
-  </button>
-);
-
-const JoinedCTA = () => (
-  <span className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-primary/10 text-primary border border-primary/20 dark:bg-emerald-900/30 dark:text-emerald-400">
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
-    Joined
-  </span>
-);
 
 /* ---- Variants ---- */
 
@@ -326,32 +319,23 @@ const GalaRow = ({ s }: { s: GalaOpening }) => {
   };
   return (
     <RowShell to={`/lobby/${s.code}`} accent={accent}>
-      <div className="flex items-center gap-3">
-        <TimeBlock when={when} time={time} accent={accent} />
-        <div className="min-w-0 flex-1">
-          <p className="text-base font-semibold truncate leading-tight">{s.venue}</p>
-          <p className="text-sm text-muted-foreground truncate mt-0.5">
-            {s.area} · {s.km.toFixed(1)} km · ₵{s.pricePerPlayer}
-          </p>
-          <div className="flex flex-wrap gap-1.5 mt-2 items-center">
-            <Chip><Repeat className="w-3 h-3" /> Gala {s.format}v{s.format}</Chip>
-            <Chip tone={slotsLeft <= 1 ? "warn" : "default"}>
-              {slotsLeft} team{slotsLeft === 1 ? "" : "s"} needed
-            </Chip>
-            {s.friendCount ? (
-              <FriendAvatarStack count={s.friendCount} avatars={s.friendAvatars} />
-            ) : null}
+      <TimeBlock when={when} time={time} accent={accent} />
+      <div className="flex-1 p-3.5 flex flex-col justify-center">
+        <div className="flex items-start justify-between gap-2 mb-1">
+          <p className="text-sm font-bold text-foreground leading-tight truncate">{s.venue}</p>
+          <div className="flex items-center gap-1">
+            {s.isOrganizer ? <ManageCTA onClick={onJoin} /> : s.joined ? <JoinedCTA /> : <JoinCTA onClick={onJoin} />}
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {s.isOrganizer ? <ManageCTA onClick={onJoin} /> : s.joined ? <JoinedCTA /> : <JoinCTA onClick={onJoin} />}
-          <button
-            onClick={(e) => copyJoinLink(e, s.code, s.venue, s.pricePerPlayer)}
-            className="shrink-0 w-10 h-10 rounded-full bg-secondary hover:bg-secondary/70 flex items-center justify-center transition-colors"
-            title="Copy join link"
-          >
-            <Link2 className="w-4 h-4 text-muted-foreground" />
-          </button>
+        <p className="text-xs text-muted-foreground font-medium flex items-center gap-1.5 truncate">
+          {s.area} <span className="text-[8px]">•</span> {s.km.toFixed(1)} km <span className="text-[8px]">•</span> <span className="font-bold text-foreground">₵{s.pricePerPlayer}</span>
+        </p>
+        <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
+          <Chip><Repeat className="w-2.5 h-2.5" /> Gala {s.format}v{s.format}</Chip>
+          <Chip tone={slotsLeft <= 1 ? "warn" : "default"}>
+            {slotsLeft} team{slotsLeft === 1 ? "" : "s"} needed
+          </Chip>
+          {s.friendCount ? <FriendAvatarStack count={s.friendCount} avatars={s.friendAvatars} /> : null}
         </div>
       </div>
     </RowShell>
@@ -369,32 +353,23 @@ const TwoTeamRow = ({ s }: { s: TwoTeamOpening }) => {
   };
   return (
     <RowShell to={`/lobby/${s.code}`} accent={accent}>
-      <div className="flex items-center gap-3">
-        <TimeBlock when={when} time={time} accent={accent} />
-        <div className="min-w-0 flex-1">
-          <p className="text-base font-semibold truncate leading-tight">{s.venue}</p>
-          <p className="text-sm text-muted-foreground truncate mt-0.5">
-            {s.area} · {s.km.toFixed(1)} km · ₵{s.pricePerPlayer}
-          </p>
-          <div className="flex flex-wrap gap-1.5 mt-2 items-center">
-            <Chip><UsersIcon className="w-3 h-3" /> {s.format}</Chip>
-            <Chip tone={left <= 2 ? "warn" : "default"}>
-              {left} spot{left === 1 ? "" : "s"} left
-            </Chip>
-            {s.friendCount ? (
-              <FriendAvatarStack count={s.friendCount} avatars={s.friendAvatars} />
-            ) : null}
+      <TimeBlock when={when} time={time} accent={accent} />
+      <div className="flex-1 p-3.5 flex flex-col justify-center">
+        <div className="flex items-start justify-between gap-2 mb-1">
+          <p className="text-sm font-bold text-foreground leading-tight truncate">{s.venue}</p>
+          <div className="flex items-center gap-1">
+            {s.isOrganizer ? <ManageCTA onClick={onJoin} /> : s.joined ? <JoinedCTA /> : <JoinCTA onClick={onJoin} />}
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {s.isOrganizer ? <ManageCTA onClick={onJoin} /> : s.joined ? <JoinedCTA /> : <JoinCTA onClick={onJoin} />}
-          <button
-            onClick={(e) => copyJoinLink(e, s.code, s.venue, s.pricePerPlayer)}
-            className="shrink-0 w-10 h-10 rounded-full bg-secondary hover:bg-secondary/70 flex items-center justify-center transition-colors"
-            title="Copy join link"
-          >
-            <Link2 className="w-4 h-4 text-muted-foreground" />
-          </button>
+        <p className="text-xs text-muted-foreground font-medium flex items-center gap-1.5 truncate">
+          {s.area} <span className="text-[8px]">•</span> {s.km.toFixed(1)} km <span className="text-[8px]">•</span> <span className="font-bold text-foreground">₵{s.pricePerPlayer}</span>
+        </p>
+        <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
+          <Chip><UsersIcon className="w-2.5 h-2.5" /> {s.format}</Chip>
+          <Chip tone={left <= 2 ? "warn" : "default"}>
+            {left} spot{left === 1 ? "" : "s"} left
+          </Chip>
+          {s.friendCount ? <FriendAvatarStack count={s.friendCount} avatars={s.friendAvatars} /> : null}
         </div>
       </div>
     </RowShell>
@@ -403,24 +378,22 @@ const TwoTeamRow = ({ s }: { s: TwoTeamOpening }) => {
 
 const LiveRow = ({ s }: { s: LiveScore }) => (
   <RowShell to={`#`} accent="live">
-    <div className="flex items-center gap-3">
-      <div className="shrink-0 w-[68px] border-r border-border pr-3 text-left">
-        <p className="text-xs font-semibold text-live tracking-tight inline-flex items-center gap-1">
-          <Radio className="w-3 h-3 animate-pulse" /> {s.minute}
-        </p>
-        <p className="font-display font-extrabold text-[26px] leading-[1.05] tabular-nums tracking-tight mt-0.5 text-live">
-          {s.homeScore}<span className="text-muted-foreground mx-0.5">–</span>{s.awayScore}
-        </p>
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-base font-semibold truncate leading-tight">{s.home} <span className="text-muted-foreground">vs</span> {s.away}</p>
-        <p className="text-sm text-muted-foreground truncate mt-0.5">
-          {s.venue} · {s.km.toFixed(1)} km
-        </p>
-        <div className="flex flex-wrap gap-1.5 mt-2">
-          <Chip tone="live"><Radio className="w-3 h-3" /> Live</Chip>
-          <Chip>{s.format}</Chip>
-        </div>
+    <div className="w-[90px] shrink-0 border-r border-border border-dashed bg-secondary/40 flex flex-col items-center justify-center p-2">
+      <span className="text-[10px] font-black uppercase tracking-widest mb-1 text-foreground animate-pulse inline-flex items-center gap-1">
+        <Radio className="w-2.5 h-2.5" /> {s.minute}
+      </span>
+      <p className="text-xl font-display font-black tracking-tighter leading-none text-foreground">
+        {s.homeScore}<span className="text-muted-foreground mx-0.5">–</span>{s.awayScore}
+      </p>
+    </div>
+    <div className="flex-1 p-3.5 flex flex-col justify-center">
+      <p className="text-sm font-bold text-foreground leading-tight truncate">{s.home} <span className="text-muted-foreground font-medium">vs</span> {s.away}</p>
+      <p className="text-xs text-muted-foreground font-medium flex items-center gap-1.5 truncate mt-1">
+        {s.venue} <span className="text-[8px]">•</span> {s.km.toFixed(1)} km
+      </p>
+      <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
+        <Chip tone="live">Live</Chip>
+        <Chip>{s.format}</Chip>
       </div>
     </div>
   </RowShell>

@@ -282,7 +282,7 @@ export default function AdminDisputes() {
                 disabled={processing[noteModal.id]}
                 className={`flex-1 py-2.5 rounded-xl text-white text-sm font-semibold transition-all disabled:opacity-50 ${
                   noteModal.action === "resolved"
-                    ? "bg-[hsl(var(--gold))] text-[hsl(var(--gold-foreground))] hover:bg-emerald-500"
+                    ? "bg-gold text-gold-foreground hover:bg-emerald-500"
                     : "bg-slate-600 hover:bg-slate-500"
                 }`}
               >

@@ -1,3 +1,5 @@
+import { Trophy } from "lucide-react";
+
 export function MaintenanceScreen() {
   return (
     <div
@@ -19,7 +21,7 @@ export function MaintenanceScreen() {
           margin: "0 auto",
         }}
       >
-        <div style={{ fontSize: "64px", lineHeight: 1 }}>⚽</div>
+        <div style={{ color: "#FBBF24" }}><Trophy size={64} /></div>
         <h1 style={{ color: "#F8FAFC", fontSize: "22px", fontWeight: 700, letterSpacing: "0.05em", margin: 0, textAlign: "center" }}>
           PLAYREADYSPORTS
         </h1>

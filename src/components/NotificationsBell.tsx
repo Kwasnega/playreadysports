@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Bell, BellOff, UserPlus, UserMinus, CalendarClock, XCircle, ShieldAlert, Megaphone, Mail, CheckCheck,
+  Bell, BellOff, UserPlus, UserMinus, CalendarClock, XCircle, ShieldAlert, Megaphone, Mail, CheckCheck, ThumbsUp
 } from "lucide-react";
 import {
   Popover, PopoverContent, PopoverTrigger,
@@ -21,7 +21,7 @@ const iconFor = (t: NotifType) => {
   }
 };
 
-export const NotificationsBell = () => {
+export const NotificationsBell = ({ variant = "default" }: { variant?: "default" | "tab" }) => {
   const { user } = useAuth();
   const { items, loading, unreadCount, markRead, markAllRead } = useNotifications();
   const [open, setOpen] = useState(false);
@@ -74,18 +74,34 @@ export const NotificationsBell = () => {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button
-          ref={bellRef}
-          className="relative p-2 rounded-full hover:bg-secondary"
-          aria-label="Notifications"
-        >
-          <Bell className="w-5 h-5" />
-          {user && unreadCount > 0 && (
-            <span className="absolute top-1 right-1 min-w-[18px] h-[18px] px-1 rounded-lg bg-primary text-primary-foreground text-[10px] font-bold leading-[18px] text-center">
-              {unreadCount > 9 ? "9+" : unreadCount}
-            </span>
-          )}
-        </button>
+        {variant === "tab" ? (
+          <button
+            ref={bellRef}
+            className="relative flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-foreground"
+            aria-label="Notifications"
+          >
+            <Bell className="w-5 h-5" />
+            <span className="text-[9px] font-black uppercase tracking-widest">Alerts</span>
+            {user && unreadCount > 0 && (
+              <span className="absolute -top-1 right-2 min-w-[16px] h-[16px] px-1 rounded-sm border-2 border-foreground bg-foreground text-background text-[8px] font-black leading-[12px] text-center">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+          </button>
+        ) : (
+          <button
+            ref={bellRef}
+            className="relative p-2 rounded-full hover:bg-secondary"
+            aria-label="Notifications"
+          >
+            <Bell className="w-5 h-5" />
+            {user && unreadCount > 0 && (
+              <span className="absolute top-1 right-1 min-w-[18px] h-[18px] px-1 rounded-lg bg-primary text-primary-foreground text-[10px] font-bold leading-[18px] text-center">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+          </button>
+        )}
       </PopoverTrigger>
       <PopoverContent
         align="end"
@@ -111,7 +127,7 @@ export const NotificationsBell = () => {
           {!loading && items.length === 0 && (
             <div className="px-4 py-10 text-center">
               <BellOff className="w-7 h-7 mx-auto text-muted-foreground mb-2" />
-              <p className="text-sm font-semibold">You're all caught up 👍</p>
+              <p className="text-sm font-semibold flex items-center justify-center gap-1">You're all caught up <ThumbsUp className="w-4 h-4" /></p>
               <p className="text-[11px] text-muted-foreground mt-1">
                 You'll see match updates and invites here.
               </p>

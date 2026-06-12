@@ -61,23 +61,23 @@ const JoinMatch = () => {
 
   return (
     <main className="min-h-screen bg-background pb-10">
-      <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b border-border">
-        <div className="max-w-[680px] mx-auto px-5 h-14 flex items-center gap-3">
-          <button onClick={() => nav("/")} className="p-2 -ml-2 rounded-full hover:bg-secondary" aria-label="Back">
+      <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b-2 border-border">
+        <div className="max-w-[680px] mx-auto px-5 h-16 flex items-center gap-3">
+          <button onClick={() => nav("/")} className="w-10 h-10 -ml-2 rounded-full border-2 border-transparent hover:border-border flex items-center justify-center transition-colors" aria-label="Back">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="font-display font-bold text-xl tracking-tight flex-1">Browse matches</h1>
+          <h1 className="font-display font-black text-xl tracking-tight uppercase flex-1">Browse Matches</h1>
           {user && (
-            <button onClick={() => nav("/wallet")} className="inline-flex items-center gap-1.5 bg-[hsl(var(--gold))] text-[hsl(var(--gold-foreground))] rounded-full px-2.5 py-1.5 text-xs font-semibold hover:opacity-90">
+            <button onClick={() => nav("/wallet")} className="inline-flex items-center gap-1.5 border-2 border-foreground bg-foreground text-background rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-widest hover:opacity-90 transition-opacity shadow-sm">
               <WalletIcon className="w-3.5 h-3.5" />
-              <span>₵{balance.toFixed(2)}</span>
+              <span>₵{balance.toFixed(0)}</span>
             </button>
           )}
           <button
             onClick={() => nav("/code")}
-            className="inline-flex items-center gap-1.5 bg-primary/8 border border-primary/15 text-primary rounded-full px-3 py-1.5 text-xs font-semibold"
+            className="inline-flex items-center gap-1.5 bg-background border-2 border-border text-foreground rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-widest hover:border-foreground transition-colors"
           >
-            <KeyRound className="w-3.5 h-3.5 text-[hsl(var(--gold))]" /> Have a code?
+            <KeyRound className="w-3 h-3" /> Have Code?
           </button>
         </div>
       </header>
@@ -95,23 +95,23 @@ const JoinMatch = () => {
         </div>
 
         {/* Search */}
-        <div className="flex items-center gap-2.5 bg-secondary rounded-full px-4 py-3">
-          <Search className="w-4 h-4 text-foreground/70 shrink-0" />
+        <div className="flex items-center gap-2.5 bg-background border-2 border-border rounded-xl px-4 py-3.5 transition-colors focus-within:border-foreground">
+          <Search className="w-4 h-4 text-muted-foreground shrink-0" />
           <input
             value={rawQuery}
             onChange={e => setRawQuery(e.target.value)}
-            placeholder="Search venue, area, format…"
-            className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            placeholder="SEARCH VENUE, AREA, FORMAT…"
+            className="flex-1 bg-transparent text-[11px] font-black uppercase tracking-widest outline-none placeholder:text-muted-foreground"
           />
           {rawQuery && (
-            <button onClick={() => { setRawQuery(""); setSearch(""); }} className="text-muted-foreground hover:text-foreground" aria-label="Clear">
+            <button onClick={() => { setRawQuery(""); setSearch(""); }} className="text-foreground hover:opacity-70" aria-label="Clear">
               <X className="w-4 h-4" />
             </button>
           )}
         </div>
 
         {/* Mode filter + sort */}
-        <div className="space-y-2.5">
+        <div className="space-y-3">
           <div className="flex items-center gap-2 overflow-x-auto scrollbar-none -mx-1 px-1">
             {(
               // HIDDEN — "gala" filter: re-enable when Gala feature is released
@@ -123,18 +123,20 @@ const JoinMatch = () => {
                   key={id}
                   onClick={() => setMode(id === "all" ? undefined : id)}
                   data-active={isActive}
-                  className="pill-tab shrink-0 text-xs px-3.5 py-1.5"
+                  className={`shrink-0 text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl border-2 transition-all ${
+                    isActive ? "bg-foreground border-foreground text-background" : "bg-card border-border text-foreground hover:border-foreground"
+                  }`}
                 >
                   {UI_MODE_LABEL[id]}
                 </button>
               );
             })}
           </div>
-          <div className="flex items-center justify-between gap-2">
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t-2 border-border border-dashed pt-3">
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-black text-muted-foreground uppercase tracking-widest">
               <SlidersHorizontal className="w-3 h-3" /> Sort
             </span>
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
               {([
                 { id: "soonest", label: "Soonest" },
                 { id: "nearest", label: "Nearest" },
@@ -145,10 +147,10 @@ const JoinMatch = () => {
                   <button
                     key={s.id}
                     onClick={() => setSort(s.id)}
-                    className={`text-[11px] font-semibold rounded-full px-2.5 py-1 transition-colors ${
+                    className={`text-[9px] font-black uppercase tracking-widest rounded-full border-2 px-3 py-1.5 transition-colors ${
                       isActive
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary text-muted-foreground hover:text-foreground"
+                        ? "bg-foreground border-foreground text-background"
+                        : "bg-background border-border text-muted-foreground hover:border-foreground hover:text-foreground"
                     }`}
                   >
                     {s.label}
@@ -200,14 +202,11 @@ const JoinMatch = () => {
           <div className="space-y-6">
             {grouped.map(g => (
               <section key={g.key}>
-                <div className="flex items-center gap-3 mb-2.5">
-                  <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-[0.12em]">
+                <div className="flex items-center gap-3 mb-3">
+                  <h3 className="text-[10px] font-black text-foreground uppercase tracking-widest bg-secondary px-2.5 py-1 rounded-sm">
                     {g.label}
                   </h3>
-                  <span className="text-[11px] font-semibold text-muted-foreground/60">
-                    {g.items.length}
-                  </span>
-                  <div className="flex-1 h-px bg-border/60" />
+                  <div className="flex-1 border-t-2 border-border border-dashed" />
                 </div>
                 <ul className="space-y-3">
                   {g.items.map(m => <FeedRow key={m.id} m={m} user={user} onTap={() => setActive(m.id)} />)}
@@ -257,9 +256,6 @@ const FeedRow = ({ m, user, onTap }: { m: BrowseMatch; user: any; onTap: () => v
 
   const venueName = m.venue?.name ?? "Venue";
   const area = m.venue?.area ?? m.venue?.city ?? "";
-  const lat = m.venue?.lat;
-  const lng = m.venue?.lng;
-  // Use distance from filters via URL — compute client-side for display
   const km = 0; // filled by parent with user location
 
   const organizerName = m.organizer?.full_name ?? m.organizer?.username ?? "Organizer";
@@ -272,61 +268,76 @@ const FeedRow = ({ m, user, onTap }: { m: BrowseMatch; user: any; onTap: () => v
     <li>
       <button
         onClick={onTap}
-        className="w-full text-left bg-card rounded-xl px-4 py-4 border border-border transition-all duration-200 hover:-translate-y-0.5 hover:border-border hover:shadow-lg active:scale-[0.99]"
+        className="w-full group flex text-left bg-card rounded-2xl border-2 border-border overflow-hidden transition-all duration-200 hover:border-foreground/40 active:scale-[0.99] relative"
       >
-        <div className="flex items-center gap-3">
-          <div className="shrink-0 w-[68px] text-left border-r border-border pr-3">
-            {when && <p className="text-xs font-semibold text-muted-foreground tracking-tight">{when}</p>}
-            <p className={`font-display font-extrabold text-[26px] leading-[1.05] tabular-nums tracking-tight mt-0.5 ${tight ? "text-warn" : "text-primary"}`}>
-              {time}
-            </p>
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <p className="text-base font-semibold truncate leading-tight">{venueName}</p>
-              {m.venue && (() => {
-                const { isOpen, label } = isVenueOpen(m.venue);
-                return (
-                  <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${isOpen ? "bg-emerald-500/10 text-emerald-600" : "bg-red-500/10 text-red-600"}`}>
-                    {label}
-                  </span>
-                );
-              })()}
-            </div>
-            <p className="text-sm text-muted-foreground truncate mt-0.5">
-              {area} · {m.format} · ₵{Number(m.entry_fee)}
-            </p>
-            <div className="flex items-center gap-1.5 mt-1.5">
-              {organizerAvatar && (
-                <img src={organizerAvatar} alt={organizerName} className="w-5 h-5 rounded-full object-cover ring-1 ring-border/60" />
-              )}
-              <span className="text-xs font-medium text-foreground/80">{organizerName}</span>
-              {isOrganizer && (
-                <span className="inline-flex items-center gap-0.5 rounded-full bg-primary/8 border border-primary/15 text-primary px-1.5 py-0.5 text-[10px] font-bold">
-                  You
+        {/* Sub-stub cutouts for realism */}
+        <div className="absolute left-[84px] top-[-7px] w-3.5 h-3.5 rounded-full bg-background border-2 border-border z-10" />
+        <div className="absolute left-[84px] bottom-[-7px] w-3.5 h-3.5 rounded-full bg-background border-2 border-border z-10" />
+        
+        {/* Time stub */}
+        <div className="w-[90px] shrink-0 border-r-2 border-border border-dashed bg-secondary/40 flex flex-col items-center justify-center p-2 group-hover:bg-secondary/60 transition-colors">
+          <span className={`text-[10px] font-black uppercase tracking-widest mb-1 ${tight ? 'text-foreground' : 'text-muted-foreground'}`}>{when}</span>
+          <span className="text-xl font-display font-black tracking-tighter leading-none text-foreground">
+            {time.split(' ')[0]}
+          </span>
+          {time.split(' ')[1] && (
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">
+              {time.split(' ')[1]}
+            </span>
+          )}
+        </div>
+
+        {/* Main Details */}
+        <div className="flex-1 p-3.5 flex flex-col justify-center min-w-0">
+          <div className="flex items-start justify-between gap-2 mb-1">
+            <p className="text-sm font-bold text-foreground leading-tight truncate">{venueName}</p>
+            {m.venue && (() => {
+              const { isOpen, label } = isVenueOpen(m.venue);
+              return (
+                <span className={`shrink-0 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-sm border ${isOpen ? "border-foreground text-foreground" : "border-muted-foreground text-muted-foreground"}`}>
+                  {label}
                 </span>
-              )}
-              <span className="text-muted-foreground text-xs">·</span>
-              <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
-              <span className="text-xs font-semibold text-foreground/80">{organizerRating.toFixed(1)}</span>
-            </div>
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              <span className="inline-flex items-center gap-1 rounded-md bg-secondary text-foreground/75 px-1.5 py-0.5 text-xs font-semibold">
-                {m.match_mode === "gala" ? <Repeat className="w-3 h-3" /> : <Users className="w-3 h-3" />}
-                {m.match_mode === "gala" ? `Gala ${m.format}` : m.format}
+              );
+            })()}
+          </div>
+          <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 truncate">
+            {area} <span className="text-[8px]">•</span> <span className="text-foreground">₵{Number(m.entry_fee)}</span>
+          </p>
+          
+          <div className="flex items-center gap-1.5 mt-2">
+            {organizerAvatar ? (
+              <img src={organizerAvatar} alt={organizerName} className="w-5 h-5 rounded-full object-cover grayscale border border-border" />
+            ) : (
+              <div className="w-5 h-5 rounded-full bg-background border border-border flex items-center justify-center text-[8px] font-bold text-foreground">
+                {organizerName.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <span className="text-[10px] font-bold uppercase tracking-widest text-foreground truncate max-w-[80px]">{organizerName}</span>
+            {isOrganizer && (
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm border border-foreground text-foreground text-[8px] font-black uppercase tracking-widest">
+                You
               </span>
-              {isConfirmed ? (
-                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/15 text-emerald-600 px-1.5 py-0.5 text-xs font-semibold">
-                  <Check className="w-3 h-3" /> Confirmed
-                </span>
-              ) : (
-                <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-semibold ${tight ? "bg-warning/15 text-warning border border-warning/25" : "bg-secondary text-foreground/75"}`}>
-                  {left} spot{left === 1 ? "" : "s"} left
-                </span>
-              )}
-            </div>
+            )}
+            <span className="text-muted-foreground text-[10px]">•</span>
+            <Star className="w-3 h-3 text-foreground" />
+            <span className="text-[10px] font-black text-foreground">{organizerRating.toFixed(1)}</span>
           </div>
-          <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+
+          <div className="flex items-center gap-1.5 mt-3 flex-wrap">
+            <span className="inline-flex items-center gap-1 rounded-sm border-2 border-border bg-secondary/50 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+              {m.match_mode === "gala" ? <Repeat className="w-2.5 h-2.5" /> : <Users className="w-2.5 h-2.5" />}
+              {m.match_mode === "gala" ? `Gala ${m.format}` : m.format}
+            </span>
+            {isConfirmed ? (
+              <span className="inline-flex items-center gap-1 rounded-sm border-2 border-foreground bg-foreground text-background px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest">
+                <Check className="w-2.5 h-2.5" /> Confirmed
+              </span>
+            ) : (
+              <span className={`inline-flex items-center gap-1 rounded-sm border-[1.5px] px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest ${tight ? "border-foreground text-foreground" : "border-border text-muted-foreground bg-secondary/50"}`}>
+                {left} spot{left === 1 ? "" : "s"} left
+              </span>
+            )}
+          </div>
         </div>
       </button>
     </li>

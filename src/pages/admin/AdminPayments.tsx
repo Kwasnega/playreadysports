@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Download, RotateCcw } from "lucide-react";
+import { Download, RotateCcw, CircleDollarSign, Lock, Banknote, BarChart3 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useConfirm } from "@/components/ui/ConfirmProvider";
 
@@ -102,15 +102,15 @@ export default function AdminPayments() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Total Collected", value: `₵${summary.collected.toLocaleString()}`, icon: "💰", color: "text-emerald-400", bg: "bg-emerald-500/10" },
-          { label: "In Escrow", value: `₵${summary.inEscrow.toLocaleString()}`, icon: "🔒", color: "text-blue-400", bg: "bg-blue-500/10" },
-          { label: "Paid Out", value: `₵${summary.paidOut.toLocaleString()}`, icon: "💸", color: "text-amber-400", bg: "bg-amber-500/10" },
-          { label: "Fees Earned", value: `₵${summary.fees.toLocaleString()}`, icon: "📊", color: "text-rose-400", bg: "bg-rose-500/10" },
+          { label: "Total Collected", value: `₵${summary.collected.toLocaleString()}`, icon: <CircleDollarSign className="w-4 h-4 text-emerald-400" />, color: "text-emerald-400", bg: "bg-emerald-500/10" },
+          { label: "In Escrow", value: `₵${summary.inEscrow.toLocaleString()}`, icon: <Lock className="w-4 h-4 text-blue-400" />, color: "text-blue-400", bg: "bg-blue-500/10" },
+          { label: "Paid Out", value: `₵${summary.paidOut.toLocaleString()}`, icon: <Banknote className="w-4 h-4 text-amber-400" />, color: "text-amber-400", bg: "bg-amber-500/10" },
+          { label: "Fees Earned", value: `₵${summary.fees.toLocaleString()}`, icon: <BarChart3 className="w-4 h-4 text-rose-400" />, color: "text-rose-400", bg: "bg-rose-500/10" },
         ].map((s) => (
           <div key={s.label} className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.06] rounded-xl p-4 hover:border-white/[0.12] transition-all">
-            <p className="text-[11px] text-slate-500 font-medium uppercase tracking-wider mb-2">{s.label}</p>
+            <p className="text-[11px] text-slate-500 font-medium uppercase tracking-wider mb-2 flex items-center gap-1.5">{s.icon} {s.label}</p>
             <p className="text-2xl font-bold text-white">{s.value}</p>
           </div>
         ))}

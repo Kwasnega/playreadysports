@@ -66,8 +66,25 @@ export function ShareMatchCard({
       c.fillStyle = "#94a3b8"; c.textAlign = "center"; c.letterSpacing = "0.15em";
       c.fillText("PLAYREADYSPORTS", cx, y); y += 44;
 
-      // Emoji
-      c.font = "52px system-ui"; c.fillText("\u26BD", cx, y); y += 30;
+      // Icon
+      c.save();
+      c.translate(cx - 26, y - 40);
+      c.scale(52/24, 52/24);
+      c.strokeStyle = "#f8fafc";
+      c.lineWidth = 2;
+      c.lineCap = "round";
+      c.lineJoin = "round";
+      const paths = [
+        "M6 9H4.5a2.5 2.5 0 0 1 0-5H6",
+        "M18 9h1.5a2.5 2.5 0 0 0 0-5H18",
+        "M4 22h16",
+        "M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22",
+        "M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22",
+        "M18 2H6v7a6 6 0 0 0 12 0V2Z"
+      ];
+      paths.forEach(p => c.stroke(new Path2D(p)));
+      c.restore();
+      y += 30;
 
       // Venue
       c.font = "800 22px system-ui, sans-serif"; c.fillStyle = "#f8fafc";
@@ -160,7 +177,7 @@ export function ShareMatchCard({
     const file = new File([blob], `match-${data.joinCode}.png`, { type: "image/png" });
 
     const shareData: any = {
-      title: `⚽ ${data.venueName}`,
+      title: data.venueName,
       text: `${data.format} · ${data.matchDate}\nCode: ${data.joinCode}\nPlayReadySports`,
       files: [file],
     };
@@ -191,7 +208,7 @@ export function ShareMatchCard({
 
   const matchUrl = `https://joinplayready.com/lobby/${data.joinCode}`;
   const whatsappText = encodeURIComponent(
-    `⚽ Football at ${data.venueName}\n` +
+    `Football at ${data.venueName}\n` +
     `Time: ${data.matchDate} · ${data.format} · ${data.mode === "gala" ? "Gala" : "Two-team"}\n` +
     `Entry: ${data.entryFee > 0 ? `₵${data.entryFee}/player` : "Free"}\n\n` +
     `Join code: ${data.joinCode}\n` +

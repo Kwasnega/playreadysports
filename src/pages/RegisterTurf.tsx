@@ -56,25 +56,28 @@ const RegisterTurf = () => {
 
   return (
     <main className="min-h-screen bg-background pb-24">
-      <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md">
-        <div className="max-w-[680px] mx-auto px-5 h-14 flex items-center gap-3">
+      <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b-2 border-border">
+        <div className="max-w-[680px] mx-auto px-5 h-16 flex items-center gap-3">
           <button
             onClick={() => (window.history.length > 1 ? nav(-1) : nav("/turf/pitches"))}
-            className="p-2 -ml-2 rounded-full hover:bg-secondary"
+            className="w-10 h-10 -ml-2 rounded-full border-2 border-transparent hover:border-border flex items-center justify-center transition-colors"
             aria-label="Back"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="font-display font-bold text-xl tracking-tight">Register astroturf</h1>
+          <h1 className="font-display font-black uppercase tracking-tight text-xl">Register astroturf</h1>
         </div>
       </header>
 
-      <div className="max-w-[680px] mx-auto px-5 pt-4 space-y-5">
-        <section className="rounded-xl tile-cool p-5 flex items-start gap-3">
-          <ShieldCheck className="w-5 h-5 mt-0.5 shrink-0" />
-          <div>
-            <p className="font-display font-bold text-base tracking-tight">Verification required</p>
-            <p className="text-xs opacity-85 mt-1 leading-relaxed">
+      <div className="max-w-[680px] mx-auto px-5 pt-6 space-y-8">
+        <section className="rounded-2xl border-2 border-border p-5 flex items-start gap-4 shadow-sm bg-card relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-foreground/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/4" />
+          <div className="w-10 h-10 rounded-full border-2 border-foreground flex items-center justify-center shrink-0">
+            <ShieldCheck className="w-5 h-5 text-foreground" />
+          </div>
+          <div className="relative z-10">
+            <p className="font-display font-black uppercase text-sm tracking-widest">Verification required</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1 leading-relaxed">
               All new astroturfs are reviewed by our team before going live. We'll
               contact you on the phone number you provide to confirm details.
             </p>
@@ -115,7 +118,7 @@ const RegisterTurf = () => {
           </Field>
 
           <Field label="Amenities">
-            <div className="flex flex-wrap gap-2 mt-1">
+            <div className="flex flex-wrap gap-2 mt-2">
               {AMENITIES.map(a => {
                 const on = amenities.includes(a);
                 return (
@@ -123,7 +126,11 @@ const RegisterTurf = () => {
                     key={a}
                     type="button"
                     onClick={() => toggle(a)}
-                    className={`text-xs font-semibold px-3 py-1.5 rounded-lg bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}
+                    className={`text-[9px] font-black uppercase tracking-widest px-3 py-2 rounded-full border-2 transition-all ${
+                      on
+                        ? "border-foreground bg-foreground text-background"
+                        : "border-border bg-background text-muted-foreground hover:border-foreground/40"
+                    }`}
                   >{a}</button>
                 );
               })}
@@ -137,12 +144,12 @@ const RegisterTurf = () => {
           <button
             type="submit"
             disabled={busy}
-            className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-display font-bold tracking-tight inline-flex items-center justify-center gap-2 disabled:opacity-60 mt-2"
+            className="w-full h-14 rounded-full bg-foreground text-background text-[11px] font-black uppercase tracking-widest inline-flex items-center justify-center gap-2 disabled:opacity-40 mt-4 active:scale-[0.98] transition-all shadow-sm"
           >
             {busy && <Loader2 className="w-4 h-4 animate-spin" />}
-            Submit for verification
+            {busy ? "SUBMITTING..." : "SUBMIT FOR VERIFICATION"}
           </button>
-          <p className="text-[11px] text-muted-foreground text-center">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground text-center">
             Surface type: Astroturf · You can list more pitches later.
           </p>
         </form>
@@ -154,14 +161,14 @@ const RegisterTurf = () => {
 };
 
 const inputCls =
-  "mt-1 w-full h-11 px-3 rounded-xl bg-secondary text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground/20";
+  "mt-2 w-full h-12 px-4 rounded-xl border-2 border-border bg-background text-sm font-bold focus:outline-none focus:border-foreground transition-colors";
 const textareaCls =
-  "mt-1 w-full px-3 py-2 rounded-xl bg-secondary text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20";
+  "mt-2 w-full px-4 py-3 rounded-xl border-2 border-border bg-background text-sm font-bold focus:outline-none focus:border-foreground transition-colors resize-none";
 
 const Field = ({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) => (
-  <div>
-    <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-      {label}{required && <span className="text-destructive ml-0.5">*</span>}
+  <div className="pt-2">
+    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+      {label}{required && <span className="text-foreground ml-1">*</span>}
     </label>
     {children}
   </div>

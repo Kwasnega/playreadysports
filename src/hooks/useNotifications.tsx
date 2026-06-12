@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { Clock } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
@@ -57,7 +58,7 @@ const showToast = (n: Notif) => {
   } else if (t === "payment_received") {
     toast(title, { description: body, duration: 4000 });
   } else if (t === "match_reminder") {
-    toast(title, { description: body, duration: 5000, icon: "⏰" });
+    toast(title, { description: body, duration: 5000, icon: <Clock className="w-4 h-4 text-primary" /> });
   } else {
     toast(title, { description: body, duration: 4000 });
   }

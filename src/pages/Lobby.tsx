@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft, Wallet, Check, Share2, X, UserCheck,
-  Calendar, MessageCircle, Hourglass, Flag,
+  Calendar, MessageCircle, Hourglass, Flag, Ban,
 } from "lucide-react";
 import { LobbyChat } from "@/components/LobbyChat";
 import { ShareMatchCard } from "@/components/matches/ShareMatchCard";
@@ -492,44 +492,44 @@ const Lobby = () => {
 
   return (
     <main className="min-h-screen bg-background pb-28">
-      <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md">
-        <div className="max-w-[680px] mx-auto px-5 h-14 flex items-center gap-3">
-          <Link to="/" className="p-2 -ml-2 rounded-full hover:bg-secondary"><ArrowLeft className="w-5 h-5" /></Link>
+      <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b-2 border-border">
+        <div className="max-w-[680px] mx-auto px-5 h-16 flex items-center gap-3">
+          <Link to="/" className="w-10 h-10 -ml-2 rounded-full border-2 border-transparent hover:border-border flex items-center justify-center transition-colors"><ArrowLeft className="w-5 h-5" /></Link>
           <div className="flex-1 min-w-0">
-            <h1 className="font-display font-bold text-lg tracking-tight truncate">{venue?.name ?? "Venue"}</h1>
-            <p className="text-[11px] text-muted-foreground font-mono truncate">{matchCode} · {match?.format ?? "?"} · {match ? getFormattedTime(match.match_date) : ""}</p>
+            <h1 className="font-display font-black text-xl tracking-tight uppercase truncate">{venue?.name ?? "Venue"}</h1>
+            <p className="text-[10px] text-muted-foreground font-black tracking-widest uppercase truncate">{matchCode} · {match?.format ?? "?"} · {match ? getFormattedTime(match.match_date).split(' ')[0] : ""}</p>
           </div>
           {user && (
-            <button onClick={() => navigate("/wallet")} className="inline-flex items-center gap-1.5 bg-[hsl(var(--gold))] text-[hsl(var(--gold-foreground))] rounded-full px-2.5 py-1.5 text-xs font-semibold hover:opacity-90">
-              <Wallet className="w-3.5 h-3.5" /><span>₵{Number(balance || 0).toFixed(2)}</span>
+            <button onClick={() => navigate("/wallet")} className="inline-flex items-center gap-1.5 border-2 border-foreground bg-foreground text-background rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-widest hover:opacity-90 transition-opacity shadow-sm">
+              <Wallet className="w-3.5 h-3.5" /><span>₵{Number(balance || 0).toFixed(0)}</span>
             </button>
           )}
-          <button onClick={() => setShareOpen(true)} className="p-2 rounded-full hover:bg-secondary" aria-label="Share match"><Share2 className="w-4 h-4" /></button>
+          <button onClick={() => setShareOpen(true)} className="w-10 h-10 rounded-full border-2 border-border flex items-center justify-center hover:bg-secondary transition-colors" aria-label="Share match"><Share2 className="w-4 h-4 text-foreground" /></button>
         </div>
         {/* Tab strip */}
-        <div className="max-w-[680px] mx-auto px-5 pb-2">
+        <div className="max-w-[680px] mx-auto px-5 pb-3">
           <div className={`grid gap-2 ${userParticipant ? "grid-cols-3" : "grid-cols-2"}`}>
             {([
-              { id: "match" as const, label: "Match" },
-              { id: "teams" as const, label: `Teams · ${corePaidCount}/${maxCore}` },
-              ...(userParticipant ? [{ id: "chat" as const, label: "Chat" }] : []),
+              { id: "match" as const, label: "MATCH" },
+              { id: "teams" as const, label: `TEAMS · ${corePaidCount}/${maxCore}` },
+              ...(userParticipant ? [{ id: "chat" as const, label: "CHAT" }] : []),
             ] as const).map(t => (
-              <button key={t.id} onClick={() => setTab(t.id as any)} data-active={tab === t.id} className="pill-tab text-xs">
+              <button key={t.id} onClick={() => setTab(t.id as any)} className={`inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl border-2 px-2 sm:px-4 py-2.5 text-[9px] sm:text-[10px] font-black tracking-widest transition-colors ${tab === t.id ? "bg-foreground text-background border-foreground shadow-sm" : "bg-card text-foreground border-border hover:bg-secondary"}`}>
                 {t.label}
                 {t.id === "teams" && joinRequests.length > 0 && isOrganizer && (
-                  <span className="text-[10px] bg-primary text-primary-foreground-lg px-1.5 ml-1">{joinRequests.length}</span>
+                  <span className="text-[9px] bg-background text-foreground border border-foreground rounded-sm px-1.5 ml-0.5">{joinRequests.length}</span>
                 )}
                 {t.id === "chat" && chatUnread > 0 && (
-                  <span className="text-[10px] bg-destructive text-background rounded-full px-1.5 ml-1">{chatUnread}</span>
+                  <span className="text-[9px] bg-foreground text-background border border-background rounded-sm px-1.5 ml-0.5">{chatUnread}</span>
                 )}
               </button>
             ))}
           </div>
           {userParticipant && tab !== "chat" && chatUnread > 0 && chatPreview && (
-            <button onClick={() => setTab("chat")} className="mt-2 w-full text-left flex items-center gap-2 rounded-xl bg-secondary/70 px-3 py-2 text-xs text-muted-foreground hover:bg-secondary transition-colors">
-              <MessageCircle className="w-3.5 h-3.5 shrink-0 text-foreground/70" />
-              <span className="truncate">{chatPreview}</span>
-              <span className="ml-auto text-[10px] bg-destructive text-background rounded-full px-1.5 shrink-0">{chatUnread}</span>
+            <button onClick={() => setTab("chat")} className="mt-3 w-full text-left flex items-center gap-3 rounded-xl border-2 border-border bg-card px-4 py-3 text-[11px] font-bold text-foreground hover:border-foreground transition-colors shadow-sm">
+              <MessageCircle className="w-4 h-4 shrink-0 text-muted-foreground" />
+              <span className="truncate flex-1">{chatPreview}</span>
+              <span className="text-[9px] font-black bg-foreground text-background rounded-sm px-1.5 shrink-0 uppercase tracking-widest">{chatUnread} NEW</span>
             </button>
           )}
         </div>
@@ -539,7 +539,7 @@ const Lobby = () => {
       {match && (match.status === "completed" || match.status === "cancelled") && (
         <div className="max-w-[680px] mx-auto px-5 pt-8 pb-4 text-center">
           <div className="rounded-xl border border-border bg-card p-8 space-y-3">
-            <p className="text-4xl">{match.status === "completed" ? "🏁" : "🚫"}</p>
+            <div className="flex justify-center mb-2">{match.status === "completed" ? <Flag className="w-10 h-10" /> : <Ban className="w-10 h-10 text-destructive" />}</div>
             <h2 className="font-display font-bold text-xl">{match.status === "completed" ? "Match Finished" : "Match Cancelled"}</h2>
             <p className="text-sm text-muted-foreground">{match.status === "completed" ? "Thanks for playing! Reviews are open below." : "This match has been cancelled. Any fees paid will be refunded."}</p>
             <Link to="/" className="inline-block mt-2 bg-primary text-primary-foreground-lg px-5 py-2.5 text-sm font-semibold">Back to Home</Link>
@@ -631,22 +631,20 @@ const Lobby = () => {
 
       {/* Sticky contextual CTA */}
       {cta && (
-        <div className="fixed bottom-0 inset-x-0 z-30 bg-background/95 backdrop-blur-md border-t border-border">
-          <div className="max-w-[680px] mx-auto px-5 py-3">
+        <div className="fixed bottom-0 inset-x-0 z-30 bg-background/95 backdrop-blur-md border-t-2 border-border">
+          <div className="max-w-[680px] mx-auto px-5 py-4">
             <button
               onClick={cta.onClick}
               disabled={cta.disabled}
-              className={`w-full inline-flex items-center justify-center gap-2 h-14 rounded-full text-sm font-bold disabled:opacity-50 active:scale-[0.99] transition-all ${
+              className={`w-full inline-flex items-center justify-center gap-2 h-14 rounded-full text-[11px] font-black uppercase tracking-widest disabled:opacity-50 active:scale-[0.98] transition-all border-2 ${
                 cta.tone === "primary"
-                  ? cta.label.startsWith("Cover")
-                    ? "bg-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.4)] animate-cta-pulse"
-                    : "bg-primary text-primary-foreground"
+                  ? "bg-foreground border-foreground text-background shadow-md"
                   : cta.tone === "success"
-                  ? "bg-success text-background"
-                  : "bg-secondary text-foreground"
+                  ? "bg-foreground border-foreground text-background shadow-sm"
+                  : "bg-secondary border-border text-muted-foreground"
               }`}
             >
-              <cta.icon className="w-5 h-5" />
+              <cta.icon className="w-4 h-4" />
               {cta.label}
             </button>
           </div>

@@ -26,7 +26,7 @@ const MyPitches = () => {
         <div className="max-w-[680px] mx-auto px-5 h-14 flex items-center gap-3">
           <h1 className="font-display font-bold text-xl tracking-tight flex-1">My pitches</h1>
           <ThemeToggle />
-          <Link to="/venue/earnings" className="inline-flex items-center gap-1.5 bg-[hsl(var(--gold))] text-[hsl(var(--gold-foreground))] rounded-full px-3.5 py-2 text-xs font-semibold hover:opacity-90">
+          <Link to="/venue/earnings" className="inline-flex items-center gap-1.5 bg-gold text-gold-foreground rounded-full px-3.5 py-2 text-xs font-semibold hover:opacity-90">
             <Wallet className="w-3.5 h-3.5" /> Earnings
           </Link>
           <Link to="/turf/register" className="inline-flex items-center gap-1.5 bg-primary text-primary-foreground-lg px-3.5 py-2 text-xs font-semibold">

@@ -53,37 +53,22 @@ const Nav = () => {
     <header className="sticky top-0 z-40 bg-background/90 backdrop-blur-md">
       <div className="max-w-[680px] mx-auto px-5 h-16 flex items-center justify-between gap-4">
         <Link to="/" className="flex items-center gap-2.5">
-          <img src={logoLight} alt="" className="w-9 h-9 rounded-xl object-cover dark:hidden" />
-          <img src={logoDark} alt="" className="w-9 h-9 rounded-xl object-cover hidden dark:block" />
-          <span className="font-display font-extrabold text-[17px] tracking-tight">PlayReady</span>
+          <img src={logoLight} alt="" className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl object-cover dark:hidden" />
+          <img src={logoDark} alt="" className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl object-cover hidden dark:block" />
+          <span className="font-display font-extrabold text-[15px] sm:text-[17px] tracking-tight">PlayReady</span>
         </Link>
         <div className="flex items-center gap-1">
           <ThemeToggle />
-          <NotificationsBell />
           {user && (
-            <Link to="/wallet" className="ml-1 inline-flex items-center gap-1.5 bg-[hsl(var(--gold))] text-[hsl(var(--gold-foreground))] rounded-full px-2.5 py-1.5 text-xs font-semibold hover:opacity-90">
+            <Link to="/wallet" className="ml-1 inline-flex items-center gap-1.5 bg-gold text-gold-foreground rounded-full px-2.5 py-1.5 text-xs font-semibold hover:opacity-90">
               <Wallet className="w-3.5 h-3.5" />
               <span>₵{balance.toFixed(2)}</span>
             </Link>
           )}
-          {user ? (
-            <ProfileSheet
-              trigger={
-                <button className="p-1 rounded-full hover:bg-secondary" aria-label="Open profile">
-                  {avatarUrl ? (
-                    <img src={avatarUrl} alt="" className="w-9 h-9 rounded-full object-cover" />
-                  ) : (
-                    <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center text-xs font-bold">
-                      {initial}
-                    </div>
-                  )}
-                </button>
-              }
-            />
-          ) : (
+          {!user && (
             <button
               onClick={() => openAuth("signin")}
-              className="ml-1 inline-flex items-center gap-1.5 bg-[hsl(var(--gold))] text-[hsl(var(--gold-foreground))]-lg px-3.5 py-1.5 text-xs font-semibold"
+              className="ml-1 inline-flex items-center gap-1.5 bg-foreground text-background rounded-full px-4 py-2 text-xs font-bold transition-all active:scale-95 shadow-sm"
             >
               <LogIn className="w-3.5 h-3.5" /> Sign in
             </button>
@@ -99,24 +84,52 @@ const Nav = () => {
    replaces the prose paragraph and the vanity stats strip. */
 const Hero = ({ liveCount }: { liveCount: number }) => {
   const ref = useEnter<HTMLDivElement>({ y: 24 });
+  const { user } = useAuth();
+  const avatarUrl = user ? supabase.storage.from("avatars").getPublicUrl(user.id).data.publicUrl : null;
+  const fullName = user?.user_metadata?.full_name || "Player";
+  const initial = (fullName[0] || "?").toUpperCase();
+
   return (
     <section className="relative px-5 pt-2 pb-5">
-      <div ref={ref} className="relative max-w-[680px] mx-auto">
-        <h1 className="display-xl text-[44px] sm:text-[52px] mt-2 leading-[0.95]">
-          Find your<br/>
-          <span className="italic font-display">match.</span>
-        </h1>
-        <a
-          href="#near-you"
-          className="inline-flex items-center gap-2 mt-4 bg-primary/8 border border-primary/15 text-primary rounded-full pl-2.5 pr-3.5 py-1.5 text-[12px] font-semibold hover:bg-primary/15 transition-colors"
-        >
-          <span className="w-5 h-5 rounded-lg bg-primary text-primary-foreground inline-flex items-center justify-center">
-            <Zap className="w-3 h-3" strokeWidth={2.6} />
-          </span>
-          {liveCount > 0
-            ? `${liveCount} match${liveCount === 1 ? "" : "es"} starting near you`
-            : "No matches nearby right now — create one"}
-        </a>
+      <div ref={ref} className="relative max-w-[680px] mx-auto flex items-start justify-between gap-4">
+        <div>
+          <h1 className="display-xl text-[40px] sm:text-[44px] md:text-[52px] mt-2 leading-[0.95]">
+            Find your<br/>
+            <span className="italic font-display">match.</span>
+          </h1>
+          <a
+            href="#near-you"
+            className="inline-flex items-center gap-2 mt-4 bg-primary/8 border border-primary/15 text-primary rounded-full pl-2.5 pr-3.5 py-1.5 text-[12px] font-semibold hover:bg-primary/15 transition-colors"
+          >
+            <span className="w-5 h-5 rounded-lg bg-primary text-primary-foreground inline-flex items-center justify-center">
+              <Zap className="w-3 h-3" strokeWidth={2.6} />
+            </span>
+            {liveCount > 0
+              ? `${liveCount} match${liveCount === 1 ? "" : "es"} starting near you`
+              : "No matches nearby right now — create one"}
+          </a>
+        </div>
+        
+        {user && (
+          <div className="shrink-0 pt-4">
+            <ProfileSheet
+              trigger={
+                <button className="flex flex-col items-center gap-1.5 group outline-none" aria-label="Open profile">
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="" className="w-14 h-14 rounded-full object-cover border-2 border-border group-hover:border-foreground transition-colors grayscale-[0.2]" />
+                  ) : (
+                    <div className="w-14 h-14 rounded-full border-2 border-foreground bg-background flex items-center justify-center font-display font-black text-xl group-hover:bg-foreground group-hover:text-background transition-colors">
+                      {initial}
+                    </div>
+                  )}
+                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground group-hover:text-foreground transition-colors">
+                    {fullName.split(' ')[0]}
+                  </span>
+                </button>
+              }
+            />
+          </div>
+        )}
       </div>
     </section>
   );
@@ -133,48 +146,48 @@ const QuickActions = () => {
   const goCode = () => nav("/code");
   return (
     <section className="px-5 pt-4">
-      <div className="max-w-[680px] mx-auto space-y-2.5">
-        <div className="grid grid-cols-2 gap-3">
+      <div className="max-w-[680px] mx-auto space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <button
             onClick={goJoin}
-            className="group relative text-left rounded-xl bg-secondary hover:bg-secondary/80 transition-all active:scale-[0.99] p-5 min-h-[124px] overflow-hidden"
+            className="group relative text-left rounded-2xl bg-secondary hover:bg-secondary/80 border border-border transition-all active:scale-[0.99] p-5 min-h-[130px] flex flex-col justify-between"
           >
-            <div className="flex items-center gap-3">
-              <span className="w-11 h-11 rounded-xl bg-primary text-primary-foreground inline-flex items-center justify-center">
-                <UserPlus className="w-5 h-5" strokeWidth={2.4} />
-              </span>
-              <span className="font-display font-bold text-base">Join match</span>
+            <div className="w-10 h-10 rounded-full bg-background border border-border flex items-center justify-center shadow-sm">
+              <UserPlus className="w-5 h-5 text-foreground" />
             </div>
-            <p className="text-xs text-muted-foreground mt-3 leading-snug">
-              Browse the broadcast list near you.
-            </p>
+            <div>
+              <span className="font-display font-black text-lg tracking-tight text-foreground block mb-1">Join Match</span>
+              <p className="text-[11px] font-medium text-muted-foreground leading-snug">
+                Browse the broadcast list near you.
+              </p>
+            </div>
           </button>
           <button
             onClick={goCreate}
-            className="group relative text-left rounded-xl bg-primary text-primary-foreground hover:bg-foreground/90 transition-all active:scale-[0.99] p-5 min-h-[124px] overflow-hidden"
+            className="group relative text-left rounded-2xl bg-foreground text-background transition-all hover:bg-foreground/90 active:scale-[0.99] p-5 min-h-[130px] shadow-md flex flex-col justify-between"
           >
-            <div className="flex items-center gap-3">
-              <span className="w-11 h-11 rounded-xl bg-background/15 inline-flex items-center justify-center">
-                <CalendarDays className="w-5 h-5" strokeWidth={2.4} />
-              </span>
-              <span className="font-display font-bold text-base">Create match</span>
+            <div className="w-10 h-10 rounded-full bg-background/10 flex items-center justify-center">
+              <CalendarDays className="w-5 h-5 text-background" />
             </div>
-            <p className="text-xs text-background/70 mt-3 leading-snug">
-              Pick a turf, time, and broadcast it.
-            </p>
+            <div>
+              <span className="font-display font-black text-lg tracking-tight block mb-1">Create Match</span>
+              <p className="text-[11px] font-medium text-background/70 leading-snug">
+                Pick a turf, time, and broadcast it.
+              </p>
+            </div>
           </button>
         </div>
         <button
           onClick={goCode}
-          className="w-full inline-flex items-center justify-between gap-2 h-12 rounded-xl bg-primary/10 hover:bg-primary/15 transition-colors px-4 active:scale-[0.99]"
+          className="w-full inline-flex items-center justify-between gap-2 h-14 rounded-2xl bg-background border border-border hover:border-foreground/40 transition-colors px-5 active:scale-[0.99] shadow-sm group"
         >
-          <span className="inline-flex items-center gap-2.5">
-            <span className="w-7 h-7 rounded-lg bg-[hsl(var(--gold))] text-[hsl(var(--gold-foreground))] inline-flex items-center justify-center">
-              <KeyRound className="w-3.5 h-3.5" strokeWidth={2.6} />
+          <span className="inline-flex items-center gap-3">
+            <span className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center">
+              <KeyRound className="w-4 h-4 text-foreground" />
             </span>
-            <span className="text-sm font-semibold text-foreground">Have a code?</span>
+            <span className="text-sm font-bold text-foreground">Have an invite code?</span>
           </span>
-          <span className="text-[11px] font-semibold bg-[hsl(var(--gold))] text-[hsl(var(--gold-foreground))] rounded-full px-2 py-0.5">Enter →</span>
+          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground group-hover:text-foreground transition-colors">Enter →</span>
         </button>
       </div>
     </section>
@@ -187,7 +200,7 @@ const MobileTabs = () => {
   const { pendingRequests } = useFriends();
   return (
     <nav className="fixed bottom-0 inset-x-0 z-30 bg-background/95 backdrop-blur-md border-t border-border">
-      <div className="max-w-[680px] mx-auto grid grid-cols-4 h-16">
+      <div className="max-w-[680px] mx-auto grid grid-cols-5 h-16">
         {[
           { to: "/", icon: Home, label: "Home" },
           { to: "/schedule", icon: Trophy, label: "Schedule" },
@@ -200,27 +213,28 @@ const MobileTabs = () => {
             className={`flex flex-col items-center justify-center gap-1 ${isActive(t.to) ? "text-foreground" : "text-muted-foreground"}`}
           >
             <t.icon className="w-5 h-5" strokeWidth={isActive(t.to) ? 2.4 : 2} />
-            <span className="text-[10px] font-semibold">{t.label}</span>
+            <span className="text-[9px] font-black uppercase tracking-widest">{t.label}</span>
           </Link>
         ))}
         <FriendsSheet
           trigger={
-            <button className="relative flex flex-col items-center justify-center gap-1 text-muted-foreground" aria-label="Open friends">
+            <button className="relative flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-foreground" aria-label="Open friends">
               <Users className="w-5 h-5" />
-              <span className="text-[10px] font-semibold">Friends</span>
+              <span className="text-[9px] font-black uppercase tracking-widest">Friends</span>
               {pendingRequests.length > 0 && (
-                <span className="absolute -top-1.5 right-2 min-w-[16px] h-[16px] px-1 rounded-lg bg-primary text-primary-foreground text-[8px] font-bold leading-[16px] text-center">
+                <span className="absolute -top-1.5 right-2 min-w-[16px] h-[16px] px-1 rounded-sm border-2 border-foreground bg-foreground text-background text-[8px] font-black leading-[12px] text-center">
                   {pendingRequests.length > 9 ? "9+" : pendingRequests.length}
                 </span>
               )}
             </button>
           }
         />
+        <NotificationsBell variant="tab" />
         <ProfileSheet
           trigger={
-            <button className="flex flex-col items-center justify-center gap-1 text-muted-foreground" aria-label="Open profile">
+            <button className="flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-foreground" aria-label="Open profile">
               <User className="w-5 h-5" />
-              <span className="text-[10px] font-semibold">Profile</span>
+              <span className="text-[9px] font-black uppercase tracking-widest">Profile</span>
             </button>
           }
         />
@@ -301,12 +315,12 @@ function transformMatches(
 
 /* Live stats bar */
 const LiveStatsBar = ({ matches, players }: { matches: number; players: number }) => (
-  <section className="px-5 pt-3 pb-1">
+  <section className="px-5 pt-4 pb-1">
     <div className="max-w-[680px] mx-auto">
-      <div className="inline-flex items-center gap-2 rounded-full bg-primary/8 border border-primary/15 px-3.5 py-1.5 text-xs font-semibold text-primary">
-        <span>⚽</span>
+      <div className="inline-flex items-center gap-2 rounded-full border-[1.5px] border-border px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-foreground shadow-sm">
+        <span><Trophy className="w-3 h-3" /></span>
         <span>
-          {matches} match{matches === 1 ? "" : "es"} tonight · {players} player{players === 1 ? "" : "s"} online
+          {matches} Match{matches === 1 ? "" : "es"} Tonight · {players} Player{players === 1 ? "" : "s"} Online
         </span>
       </div>
     </div>
@@ -320,40 +334,36 @@ const RecommendationsRail = ({ recommendations, loading }: { recommendations: an
   if (recommendations.length === 0) return null;
 
   return (
-    <section className="px-5 pt-4 pb-2">
+    <section className="px-5 pt-5 pb-3">
       <div className="max-w-[680px] mx-auto">
-        <div className="flex items-center gap-2 mb-3">
-          <Sparkles className="w-4 h-4 text-amber-500" />
-          <h2 className="text-sm font-bold text-foreground">Recommended for you</h2>
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-1.5 h-1.5 rounded-full bg-foreground" />
+          <h2 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">For You</h2>
         </div>
-        <div className="flex gap-3 overflow-x-auto pb-2 -mx-5 px-5 scrollbar-hide">
+        <div className="flex gap-3 overflow-x-auto pb-3 -mx-5 px-5 scrollbar-hide">
           {recommendations.map((m) => (
             <button
               key={m.id}
               onClick={() => navigate(`/lobby/${m.join_code}`)}
-              className="flex-shrink-0 w-[260px] bg-card rounded-xl border border-border p-4 text-left hover:border-primary/30 transition-all"
-              style={{ boxShadow: "var(--shadow-card)" }}
+              className="flex-shrink-0 w-[260px] bg-card rounded-2xl border-[1.5px] border-border p-4 text-left hover:border-foreground/40 transition-all shadow-sm group"
             >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+              <div className="flex items-center justify-between mb-3 border-b border-border pb-2">
+                <span className="text-[9px] font-black uppercase tracking-widest text-foreground border border-border px-1.5 py-0.5 rounded-sm">
                   {m.match_mode === "gala" ? "Gala" : "Two-team"}
                 </span>
-                <span className="text-[10px] text-muted-foreground">{m.reason}</span>
+                <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">{m.reason}</span>
               </div>
-              <p className="font-display font-bold text-sm truncate">{m.venue?.name ?? "Venue"}</p>
-              <p className="text-[11px] text-muted-foreground truncate flex items-center gap-1 mt-0.5">
+              <p className="font-display font-black text-lg tracking-tight truncate text-foreground leading-none mb-1.5">{m.venue?.name ?? "Venue"}</p>
+              <p className="text-[11px] font-bold text-muted-foreground truncate flex items-center gap-1">
                 <MapPin className="w-3 h-3" /> {m.venue?.area ?? m.venue?.city ?? ""}
               </p>
-              <div className="flex items-center gap-3 mt-2.5 text-[11px] text-muted-foreground">
+              <div className="flex items-center gap-3 mt-4 text-[11px] font-bold text-foreground">
                 <span className="flex items-center gap-1">
-                  <Clock className="w-3 h-3" /> {getFormattedTime(m.match_date)}
+                  <Clock className="w-3.5 h-3.5 text-muted-foreground" /> {getFormattedTime(m.match_date)}
                 </span>
                 <span className="flex items-center gap-1">
-                  <Wallet className="w-3 h-3" />
+                  <Wallet className="w-3.5 h-3.5 text-muted-foreground" />
                   {m.entry_fee > 0 ? `₵${m.entry_fee}` : "Free"}
-                </span>
-                <span className="flex items-center gap-1">
-                  <UserPlus className="w-3 h-3" /> {m.core_paid_count}/{m.max_core_players}
                 </span>
               </div>
             </button>

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft, ArrowRight, Lock, Globe2, Swords, Users, Check, Share2,
-  ChevronRight, Plus, Minus, MapPin, Star, Search, Wallet,
+  ChevronRight, Plus, Minus, MapPin, Star, Search, Wallet, Lightbulb, Zap, Sunrise, Info
 } from "lucide-react";
 import { toast } from "sonner";
 import { useVenues } from "@/hooks/useVenues";
@@ -264,24 +264,24 @@ const CreateMatch = () => {
 
 
   return (
-    <main className="min-h-screen bg-background pb-28">
-      <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md">
-        <div className="max-w-[680px] mx-auto px-5 h-14 flex items-center gap-3">
-          <button onClick={back} className="p-2 -ml-2 rounded-full hover:bg-secondary"><ArrowLeft className="w-5 h-5" /></button>
-          <h1 className="font-display font-bold text-xl tracking-tight">{created ? "Match created" : "Create a match"}</h1>
+    <main className="min-h-screen bg-background pb-28 selection:bg-foreground/10">
+      <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b-2 border-border">
+        <div className="max-w-[680px] mx-auto px-5 h-16 flex items-center gap-3">
+          <button onClick={back} className="w-10 h-10 -ml-2 rounded-full border-2 border-transparent hover:border-border flex items-center justify-center transition-colors text-foreground"><ArrowLeft className="w-5 h-5" /></button>
+          <h1 className="font-display font-black text-xl uppercase tracking-tight text-foreground">{created ? "Match Confirmed" : "Create Match"}</h1>
         </div>
       </header>
 
-      <div className="max-w-[680px] mx-auto px-5 py-5">
+      <div className="max-w-[680px] mx-auto px-5 py-6">
         {!created && <Stepper step={step} />}
 
         {/* ============ STEP 1 — SETUP ============ */}
         {!created && step === 0 && (
-          <div className="space-y-6">
-            <Group title="Type">
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <Group title="Privacy">
               <SegmentedTwo
-                a={{ id: "public",  icon: Globe2, label: "Public",  desc: "Open feed · anyone can join" }}
-                b={{ id: "private", icon: Lock,   label: "Private", desc: "Invite-only · share a code" }}
+                a={{ id: "public",  icon: Globe2, label: "Public",  desc: "Open feed · Anyone can join" }}
+                b={{ id: "private", icon: Lock,   label: "Private", desc: "Invite-only · Share a code" }}
                 value={type}
                 onChange={(v) => setType(v as MatchType)}
               />
@@ -301,35 +301,39 @@ const CreateMatch = () => {
             </Group> */}
 
             {type === "public" && mode === "two-team" && (
-              <Group title="Team colours" hint="Preset palette for lobby chat">
-                <div className="flex flex-wrap gap-2">
+              <Group title="Team Colours" hint="Select the primary team colours">
+                <div className="flex flex-wrap gap-2.5">
                   {TEAM_COLOR_PRESETS.map((p, i) => (
                     <button
                       key={i}
                       onClick={() => setTeamColorIdx(i)}
-                      className={`flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold border transition-all ${
+                      className={`flex items-center gap-2 rounded-xl px-3 py-2 text-[10px] font-black tracking-widest uppercase border-2 transition-all ${
                         teamColorIdx === i
-                          ? "border-foreground bg-secondary ring-2 ring-foreground ring-offset-2 ring-offset-background"
-                          : "border-border bg-secondary/50 hover:bg-secondary"
+                          ? "border-foreground bg-foreground text-background shadow-md scale-[1.02]"
+                          : "border-border bg-card hover:border-foreground text-foreground"
                       }`}
                     >
-                      <span className="w-3.5 h-3.5 rounded-full border border-border/40" style={{ background: p.hexA }} />
-                      <span className="w-3.5 h-3.5 rounded-full border border-border/40" style={{ background: p.hexB }} />
-                      <span>{p.labelA}/{p.labelB}</span>
+                      <div className="flex -space-x-1">
+                        <span className="w-4 h-4 rounded-full border-2 border-background relative z-10" style={{ background: p.hexA }} />
+                        <span className="w-4 h-4 rounded-full border-2 border-background" style={{ background: p.hexB }} />
+                      </div>
+                      <span>{p.labelA} / {p.labelB}</span>
                     </button>
                   ))}
                 </div>
               </Group>
             )}
 
-            <Group title="Format" hint="Pick a side count.">
-              <div className="flex flex-wrap gap-2">
+            <Group title="Format" hint="Select match format">
+              <div className="flex flex-wrap gap-2.5">
                 {availableFormats.map((f) => (
                   <button
                     key={f}
                     onClick={() => setMatchFormat(f)}
-                    className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
-                      matchFormat === f ? "bg-primary text-primary-foreground" : "bg-secondary"
+                    className={`rounded-xl px-5 py-2.5 text-xs font-black uppercase tracking-widest transition-all border-2 ${
+                      matchFormat === f 
+                        ? "border-foreground bg-foreground text-background shadow-md scale-[1.02]" 
+                        : "border-border bg-card hover:border-foreground text-foreground"
                     }`}
                   >
                     {f}
@@ -342,25 +346,25 @@ const CreateMatch = () => {
 
         {/* ============ STEP 2 — VENUE ============ */}
         {!created && step === 1 && (
-          <div className="space-y-3">
+          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
             {/* Search */}
-            <div className="flex items-center gap-2.5 bg-secondary rounded-full px-4 py-3">
-              <Search className="w-4 h-4 text-foreground/70 shrink-0" />
+            <div className="flex items-center gap-2.5 bg-background border-2 border-border rounded-xl px-4 py-3 focus-within:border-foreground focus-within:ring-1 focus-within:ring-foreground transition-all shadow-sm">
+              <Search className="w-5 h-5 text-muted-foreground shrink-0" />
               <input
                 value={venueSearch}
                 onChange={(e) => setVenueSearch(e.target.value)}
                 placeholder="Search venue, area, city…"
-                className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                className="flex-1 bg-transparent text-xs font-black uppercase tracking-widest outline-none placeholder:text-muted-foreground text-foreground"
               />
               {venueSearch && (
                 <button onClick={() => setVenueSearch("")} className="text-muted-foreground hover:text-foreground">
-                  <MapPin className="w-4 h-4" />
+                  <MapPin className="w-5 h-5" />
                 </button>
               )}
             </div>
 
             {venuesLoading ? (
-              <ul className="divide-y divide-border">
+              <ul className="divide-y divide-border border-y border-border">
                 {Array.from({ length: 3 }).map((_, i) => (
                   <li key={i} className="py-4 animate-pulse">
                     <div className="h-4 bg-secondary rounded w-1/2 mb-2" />
@@ -369,7 +373,7 @@ const CreateMatch = () => {
                 ))}
               </ul>
             ) : (
-              <ul className="divide-y divide-border">
+              <ul className="divide-y divide-border border-y border-border">
                 {filteredVenues.map((v) => {
                   const active = venueId === v.id;
                   const km =
@@ -377,61 +381,66 @@ const CreateMatch = () => {
                       ? getDistanceKm(location.lat, location.lng, v.lat, v.lng).toFixed(1)
                       : null;
                   return (
-                    <li key={v.id}>
+                    <li key={v.id} className="group">
                       <button
                         onClick={() => setVenueId(v.id)}
-                        className={`w-full flex items-center gap-3 py-4 text-left rounded-xl px-3 -mx-3 transition-colors ${
-                          active ? "bg-secondary" : ""
+                        className={`w-full flex items-center gap-4 py-4 text-left transition-colors ${
+                          active ? "bg-secondary/50 px-3 -mx-3 rounded-xl border-l-4 border-foreground" : "hover:bg-secondary/30 px-3 -mx-3 rounded-xl border-l-4 border-transparent"
                         }`}
                       >
                         {v.image_urls && v.image_urls.length > 0 ? (
-                          <img src={v.image_urls[0]} alt="" className="w-14 h-14 rounded-xl object-cover border border-border shrink-0" />
+                          <img src={v.image_urls[0]} alt="" className="w-16 h-16 rounded-xl object-cover border-2 border-border shrink-0 shadow-sm" />
                         ) : (
-                          <div className="w-14 h-14 rounded-xl bg-muted border border-border flex items-center justify-center shrink-0">
-                            <MapPin className="w-5 h-5 text-muted-foreground" />
+                          <div className="w-16 h-16 rounded-xl bg-card border-2 border-border flex items-center justify-center shrink-0">
+                            <MapPin className="w-6 h-6 text-muted-foreground" />
                           </div>
                         )}
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <p className="text-base font-semibold truncate">{v.name}</p>
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="text-base font-display font-black uppercase tracking-tight truncate text-foreground">{v.name}</p>
                             {(() => {
                               const { isOpen, label } = isVenueOpen(v);
                               return (
-                                <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${isOpen ? "bg-emerald-500/10 text-emerald-600" : "bg-red-500/10 text-red-600"}`}>
+                                <span className={`shrink-0 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-sm border-2 ${isOpen ? "border-emerald-500 text-emerald-600 bg-emerald-500/10" : "border-foreground text-muted-foreground bg-card"}`}>
                                   {label}
                                 </span>
                               );
                             })()}
                           </div>
-                          <p className="text-xs text-muted-foreground mt-0.5 truncate flex items-center gap-1.5">
+                          <p className="text-[10px] uppercase tracking-widest text-muted-foreground truncate flex items-center gap-1.5 font-bold">
                             {v.area ?? v.city ?? ""}
-                            {km && <span className="mx-1">·</span>}
-                            {km && `${km} km`}
-                            <span className="mx-1">·</span> {v.surface ?? "Pitch"}
+                            {km && <span className="mx-0.5 text-border">•</span>}
+                            {km && `${km} KM`}
+                            <span className="mx-0.5 text-border">•</span> {v.surface ?? "PITCH"}
                             {v.price_per_hour != null && v.price_per_hour > 0 && (
                               <>
-                                <span className="mx-1">·</span>
-                                <span className="font-semibold text-foreground">₵{v.price_per_hour}/hr</span>
+                                <span className="mx-0.5 text-border">•</span>
+                                <span className="font-black text-foreground">₵{v.price_per_hour}/HR</span>
                               </>
                             )}
                           </p>
                         </div>
-                        {active ? <Check className="w-5 h-5 shrink-0" /> : <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />}
+                        {active ? (
+                          <div className="w-6 h-6 rounded-sm border-2 border-foreground bg-foreground text-background flex items-center justify-center shrink-0 shadow-sm">
+                            <Check className="w-3.5 h-3.5" strokeWidth={3} />
+                          </div>
+                        ) : (
+                          <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        )}
                       </button>
 
-                      {/* Venue image expansion */}
                       {/* Expanded venue details when selected */}
                       {active && (
-                        <div className="px-3 pb-4 -mx-3 space-y-3">
+                        <div className="px-3 pb-5 pt-1 -mx-3 space-y-4 animate-in slide-in-from-top-2 duration-200">
                           {/* Image gallery */}
                           {v.image_urls && v.image_urls.length > 0 && (
-                            <div className="flex gap-2 overflow-x-auto snap-x snap-mandatory scrollbar-hide">
+                            <div className="flex gap-2.5 overflow-x-auto snap-x snap-mandatory scrollbar-hide py-1">
                               {v.image_urls.map((url, i) => (
                                 <img
                                   key={i}
                                   src={url}
                                   alt={`${v.name} ${i + 1}`}
-                                  className="h-32 w-auto rounded-xl object-cover border border-border snap-start shrink-0"
+                                  className="h-36 w-60 rounded-xl object-cover border border-border snap-start shrink-0 shadow-sm"
                                 />
                               ))}
                             </div>
@@ -439,42 +448,44 @@ const CreateMatch = () => {
 
                           {/* Description */}
                           {v.description && (
-                            <p className="text-xs text-muted-foreground leading-relaxed">{v.description}</p>
+                            <p className="text-sm font-medium text-muted-foreground leading-relaxed border-l-2 border-foreground/20 pl-3">{v.description}</p>
                           )}
 
                           {/* Details grid */}
-                          <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="grid grid-cols-2 gap-3 text-sm">
                             {v.price_per_hour != null && (
-                              <div className="bg-secondary/50 rounded-lg px-2.5 py-1.5">
-                                <span className="text-muted-foreground block">Price / hour</span>
-                                <span className="font-semibold">₵{v.price_per_hour.toFixed(0)}</span>
+                              <div className="bg-background border-2 border-border rounded-xl p-3 shadow-sm">
+                                <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground block mb-0.5">Price / hr</span>
+                                <span className="font-display font-black text-foreground">₵{v.price_per_hour.toFixed(0)}</span>
                               </div>
                             )}
                             {v.capacity != null && (
-                              <div className="bg-secondary/50 rounded-lg px-2.5 py-1.5">
-                                <span className="text-muted-foreground block">Capacity</span>
-                                <span className="font-semibold">{v.capacity} players</span>
+                              <div className="bg-background border-2 border-border rounded-xl p-3 shadow-sm">
+                                <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground block mb-0.5">Capacity</span>
+                                <span className="font-display font-black text-foreground">{v.capacity} players</span>
                               </div>
                             )}
                             {v.opening_hours && (
-                              <div className="bg-secondary/50 rounded-lg px-2.5 py-1.5">
-                                <span className="text-muted-foreground block">Opening hours</span>
-                                <span className="font-semibold">{v.opening_hours}</span>
+                              <div className="bg-background border-2 border-border rounded-xl p-3 shadow-sm">
+                                <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground block mb-0.5">Hours</span>
+                                <span className="font-display font-black text-foreground uppercase text-xs">{v.opening_hours}</span>
                               </div>
                             )}
                             {v.contact_phone && (
-                              <div className="bg-secondary/50 rounded-lg px-2.5 py-1.5">
-                                <span className="text-muted-foreground block">Contact</span>
-                                <span className="font-semibold">{v.contact_phone}</span>
+                              <div className="bg-background border-2 border-border rounded-xl p-3 shadow-sm">
+                                <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground block mb-0.5">Contact</span>
+                                <span className="font-display font-black text-foreground text-xs">{v.contact_phone}</span>
                               </div>
                             )}
                           </div>
 
                           {/* Amenities */}
                           {v.amenities && v.amenities.length > 0 && (
-                            <div className="flex flex-wrap gap-1">
+                            <div className="flex flex-wrap gap-1.5 pt-1">
                               {v.amenities.map((a) => (
-                                <span key={a} className="text-[10px] font-semibold bg-secondary rounded-full px-2 py-0.5 text-muted-foreground">{a}</span>
+                                <span key={a} className="text-[10px] font-bold uppercase tracking-wider bg-secondary border border-border rounded-sm px-2 py-1 text-foreground">
+                                  {a}
+                                </span>
                               ))}
                             </div>
                           )}
@@ -485,7 +496,7 @@ const CreateMatch = () => {
                               href={`https://www.google.com/maps/search/?api=1&query=${v.lat},${v.lng}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+                              className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-foreground hover:opacity-70 transition-opacity mt-2"
                             >
                               <MapPin className="w-3.5 h-3.5" /> Open in Maps
                             </a>
@@ -498,194 +509,216 @@ const CreateMatch = () => {
               </ul>
             )}
             {!venuesLoading && filteredVenues.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-4">No venues found.</p>
+              <div className="text-center py-12 border border-dashed border-border rounded-2xl">
+                <p className="text-sm font-bold text-muted-foreground">No venues found matching your criteria.</p>
+              </div>
             )}
           </div>
         )}
 
         {/* ============ STEP 3 — DETAILS ============ */}
         {!created && step === 2 && (
-          <div className="space-y-5">
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
             {/* Title */}
-            <div className="bg-card rounded-xl p-5" style={{ boxShadow: "var(--shadow-card)" }}>
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Match title</p>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Match Title</label>
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Sunday Kickabout"
                 maxLength={60}
-                className="w-full bg-secondary rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground"
+                className="w-full bg-background border-2 border-border rounded-xl px-4 py-3 text-xs font-black uppercase tracking-widest focus:outline-none focus:border-foreground focus:ring-1 focus:ring-foreground transition-all shadow-sm text-foreground placeholder:text-muted-foreground"
               />
-              {errors.title && <p className="text-[11px] text-red-600 font-semibold mt-2">{errors.title}</p>}
+              {errors.title && <p className="text-[11px] text-red-600 font-bold mt-1.5 ml-1">{errors.title}</p>}
             </div>
 
             {/* Max players */}
             <Counter
-              label="Max players"
+              label="Max Players"
               value={maxCore}
               onChange={(n) => setMaxCore(n)}
               min={2}
               max={100}
               help="Total number of core players allowed"
             />
-            {errors.maxCore && <p className="text-[11px] text-red-600 font-semibold mt-1 px-1">{errors.maxCore}</p>}
+            {errors.maxCore && <p className="text-[11px] text-red-600 font-bold mt-1 px-1">{errors.maxCore}</p>}
 
-            {/* Date */}
-            <div className="bg-card rounded-xl p-5" style={{ boxShadow: "var(--shadow-card)" }}>
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Date</p>
-              <input
-                type="date"
-                value={matchDate}
-                min={format(new Date(), "yyyy-MM-dd")}
-                onChange={(e) => setMatchDate(e.target.value)}
-                className="w-full bg-secondary rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground mb-3"
-              />
-              <div className="flex gap-2">
-                {[
-                  { label: "Today", get: () => format(new Date(), "yyyy-MM-dd") },
-                  { label: "Tomorrow", get: () => format(new Date(Date.now() + 86400000), "yyyy-MM-dd") },
-                  { label: "+2 days", get: () => format(new Date(Date.now() + 2 * 86400000), "yyyy-MM-dd") },
-                  { label: "+7 days", get: () => format(new Date(Date.now() + 7 * 86400000), "yyyy-MM-dd") },
-                ].map((btn) => (
-                  <button
-                    key={btn.label}
-                    onClick={() => setMatchDate(btn.get())}
-                    className={`flex-1 rounded-xl py-2 text-[11px] font-bold transition-colors ${
-                      matchDate === btn.get()
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary text-muted-foreground hover:bg-secondary/80"
-                    }`}
+            {/* Date & Time Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Date</label>
+                <input
+                  type="date"
+                  value={matchDate}
+                  min={format(new Date(), "yyyy-MM-dd")}
+                  onChange={(e) => setMatchDate(e.target.value)}
+                  className="w-full bg-background border-2 border-border rounded-xl px-4 py-3 text-xs font-black uppercase tracking-widest focus:outline-none focus:border-foreground focus:ring-1 focus:ring-foreground transition-all shadow-sm text-foreground"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Kickoff Time</label>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={matchHour}
+                    onChange={(e) => setMatchHour(Number(e.target.value))}
+                    className="flex-1 bg-background border-2 border-border rounded-xl px-4 py-3 text-sm font-black uppercase focus:outline-none focus:border-foreground focus:ring-1 focus:ring-foreground appearance-none shadow-sm text-foreground text-center"
                   >
-                    {btn.label}
-                  </button>
-                ))}
+                    {hours.map((h) => (
+                      <option key={h} value={h}>{String(h).padStart(2, "0")}</option>
+                    ))}
+                  </select>
+                  <span className="text-lg font-black text-foreground">:</span>
+                  <select
+                    value={matchMinute}
+                    onChange={(e) => setMatchMinute(Number(e.target.value))}
+                    className="flex-1 bg-background border-2 border-border rounded-xl px-4 py-3 text-sm font-black uppercase focus:outline-none focus:border-foreground focus:ring-1 focus:ring-foreground appearance-none shadow-sm text-foreground text-center"
+                  >
+                    {MINUTES.map((m) => (
+                      <option key={m} value={m}>{String(m).padStart(2, "0")}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
 
-            {/* Time */}
-            <div className="bg-card rounded-xl p-5" style={{ boxShadow: "var(--shadow-card)" }}>
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Kickoff time</p>
-              <div className="flex items-center gap-3">
-                <select
-                  value={matchHour}
-                  onChange={(e) => setMatchHour(Number(e.target.value))}
-                  className="flex-1 bg-secondary rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground appearance-none"
+            {/* Quick Date Selectors */}
+            <div className="flex flex-wrap gap-2">
+              {[
+                { label: "Today", get: () => format(new Date(), "yyyy-MM-dd") },
+                { label: "Tomorrow", get: () => format(new Date(Date.now() + 86400000), "yyyy-MM-dd") },
+                { label: "+2 days", get: () => format(new Date(Date.now() + 2 * 86400000), "yyyy-MM-dd") },
+                { label: "+7 days", get: () => format(new Date(Date.now() + 7 * 86400000), "yyyy-MM-dd") },
+              ].map((btn) => (
+                <button
+                  key={btn.label}
+                  onClick={() => setMatchDate(btn.get())}
+                  className={`flex-1 rounded-lg py-2 text-[10px] font-black uppercase tracking-wider transition-all border-2 ${
+                    matchDate === btn.get()
+                      ? "bg-foreground text-background border-foreground shadow-sm"
+                      : "bg-card text-foreground border-border hover:border-foreground"
+                  }`}
                 >
-                  {hours.map((h) => (
-                    <option key={h} value={h}>{String(h).padStart(2, "0")}</option>
-                  ))}
-                </select>
-                <span className="text-lg font-bold text-muted-foreground">:</span>
-                <select
-                  value={matchMinute}
-                  onChange={(e) => setMatchMinute(Number(e.target.value))}
-                  className="flex-1 bg-secondary rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground appearance-none"
-                >
-                  {MINUTES.map((m) => (
-                    <option key={m} value={m}>{String(m).padStart(2, "0")}</option>
-                  ))}
-                </select>
-              </div>
-              {selectedVenue?.close_time && (() => {
-                const [h, m] = selectedVenue.close_time.split(":").map(Number);
-                const closeMin = (h ?? 0) * 60 + (m ?? 0);
-                const startMin = matchHour * 60 + matchMinute;
-                const endMin = startMin + duration;
-                if (endMin > closeMin) {
-                  const overrun = endMin - closeMin;
-                  const overrunH = Math.floor(overrun / 60);
-                  const overrunM = overrun % 60;
-                  return (
-                    <p className="text-[11px] text-red-600 font-semibold mt-2">
+                  {btn.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Validation Errors for Date/Time */}
+            {selectedVenue?.close_time && (() => {
+              const [h, m] = selectedVenue.close_time.split(":").map(Number);
+              const closeMin = (h ?? 0) * 60 + (m ?? 0);
+              const startMin = matchHour * 60 + matchMinute;
+              const endMin = startMin + duration;
+              if (endMin > closeMin) {
+                const overrun = endMin - closeMin;
+                const overrunH = Math.floor(overrun / 60);
+                const overrunM = overrun % 60;
+                return (
+                  <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
+                    <p className="text-[11px] text-red-600 font-bold">
                       Match ends {overrunH > 0 ? `${overrunH}h ` : ""}{overrunM > 0 ? `${overrunM}m ` : ""}after closing ({selectedVenue.close_time.slice(0, 5)}). Pick an earlier time or shorter duration.
                     </p>
-                  );
-                }
-                return null;
-              })()}
-              {errors.matchDate && <p className="text-[11px] text-red-600 font-semibold mt-2">{errors.matchDate}</p>}
-            </div>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+            {errors.matchDate && <p className="text-[11px] text-red-600 font-bold mt-2 ml-1">{errors.matchDate}</p>}
 
             {/* Duration */}
-            <div className="bg-card rounded-xl p-5" style={{ boxShadow: "var(--shadow-card)" }}>
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Duration</p>
-              <div className="flex gap-2">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Duration</label>
+              <div className="flex flex-wrap gap-2">
                 {DURATIONS.map((d) => (
                   <button
                     key={d}
                     onClick={() => setDuration(d)}
-                    className={`flex-1 rounded-xl py-2.5 text-sm font-semibold transition-colors ${
-                      duration === d ? "bg-primary text-primary-foreground" : "bg-secondary"
+                    className={`flex-1 rounded-xl py-3 text-xs font-black uppercase tracking-widest transition-all border-2 ${
+                      duration === d 
+                        ? "bg-foreground text-background border-foreground shadow-sm" 
+                        : "bg-background text-foreground border-border hover:border-foreground"
                     }`}
                   >
-                    {d} min
+                    {d} MIN
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Entry fee */}
-            <div className="bg-card rounded-xl p-5" style={{ boxShadow: "var(--shadow-card)" }}>
+            {/* Entry fee (Invoice Style) */}
+            <div className="bg-background border-2 border-border rounded-2xl p-5 shadow-sm space-y-4">
               {/* Always-visible hint when venue has a price but toggle is off */}
               {basePerPlayer > 0 && !entryFeeEnabled && (() => {
                 const playerCount = matchFormat ? parseInt(matchFormat.split("v")[0], 10) * (mode === "gala" ? 8 : 2) : 0;
                 return (
-                  <div className="mb-3 rounded-xl bg-primary/5 border border-primary/20 px-3 py-2.5">
-                    <p className="text-[11px] text-primary font-semibold">
-                      💡 This venue costs ₵{(selectedVenue as any).price_per_hour}/hr
-                      {playerCount > 0 && <> · suggested <span className="font-bold">₵{basePerPlayer}/player</span> for {playerCount} players</>}
+                  <div className="rounded-xl bg-card border-2 border-border px-4 py-3">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-foreground leading-relaxed">
+                      <Info className="inline w-3.5 h-3.5 mr-1 text-muted-foreground -mt-0.5" /> This venue costs ₵{(selectedVenue as any).price_per_hour}/hr
+                      {playerCount > 0 && <> · suggested <span className="font-black border-b-2 border-foreground/30 text-foreground">₵{basePerPlayer}/PLAYER</span> for {playerCount} players</>}
                       . Enable entry fees to collect it.
                     </p>
                   </div>
                 );
               })()}
               {venueCost > 0 && !entryFeeEnabled && (
-                <div className="mb-3 rounded-xl bg-amber-500/10 border border-amber-500/20 px-3 py-2.5">
-                  <p className="text-[11px] text-amber-700 font-semibold">
+                <div className="rounded-xl bg-foreground text-background px-4 py-3 border-2 border-foreground">
+                  <p className="text-[10px] font-black uppercase tracking-widest leading-relaxed">
                     Since this match is free for players, you will pay ₵{venueCost.toFixed(0)} from your wallet to cover the venue booking.
                   </p>
                 </div>
               )}
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Entry fee</p>
+
+              <div className="flex items-center justify-between border-b-2 border-border border-dashed pb-4">
+                <div>
+                  <p className="text-sm font-black uppercase tracking-tight text-foreground">Collect Entry Fees</p>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mt-0.5">Players pay securely in the app.</p>
+                </div>
                 <button
                   onClick={() => setEntryFeeEnabled((v) => !v)}
-                  className={`relative w-11 h-6 rounded-full transition-colors ${
-                    entryFeeEnabled ? "bg-foreground" : "bg-secondary"
+                  className={`relative w-12 h-6 rounded-full transition-colors border-2 ${
+                    entryFeeEnabled ? "bg-foreground border-foreground" : "bg-card border-border"
                   }`}
                 >
                   <span
-                    className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-background transition-transform ${
-                      entryFeeEnabled ? "translate-x-5" : ""
+                    className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full transition-transform shadow-sm ${
+                      entryFeeEnabled ? "bg-background translate-x-6" : "bg-muted-foreground"
                     }`}
                   />
                 </button>
               </div>
+
               {entryFeeEnabled && (
-                <div className="space-y-2">
+                <div className="pt-2 animate-in fade-in duration-200">
                   {basePerPlayer > 0 ? (
-                    /* Breakdown card — venue has a price_per_hour */
-                    <div className="rounded-xl bg-secondary/60 p-3 space-y-2">
-                      <p className="text-[11px] font-semibold text-muted-foreground">Venue cost breakdown</p>
+                    /* Breakdown card — Invoice Style */
+                    <div className="space-y-4 font-mono text-sm">
+                      <div className="flex justify-between items-center text-muted-foreground pb-2 border-b border-dashed border-border">
+                        <span className="uppercase tracking-widest text-[10px] font-sans font-black">Item</span>
+                        <span className="uppercase tracking-widest text-[10px] font-sans font-black">Amount</span>
+                      </div>
+                      
                       {(() => {
                         const pricePerHr = Number((selectedVenue as any).price_per_hour) || 0;
                         const hrs = duration / 60;
                         const totalCost = pricePerHr * hrs;
-                        const playerCount = matchFormat ? parseInt(matchFormat.split("v")[0], 10) * (mode === "gala" ? 8 : 2) : 0;
                         return (
-                          <p className="text-[11px] text-foreground">
-                            ₵{pricePerHr}/hr × {hrs}hr = <span className="font-bold">₵{totalCost.toFixed(0)}</span> total for {playerCount} players
-                          </p>
+                          <div className="flex justify-between items-center text-[11px] font-black uppercase tracking-widest">
+                            <span className="text-muted-foreground">Venue (₵{pricePerHr} × {hrs}H)</span>
+                            <span className="font-black text-foreground">₵{totalCost.toFixed(0)}</span>
+                          </div>
                         );
                       })()}
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] text-muted-foreground">Base per player</span>
-                        <span className="text-[11px] font-bold bg-secondary rounded-full px-2.5 py-0.5">₵{basePerPlayer}</span>
+
+                      <div className="flex justify-between items-center text-muted-foreground text-[11px] font-black uppercase tracking-widest">
+                        <span>Base per player</span>
+                        <span>₵{basePerPlayer}</span>
                       </div>
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-[11px] text-muted-foreground">Your profit</span>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-semibold text-muted-foreground">+₵</span>
+
+                      <div className="flex justify-between items-center pt-2">
+                        <span className="text-foreground font-black uppercase tracking-widest text-[11px] font-sans">Organizer Profit</span>
+                        <div className="flex items-center gap-1.5 bg-card border-2 border-border rounded-lg px-2 py-1">
+                          <span className="text-xs font-black font-sans text-muted-foreground">+₵</span>
                           <input
                             type="number"
                             min={0}
@@ -696,130 +729,130 @@ const CreateMatch = () => {
                               const num = Number(val);
                               setProfitAmount(isNaN(num) ? 0 : Math.max(0, num));
                             }}
-                            className="w-20 bg-secondary rounded-xl px-3 py-1.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground text-right"
+                            className="w-16 bg-transparent text-sm font-black focus:outline-none text-right font-mono text-foreground"
                             placeholder="0"
                           />
                         </div>
                       </div>
-                      {errors.profitAmount && <p className="text-[11px] text-red-600 font-semibold">{errors.profitAmount}</p>}
-                      <div className="border-t border-border pt-2 flex items-center justify-between">
-                        <span className="text-[11px] font-semibold text-muted-foreground">Players pay</span>
-                        <span className="text-base font-bold text-primary">₵{entryFee}/player</span>
+                      {errors.profitAmount && <p className="text-[11px] text-red-600 font-sans font-bold">{errors.profitAmount}</p>}
+                      
+                      <div className="border-t-2 border-dashed border-border pt-3 flex items-center justify-between mt-4">
+                        <span className="font-sans font-black uppercase tracking-widest text-foreground text-[10px]">Player Pays</span>
+                        <span className="font-display font-black text-2xl text-foreground">₵{entryFee}</span>
                       </div>
                     </div>
                   ) : (
                     /* Original free-text input when venue has no price */
-                    <div className="flex items-center gap-2">
-                      <Wallet className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-sm font-semibold">₵</span>
-                      <input
-                        type="number"
-                        min={0}
-                        value={entryFee || ""}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          if (val === "") { setEntryFee(0); return; }
-                          const num = Number(val);
-                          setEntryFee(isNaN(num) ? 0 : Math.max(0, num));
-                        }}
-                        className="flex-1 bg-secondary rounded-xl px-4 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground"
-                        placeholder="0"
-                      />
-                      <span className="text-sm text-muted-foreground">/player</span>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Fee per player</label>
+                      <div className="flex items-center gap-0 bg-background border-2 border-border rounded-xl px-4 py-3 focus-within:border-foreground focus-within:ring-1 focus-within:ring-foreground transition-all shadow-sm">
+                        <span className="text-sm font-black text-muted-foreground mr-2">₵</span>
+                        <input
+                          type="number"
+                          min={0}
+                          value={entryFee || ""}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === "") { setEntryFee(0); return; }
+                            const num = Number(val);
+                            setEntryFee(isNaN(num) ? 0 : Math.max(0, num));
+                          }}
+                          className="flex-1 bg-transparent text-sm font-black outline-none text-foreground"
+                          placeholder="0"
+                        />
+                      </div>
                     </div>
                   )}
-                  <p className="text-[11px] text-muted-foreground leading-snug">
-                    Fees held securely until match day. Players pay to confirm their spot.
-                  </p>
+
+                  {/* Pricing Alerts */}
                   {selectedVenue && (selectedVenue as any).surge_multiplier > 1 && (selectedVenue as any).surge_peak_start_hour != null && matchHour >= (selectedVenue as any).surge_peak_start_hour && matchHour < ((selectedVenue as any).surge_peak_end_hour ?? 23) && (
-                    <p className="text-[11px] text-amber-600 font-semibold mt-1.5">
-                      ⚡ Surge pricing active ({(selectedVenue as any).surge_multiplier}×) for this time slot at {selectedVenue.name}
-                    </p>
+                    <div className="mt-3 bg-secondary border border-border rounded-lg p-2.5 flex items-start gap-2">
+                      <Zap className="w-4 h-4 text-foreground shrink-0 mt-0.5" />
+                      <p className="text-[11px] text-foreground font-semibold leading-tight">
+                        Surge pricing active ({(selectedVenue as any).surge_multiplier}×) for this time slot.
+                      </p>
+                    </div>
                   )}
                   {selectedVenue && (selectedVenue as any).early_bird_discount_pct > 0 && (
-                    <p className="text-[11px] text-emerald-600 font-semibold mt-1">
-                      🌅 Early bird discount available ({(selectedVenue as any).early_bird_discount_pct}% off if booked {(selectedVenue as any).early_bird_hours_before}h+ ahead)
-                    </p>
+                    <div className="mt-2 bg-secondary border border-border rounded-lg p-2.5 flex items-start gap-2">
+                      <Sunrise className="w-4 h-4 text-foreground shrink-0 mt-0.5" />
+                      <p className="text-[11px] text-foreground font-semibold leading-tight">
+                        Early bird discount available ({(selectedVenue as any).early_bird_discount_pct}% off).
+                      </p>
+                    </div>
                   )}
-                  {errors.entryFee && <p className="text-[11px] text-red-600 font-semibold mt-2">{errors.entryFee}</p>}
+                  {errors.entryFee && <p className="text-[11px] text-red-600 font-bold mt-2">{errors.entryFee}</p>}
                 </div>
               )}
             </div>
 
             {/* Notes */}
-            <div className="bg-card rounded-xl p-5" style={{ boxShadow: "var(--shadow-card)" }}>
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Notes (optional)</p>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Notes (Optional)</label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Bring bibs, white tees, etc."
+                placeholder="BRING BIBS, WHITE TEES, ETC."
                 rows={3}
                 maxLength={300}
-                className="w-full bg-secondary rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground resize-none"
+                className="w-full bg-background border-2 border-border rounded-xl px-4 py-3 text-[11px] font-black uppercase tracking-widest focus:outline-none focus:border-foreground focus:ring-1 focus:ring-foreground transition-all shadow-sm resize-none text-foreground placeholder:text-muted-foreground"
               />
-              <p className="text-[11px] text-muted-foreground mt-1 text-right">{notes.length}/300</p>
+              <p className="text-[10px] font-black text-muted-foreground mt-1 text-right uppercase tracking-wider">{notes.length}/300</p>
             </div>
 
-            {/* HIDDEN — Gala team name: re-enable when gala feature is released */}
-            {false && mode === "gala" && (
-              <div className="bg-card rounded-xl p-5" style={{ boxShadow: "var(--shadow-card)" }}>
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Your team name</p>
-                <input
-                  value={teamName}
-                  onChange={(e) => setTeamName(e.target.value)}
-                  placeholder="e.g. Lightning XI"
-                  className="w-full bg-secondary rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground"
-                />
-                <p className="text-[11px] text-muted-foreground mt-2 leading-snug">
-                  You'll captain this team. Other captains bring their squads to fill the gala.
-                </p>
-              </div>
-            )}
-
             {/* Live summary */}
-            <div className="bg-card rounded-xl p-5 space-y-2" style={{ boxShadow: "var(--shadow-card)" }}>
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Summary</p>
+            <div className="bg-secondary/30 rounded-2xl p-5 border border-border/50 space-y-3">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Match Summary</p>
               <SummaryRow label="Title" value={title || "—"} />
-              <SummaryRow label="Sport" value="Football" />
-              <SummaryRow label="Type" value={type === "public" ? "Public" : "Private"} />
-              <SummaryRow label="Mode" value={mode === "gala" ? "Gala" : "Two-team"} />
               <SummaryRow label="Format" value={matchFormat ?? "—"} />
               <SummaryRow label="Venue" value={selectedVenue ? `${selectedVenue.name}` : "—"} />
               <SummaryRow label="When" value={matchDate ? `${matchDate} @ ${String(matchHour).padStart(2, "0")}:${String(matchMinute).padStart(2, "0")}` : "—"} />
               <SummaryRow label="Duration" value={`${duration} min`} />
-              <SummaryRow label="Entry fee" value={entryFeeEnabled ? (profitAmount > 0 ? `₵${entryFee}/player (₵${basePerPlayer} base + ₵${profitAmount} profit)` : `₵${entryFee}/player`) : venueCost > 0 ? `Free (you pay ₵${venueCost.toFixed(0)} venue cost)` : "Free"} />
-              {mode === "gala" && teamName && <SummaryRow label="Your team" value={teamName} />}
+              <SummaryRow label="Entry fee" value={entryFeeEnabled ? (profitAmount > 0 ? `₵${entryFee}/player (₵${basePerPlayer} base + ₵${profitAmount} profit)` : `₵${entryFee}/player`) : venueCost > 0 ? `Free (you pay ₵${venueCost.toFixed(0)})` : "Free"} />
             </div>
           </div>
         )}
 
         {/* ============ CREATED — share screen ============ */}
         {created && (
-          <div className="space-y-4">
-            <div className="bg-card rounded-xl p-6 text-center" style={{ boxShadow: "var(--shadow-card)" }}>
-              <div className="w-14 h-14 rounded-lg bg-primary text-primary-foreground mx-auto flex items-center justify-center mb-3">
-                <Check className="w-7 h-7" />
+          <div className="space-y-6 animate-in zoom-in-95 duration-500 pt-8">
+            <div className="bg-background border-2 border-border rounded-3xl p-8 text-center shadow-lg relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-40 h-40 bg-foreground/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4" />
+              
+              <div className="relative z-10">
+                <div className="w-16 h-16 rounded-full bg-foreground border-2 border-foreground text-background mx-auto flex items-center justify-center mb-6 shadow-md">
+                  <Check className="w-8 h-8" strokeWidth={3} />
+                </div>
+                
+                <h2 className="font-display font-black text-4xl uppercase tracking-tighter mb-2 text-foreground">You're Set</h2>
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-8">
+                  {type === "private" ? "Share this code with your squad." : "Your match is live on the feed."}
+                </p>
+                
+                <div className="bg-card border-2 border-dashed border-border rounded-2xl p-6 mb-8 relative">
+                  {/* Ticket cutouts */}
+                  <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-background border-r-2 border-border" />
+                  <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-background border-l-2 border-border" />
+                  
+                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Access Code</p>
+                  <p className="font-display font-black text-5xl tracking-tighter text-foreground">{createdCode}</p>
+                </div>
+
+                <div className="space-y-3">
+                  <button
+                    onClick={() => setShareOpen(true)}
+                    className="w-full bg-foreground border-2 border-foreground text-background rounded-xl py-4 text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-foreground/90 transition-colors active:scale-[0.99]"
+                  >
+                    <Share2 className="w-4 h-4 -mt-0.5" /> SHARE MATCH
+                  </button>
+                  <button
+                    onClick={() => navigate(`/lobby/${createdCode}`)}
+                    className="w-full bg-card text-foreground border-2 border-border rounded-xl py-4 text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:border-foreground transition-colors active:scale-[0.99]"
+                  >
+                    OPEN LOBBY <ChevronRight className="w-4 h-4 -mt-0.5" />
+                  </button>
+                </div>
               </div>
-              <h2 className="font-display font-bold text-3xl tracking-tight mb-1">You're set</h2>
-              <p className="text-sm text-muted-foreground mb-5">
-                {type === "private" ? "Share the code with your players." : "Live on the match feed."}
-              </p>
-              <div className="tile-cool rounded-xl p-4 mb-4">
-                <p className="text-[10px] uppercase tracking-widest opacity-70 font-semibold">Match code</p>
-                <p className="font-display font-bold text-3xl tracking-tight mt-1">{createdCode}</p>
-              </div>
-              <button
-                onClick={() => setShareOpen(true)}
-                className="w-full bg-primary text-primary-foreground-lg py-3.5 text-sm font-semibold flex items-center justify-center gap-2 mb-3"
-              >
-                <Share2 className="w-4 h-4" /> Share match
-              </button>
-              <button
-                onClick={() => navigate(`/lobby/${createdCode}`)}
-                className="w-full bg-secondary rounded-full py-3.5 text-sm font-semibold flex items-center justify-center gap-2"
-              >
-                Open lobby <ChevronRight className="w-4 h-4" />
-              </button>
             </div>
 
             {(() => {
@@ -850,18 +883,18 @@ const CreateMatch = () => {
 
       {/* Sticky footer (hidden after success) */}
       {!created && (
-        <div className="fixed bottom-0 inset-x-0 bg-background/95 backdrop-blur-md border-t border-border">
-          <div className="max-w-[680px] mx-auto px-5 py-3 flex items-center gap-3">
-            <button onClick={back} className="px-4 h-12 rounded-full bg-secondary text-sm font-semibold">
-              Back
+        <div className="fixed bottom-0 inset-x-0 bg-background/95 backdrop-blur-md border-t-2 border-border z-40">
+          <div className="max-w-[680px] mx-auto px-5 py-4 flex items-center gap-4">
+            <button onClick={back} className="px-6 h-12 rounded-xl bg-card hover:bg-secondary text-foreground text-[10px] font-black uppercase tracking-widest transition-colors border-2 border-border">
+              BACK
             </button>
             <button
               onClick={next}
               disabled={!canNext() || creating}
-              className="flex-1 inline-flex items-center justify-center gap-2 h-12 rounded-lg bg-[hsl(var(--gold))] text-[hsl(var(--gold-foreground))] text-sm font-semibold disabled:opacity-40 active:scale-[0.99]"
+              className="flex-1 inline-flex items-center justify-center gap-2 h-12 rounded-xl bg-foreground text-background text-[10px] font-black uppercase tracking-widest disabled:opacity-40 active:scale-[0.99] transition-all border-2 border-foreground"
             >
-              {creating ? "Creating…" : step === STEP_LABELS.length - 1 ? "Create match" : "Continue"}
-              {!creating && <ArrowRight className="w-4 h-4" />}
+              {creating ? "PROCESSING…" : step === STEP_LABELS.length - 1 ? "CREATE MATCH" : "CONTINUE"}
+              {!creating && <ArrowRight className="w-4 h-4 -mt-0.5" />}
             </button>
           </div>
         </div>
@@ -873,23 +906,31 @@ const CreateMatch = () => {
 /* ---- Sub-components ---- */
 
 const Stepper = ({ step }: { step: number }) => (
-  <div className="flex items-center gap-1.5 mb-6">
-    {STEP_LABELS.map((s, i) => (
-      <div key={s} className="flex-1">
-        <div className={`h-1.5 rounded-full ${i <= step ? "bg-foreground" : "bg-secondary"}`} />
-        <p className={`text-xs mt-2 font-semibold ${i === step ? "text-foreground" : "text-muted-foreground"}`}>
-          {i + 1}. {s}
-        </p>
-      </div>
-    ))}
+  <div className="flex items-center justify-between gap-2 mb-8">
+    {STEP_LABELS.map((s, i) => {
+      const isPast = i < step;
+      const isActive = i === step;
+      return (
+        <div key={s} className="flex-1 relative">
+          <div className={`h-1.5 rounded-full transition-colors border-2 ${
+            isActive || isPast ? "bg-foreground border-foreground" : "bg-card border-border"
+          }`} />
+          <p className={`text-[10px] mt-2 font-black uppercase tracking-widest transition-colors ${
+            isActive ? "text-foreground" : isPast ? "text-foreground/60" : "text-muted-foreground"
+          }`}>
+            {s}
+          </p>
+        </div>
+      );
+    })}
   </div>
 );
 
 const Group = ({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) => (
-  <div>
-    <div className="flex items-baseline justify-between mb-2">
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</p>
-      {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
+  <div className="space-y-3">
+    <div>
+      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{title}</p>
+      {hint && <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest ml-1 mt-0.5">{hint}</p>}
     </div>
     {children}
   </div>
@@ -903,24 +944,26 @@ const SegmentedTwo = <T extends string>({
   value: T;
   onChange: (v: T) => void;
 }) => (
-  <div className="grid grid-cols-2 gap-2">
+  <div className="grid grid-cols-2 gap-3">
     {[a, b].map(o => {
       const active = value === o.id;
       return (
         <button
           key={o.id}
           onClick={() => onChange(o.id)}
-          className={`text-left rounded-xl p-4 transition-all border ${
-            active ? "bg-primary text-primary-foreground border-foreground" : "bg-secondary border-transparent"
+          className={`text-left rounded-2xl p-5 transition-all border-2 ${
+            active 
+              ? "bg-foreground text-background border-foreground shadow-md scale-[1.02]" 
+              : "bg-card border-border text-foreground hover:border-foreground"
           }`}
         >
-          <span className={`w-9 h-9 rounded-xl inline-flex items-center justify-center mb-2 ${
-            active ? "bg-background/15" : "bg-primary text-primary-foreground"
+          <span className={`w-10 h-10 rounded-xl border-2 inline-flex items-center justify-center mb-3 transition-colors ${
+            active ? "bg-background text-foreground border-background shadow-sm" : "bg-secondary text-foreground border-border"
           }`}>
-            <o.icon className="w-4 h-4" strokeWidth={2.4} />
+            <o.icon className="w-5 h-5" strokeWidth={2.5} />
           </span>
-          <p className="font-display font-bold text-sm">{o.label}</p>
-          <p className={`text-[11px] mt-1 ${active ? "opacity-80" : "text-muted-foreground"}`}>{o.desc}</p>
+          <p className="font-display font-black text-base uppercase tracking-tight mb-1">{o.label}</p>
+          <p className={`text-[9px] font-bold uppercase tracking-widest leading-snug ${active ? "opacity-80" : "text-muted-foreground"}`}>{o.desc}</p>
         </button>
       );
     })}
@@ -930,18 +973,18 @@ const SegmentedTwo = <T extends string>({
 const Counter = ({ label, value, onChange, min, max, help }: {
   label: string; value: number; onChange: (n: number) => void; min: number; max: number; help?: string;
 }) => (
-  <div className="bg-card rounded-xl p-5" style={{ boxShadow: "var(--shadow-card)" }}>
-    <div className="flex items-center justify-between gap-3">
+  <div className="bg-background border-2 border-border rounded-2xl p-5 shadow-sm">
+    <div className="flex items-center justify-between gap-4">
       <div className="flex-1">
-        <p className="text-sm font-semibold">{label}</p>
-        {help && <p className="text-[11px] text-muted-foreground mt-1 leading-snug">{help}</p>}
+        <p className="text-[11px] font-black uppercase tracking-widest text-foreground">{label}</p>
+        {help && <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest mt-1 leading-snug">{help}</p>}
       </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <button onClick={() => onChange(Math.max(min, value - 1))} className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center">
+      <div className="flex items-center gap-1 shrink-0 bg-card border-2 border-border rounded-xl p-1">
+        <button onClick={() => onChange(Math.max(min, value - 1))} className="w-8 h-8 rounded-lg bg-background border-2 border-border flex items-center justify-center hover:border-foreground transition-colors active:scale-95 text-foreground">
           <Minus className="w-4 h-4" />
         </button>
-        <span className="font-display font-bold text-xl w-8 text-center tabular-nums">{value}</span>
-        <button onClick={() => onChange(Math.min(max, value + 1))} className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center">
+        <span className="font-mono font-black text-lg w-10 text-center tabular-nums text-foreground">{value}</span>
+        <button onClick={() => onChange(Math.min(max, value + 1))} className="w-8 h-8 rounded-lg bg-background border-2 border-border flex items-center justify-center hover:border-foreground transition-colors active:scale-95 text-foreground">
           <Plus className="w-4 h-4" />
         </button>
       </div>
@@ -950,9 +993,9 @@ const Counter = ({ label, value, onChange, min, max, help }: {
 );
 
 const SummaryRow = ({ label, value }: { label: string; value: string }) => (
-  <div className="flex justify-between gap-3 text-sm">
-    <span className="text-muted-foreground">{label}</span>
-    <span className="font-semibold text-right">{value}</span>
+  <div className="flex justify-between items-start gap-4 text-[10px] font-black uppercase tracking-widest">
+    <span className="text-muted-foreground shrink-0">{label}</span>
+    <span className="text-right text-foreground truncate">{value}</span>
   </div>
 );
 
