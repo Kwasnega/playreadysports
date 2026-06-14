@@ -49,7 +49,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <div className="flex gap-3 mt-2">
             <button
               onClick={this.handleRetry}
-              className="px-5 py-2.5 bg-primary text-primary-foreground-lg text-sm font-bold hover:opacity-90 transition-all"
+              className="px-5 py-2.5 bg-primary text-primary-foreground text-sm font-bold hover:opacity-90 transition-all"
             >
               Try again
             </button>

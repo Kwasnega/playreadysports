@@ -79,7 +79,7 @@ export function PaymentModal({ open, matchName, matchCode, entryFee, walletBalan
           <button
             onClick={handlePay}
             disabled={paying || !hasEnough}
-            className="w-full bg-primary text-primary-foreground-lg px-4 py-3.5 text-sm flex items-center justify-center gap-2 disabled:opacity-60"
+            className="w-full bg-primary text-primary-foreground px-4 py-3.5 text-sm flex items-center justify-center gap-2 disabled:opacity-60"
           >
             <Wallet className="w-4 h-4" />
             {paying ? "Processing…" : `Pay ₵${entryFee}`}

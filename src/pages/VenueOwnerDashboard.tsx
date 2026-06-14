@@ -1059,7 +1059,7 @@ export default function VenueOwnerDashboard() {
             </p>
             <button
               onClick={() => setAddVenueOpen(true)}
-              className="inline-flex items-center gap-1.5 mt-4 bg-primary text-primary-foreground-lg px-4 py-2 text-xs font-semibold"
+              className="inline-flex items-center gap-1.5 mt-4 bg-primary text-primary-foreground px-4 py-2 text-xs font-semibold"
             >
               <Plus className="w-3.5 h-3.5" /> Register a venue
             </button>
@@ -1239,7 +1239,7 @@ export default function VenueOwnerDashboard() {
             <button
               onClick={handleWithdrawRequest}
               disabled={withdrawing || parseFloat(withdrawAmt) < 10 || withdrawPhone.trim().length < 9}
-              className="w-full h-11 bg-primary text-primary-foreground-lg text-sm font-bold disabled:opacity-40 transition-all active:scale-[0.98]"
+              className="w-full h-11 bg-primary text-primary-foreground text-sm font-bold disabled:opacity-40 transition-all active:scale-[0.98]"
             >
               {withdrawing ? "Submitting…" : "Submit Request"}
             </button>
@@ -1525,7 +1525,7 @@ export default function VenueOwnerDashboard() {
             <button
               onClick={handleAddVenue}
               disabled={addingVenue || !venueForm.name.trim() || !venueForm.city.trim()}
-              className="w-full h-11 bg-primary text-primary-foreground-lg text-sm font-bold disabled:opacity-40 transition-all active:scale-[0.98]"
+              className="w-full h-11 bg-primary text-primary-foreground text-sm font-bold disabled:opacity-40 transition-all active:scale-[0.98]"
             >
               {addingVenue ? "Submitting…" : "Submit for verification"}
             </button>

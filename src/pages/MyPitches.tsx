@@ -29,7 +29,7 @@ const MyPitches = () => {
           <Link to="/venue/earnings" className="inline-flex items-center gap-1.5 bg-gold text-gold-foreground rounded-full px-3.5 py-2 text-xs font-semibold hover:opacity-90">
             <Wallet className="w-3.5 h-3.5" /> Earnings
           </Link>
-          <Link to="/turf/register" className="inline-flex items-center gap-1.5 bg-primary text-primary-foreground-lg px-3.5 py-2 text-xs font-semibold">
+          <Link to="/turf/register" className="inline-flex items-center gap-1.5 bg-primary text-primary-foreground px-3.5 py-2 text-xs font-semibold">
             <Plus className="w-3.5 h-3.5" /> Add
           </Link>
         </div>

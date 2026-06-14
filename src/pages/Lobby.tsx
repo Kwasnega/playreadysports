@@ -37,7 +37,7 @@ const Lobby = () => {
       <main className="min-h-screen bg-background flex flex-col items-center justify-center px-5">
         <h1 className="font-display font-bold text-xl mb-2">Invalid match code</h1>
         <p className="text-sm text-muted-foreground mb-4">No match code was provided.</p>
-        <button onClick={() => navigate("/")} className="bg-primary text-primary-foreground-lg px-6 py-2.5 text-sm font-bold">
+        <button onClick={() => navigate("/")} className="bg-primary text-primary-foreground px-6 py-2.5 text-sm font-bold">
           Go home
         </button>
       </main>
@@ -542,7 +542,7 @@ const Lobby = () => {
             <div className="flex justify-center mb-2">{match.status === "completed" ? <Flag className="w-10 h-10" /> : <Ban className="w-10 h-10 text-destructive" />}</div>
             <h2 className="font-display font-bold text-xl">{match.status === "completed" ? "Match Finished" : "Match Cancelled"}</h2>
             <p className="text-sm text-muted-foreground">{match.status === "completed" ? "Thanks for playing! Reviews are open below." : "This match has been cancelled. Any fees paid will be refunded."}</p>
-            <Link to="/" className="inline-block mt-2 bg-primary text-primary-foreground-lg px-5 py-2.5 text-sm font-semibold">Back to Home</Link>
+            <Link to="/" className="inline-block mt-2 bg-primary text-primary-foreground px-5 py-2.5 text-sm font-semibold">Back to Home</Link>
           </div>
         </div>
       )}

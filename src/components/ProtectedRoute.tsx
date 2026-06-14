@@ -100,7 +100,7 @@ function PlayerLoginGate() {
       </p>
       <button
         onClick={() => openAuth("signin")}
-        className="mt-2 px-6 py-2.5 bg-primary text-primary-foreground-lg text-sm font-bold hover:opacity-90 transition-all"
+        className="mt-2 px-6 py-2.5 bg-primary text-primary-foreground text-sm font-bold hover:opacity-90 transition-all"
       >
         Sign In
       </button>
@@ -178,7 +178,7 @@ export function ProtectedRoute({ children, roles }: Props) {
           <p className="text-sm text-muted-foreground text-center max-w-xs">
             Your account does not have permission to view this page.
           </p>
-          <a href="/" className="mt-2 px-6 py-2.5 bg-primary text-primary-foreground-lg text-sm font-bold hover:opacity-90 transition-all">
+          <a href="/" className="mt-2 px-6 py-2.5 bg-primary text-primary-foreground text-sm font-bold hover:opacity-90 transition-all">
             Go Home
           </a>
         </div>

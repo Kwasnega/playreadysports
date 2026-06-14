@@ -210,7 +210,7 @@ export const LobbyChat = ({ matchCode, matchId, isOrganizer = true, teamColorA, 
                       <div className="mt-2 -mx-1 pt-2 border-t border-border/40 flex gap-2">
                         <button
                           onClick={(e) => { e.stopPropagation(); pin(m.id); }}
-                          className="text-[11px] font-semibold inline-flex items-center gap-1 bg-primary text-primary-foreground-lg px-2.5 py-1"
+                          className="text-[11px] font-semibold inline-flex items-center gap-1 bg-primary text-primary-foreground px-2.5 py-1"
                         >
                           <Pin className="w-3 h-3" /> Pin message
                         </button>
