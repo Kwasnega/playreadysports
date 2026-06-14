@@ -77,16 +77,18 @@ export const NotificationsBell = ({ variant = "default" }: { variant?: "default"
         {variant === "tab" ? (
           <button
             ref={bellRef}
-            className="relative flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-foreground"
+            className="flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-foreground"
             aria-label="Notifications"
           >
-            <Bell className="w-5 h-5" />
+            <div className="relative">
+              <Bell className="w-5 h-5" />
+              {user && unreadCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-[16px] px-1 rounded-full border-2 border-background bg-foreground text-background text-[8px] font-black leading-[12px] text-center flex items-center justify-center">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </div>
             <span className="text-[9px] font-black uppercase tracking-widest">Alerts</span>
-            {user && unreadCount > 0 && (
-              <span className="absolute -top-1 right-2 min-w-[16px] h-[16px] px-1 rounded-sm border-2 border-foreground bg-foreground text-background text-[8px] font-black leading-[12px] text-center">
-                {unreadCount > 9 ? "9+" : unreadCount}
-              </span>
-            )}
           </button>
         ) : (
           <button

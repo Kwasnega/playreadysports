@@ -85,13 +85,27 @@ const Nav = () => {
 const Hero = ({ liveCount }: { liveCount: number }) => {
   const ref = useEnter<HTMLDivElement>({ y: 24 });
   const { user } = useAuth();
-  const avatarUrl = user ? supabase.storage.from("avatars").getPublicUrl(user.id).data.publicUrl : null;
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user?.id) { setAvatarUrl(null); return; }
+    supabase
+      .from("profiles")
+      .select("avatar_url")
+      .eq("id", user.id)
+      .single()
+      .then(({ data }) => {
+        if (data?.avatar_url) setAvatarUrl(data.avatar_url);
+        else setAvatarUrl(null);
+      });
+  }, [user?.id]);
+
   const fullName = user?.user_metadata?.full_name || "Player";
   const initial = (fullName[0] || "?").toUpperCase();
 
   return (
     <section className="relative px-5 pt-2 pb-5">
-      <div ref={ref} className="relative max-w-[680px] mx-auto flex items-start justify-between gap-4">
+      <div ref={ref} className="relative max-w-[680px] mx-auto flex items-start justify-start gap-6 sm:gap-12">
         <div>
           <h1 className="display-xl text-[40px] sm:text-[44px] md:text-[52px] mt-2 leading-[0.95]">
             Find your<br/>
@@ -111,18 +125,18 @@ const Hero = ({ liveCount }: { liveCount: number }) => {
         </div>
         
         {user && (
-          <div className="shrink-0 pt-4">
+          <div className="shrink-0 pt-3">
             <ProfileSheet
               trigger={
-                <button className="flex flex-col items-center gap-1.5 group outline-none" aria-label="Open profile">
+                <button className="flex flex-col items-center gap-2 group outline-none" aria-label="Open profile">
                   {avatarUrl ? (
-                    <img src={avatarUrl} alt="" className="w-14 h-14 rounded-full object-cover border-2 border-border group-hover:border-foreground transition-colors grayscale-[0.2]" />
+                    <img src={avatarUrl} alt="" className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-2 border-border group-hover:border-foreground transition-colors grayscale-[0.2]" />
                   ) : (
-                    <div className="w-14 h-14 rounded-full border-2 border-foreground bg-background flex items-center justify-center font-display font-black text-xl group-hover:bg-foreground group-hover:text-background transition-colors">
+                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-2 border-foreground bg-background flex items-center justify-center font-display font-black text-2xl sm:text-3xl group-hover:bg-foreground group-hover:text-background transition-colors">
                       {initial}
                     </div>
                   )}
-                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground group-hover:text-foreground transition-colors">
+                  <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground group-hover:text-foreground transition-colors">
                     {fullName.split(' ')[0]}
                   </span>
                 </button>
@@ -218,14 +232,16 @@ const MobileTabs = () => {
         ))}
         <FriendsSheet
           trigger={
-            <button className="relative flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-foreground" aria-label="Open friends">
-              <Users className="w-5 h-5" />
+            <button className="flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-foreground" aria-label="Open friends">
+              <div className="relative">
+                <Users className="w-5 h-5" />
+                {pendingRequests.length > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-[16px] px-1 rounded-full border-2 border-background bg-foreground text-background text-[8px] font-black leading-[12px] text-center flex items-center justify-center">
+                    {pendingRequests.length > 9 ? "9+" : pendingRequests.length}
+                  </span>
+                )}
+              </div>
               <span className="text-[9px] font-black uppercase tracking-widest">Friends</span>
-              {pendingRequests.length > 0 && (
-                <span className="absolute -top-1.5 right-2 min-w-[16px] h-[16px] px-1 rounded-sm border-2 border-foreground bg-foreground text-background text-[8px] font-black leading-[12px] text-center">
-                  {pendingRequests.length > 9 ? "9+" : pendingRequests.length}
-                </span>
-              )}
             </button>
           }
         />
