@@ -116,7 +116,7 @@ export const LobbyMatchTab = (props: LobbyMatchTabProps) => {
       {venue?.image_urls && venue.image_urls.length > 0 && (
         <div className="rounded-2xl overflow-hidden border-2 border-border p-1 bg-card">
           <div className="relative aspect-[16/9] rounded-xl overflow-hidden">
-            <img src={venue.image_urls[0]} alt={venue.name} className="w-full h-full object-cover grayscale opacity-90 hover:grayscale-0 transition-all" />
+            <img src={venue.image_urls[0]} alt={venue.name} className="w-full h-full object-cover transition-all" />
             {venue.image_urls.length > 1 && (
               <div className="absolute bottom-3 right-3 bg-foreground text-background text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-sm">+{venue.image_urls.length - 1} MORE</div>
             )}

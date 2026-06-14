@@ -696,7 +696,7 @@ export default function VenueOwnerDashboard() {
                 >
                   {verifiedVenues[0].image_urls.map((url, i) => (
                     <div key={i} className="snap-center shrink-0 w-full border-r-2 border-border last:border-r-0">
-                      <img src={url} alt={`${verifiedVenues[0].name} ${i + 1}`} className="w-full h-56 object-cover grayscale-[0.2]" />
+                      <img src={url} alt={`${verifiedVenues[0].name} ${i + 1}`} className="w-full h-56 object-cover" />
                     </div>
                   ))}
                 </div>
