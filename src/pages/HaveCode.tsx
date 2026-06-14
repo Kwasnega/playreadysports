@@ -67,22 +67,24 @@ const CodeBoxes = ({ value, onChange }: { value: string; onChange: (s: string) =
     refs.current[Math.min(text.length, 5)]?.focus();
   };
   return (
-    <div className="flex justify-center gap-2">
+    <div className="flex justify-center items-center gap-2">
       {chars.map((c, i) => (
-        <input
-          key={i}
-          ref={(el) => (refs.current[i] = el)}
-          value={c.trim()}
-          onChange={(e) => set(i, e.target.value)}
-          onKeyDown={(e) => onKey(i, e)}
-          onPaste={onPaste}
-          maxLength={1}
-          inputMode={i < 3 ? "text" : "numeric"}
-          autoCapitalize="characters"
-          aria-label={`Code character ${i + 1}`}
-          autoFocus={i === 0}
-          className={`w-12 h-16 text-center font-display font-black text-3xl bg-background border-2 ${c.trim() ? "border-foreground" : "border-border"} rounded-xl uppercase focus:outline-none focus:border-foreground focus:ring-2 focus:ring-foreground/20 transition-all`}
-        />
+        <span key={i} className="contents">
+          {i === 3 && <span className="text-2xl font-black text-muted-foreground mx-1">-</span>}
+          <input
+            ref={(el) => (refs.current[i] = el)}
+            value={c.trim()}
+            onChange={(e) => set(i, e.target.value)}
+            onKeyDown={(e) => onKey(i, e)}
+            onPaste={onPaste}
+            maxLength={1}
+            inputMode={i < 3 ? "text" : "numeric"}
+            autoCapitalize="characters"
+            aria-label={`Code character ${i + 1}`}
+            autoFocus={i === 0}
+            className={`w-12 h-16 text-center font-display font-black text-3xl bg-background border-2 ${c.trim() ? "border-foreground" : "border-border"} rounded-xl uppercase focus:outline-none focus:border-foreground focus:ring-2 focus:ring-foreground/20 transition-all`}
+          />
+        </span>
       ))}
     </div>
   );
