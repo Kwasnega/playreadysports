@@ -105,7 +105,7 @@ const Hero = ({ liveCount }: { liveCount: number }) => {
 
   return (
     <section className="relative px-5 pt-2 pb-5">
-      <div ref={ref} className="relative max-w-[680px] mx-auto flex items-start justify-start gap-6 sm:gap-12">
+      <div ref={ref} className="relative max-w-[680px] mx-auto flex items-start justify-between gap-4">
         <div>
           <h1 className="display-xl text-[40px] sm:text-[44px] md:text-[52px] mt-2 leading-[0.95]">
             Find your<br/>
