@@ -115,10 +115,26 @@ export default function AdminOverview() {
           supabase.from("matches").select("*", { count: "exact", head: true }).eq("status", "upcoming"),
           (supabase as any).from("platform_revenue").select("amount"),
           (supabase as any).rpc("matches_per_day", { days: 14 }),
-          (supabase as any).from("wallet_transactions").select("id, amount, type, status, created_at, user:profiles(full_name, username), match:matches(join_code)").not("type", "in", "(venue_cut,organizer_profit)").order("created_at", { ascending: false }).limit(10),
+          (supabase as any).from("wallet_transactions").select("id, amount, type, status, created_at, user_id, match:matches(join_code)").not("type", "in", "(venue_cut,organizer_profit)").order("created_at", { ascending: false }).limit(10),
           (supabase as any).from("platform_settings").select("value").eq("key", "commission_rate").single(),
           (supabase as any).from("platform_settings").select("value").eq("key", "maintenance_mode").single(),
         ]);
+
+        const txs = (recent ?? []) as any[];
+        if (txs.length > 0) {
+          const userIds = [...new Set(txs.map((t) => t.user_id).filter(Boolean))];
+          if (userIds.length > 0) {
+            const { data: profilesData } = await supabase
+              .from("profiles")
+              .select("id, full_name, username")
+              .in("id", userIds);
+            const profileMap = new Map(profilesData?.map((p: any) => [p.id, p]));
+            txs.forEach((t: any) => {
+              t.user = profileMap.get(t.user_id) || null;
+            });
+          }
+        }
+
         const rate = parseFloat(setting?.value ?? "0.05");
         setCommissionRate(isNaN(rate) ? 0.05 : rate);
         setMaintenanceMode(maintenanceSetting?.value === "true");
@@ -135,7 +151,7 @@ export default function AdminOverview() {
           const revenueTrend = matchTrend; // proxy for now — same match volume drives revenue
           setTrends({ matchTrend, revenueTrend });
         }
-        setRecentTxns(recent ?? []);
+        setRecentTxns(txs);
       } catch (e: any) {
         toast.error(e?.message || "Failed to load dashboard data");
       } finally {
