@@ -41,8 +41,8 @@ export default function AdminSettings() {
         map[k.key] =
           k.key === "commission_rate" ? "0.05"
           : k.key === "cancel_cutoff_minutes" ? "60"
-          : k.key === "auto_cancel_window_minutes" ? "120"
-          : k.key === "auto_cancel_min_paid_pct" ? "0.5"
+          : k.key === "auto_cancel_window_minutes" ? "20"
+          : k.key === "auto_cancel_min_paid_pct" ? "1.0"
           : "5.00";
       }
     });

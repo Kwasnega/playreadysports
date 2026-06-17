@@ -1,11 +1,10 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
 
-// CORS is handled via getCorsHeaders() from _shared/cors.ts
+const CHECKIN_CODE_RE = /^[A-Z2-9]{10}$/;
 
 function encodeToken(matchId: string, secret: string): string {
-  const raw = `${matchId}:${secret}`;
-  return btoa(raw);
+  return btoa(`${matchId}:${secret}`);
 }
 
 Deno.serve(async (req) => {
@@ -52,7 +51,7 @@ Deno.serve(async (req) => {
     const svc = createClient(supabaseUrl, serviceKey);
     const { data: match, error: mErr } = await svc
       .from("matches")
-      .select("id, organizer_id, venue_id, qr_code_secret, venue:venues(owner_id, owner_email)")
+      .select("id, organizer_id, venue_id, qr_code_secret, check_in_code, join_code, venue:venues(owner_id, owner_email)")
       .eq("id", matchId)
       .maybeSingle();
 
@@ -90,8 +89,28 @@ Deno.serve(async (req) => {
       await svc.from("matches").update({ qr_code_secret: secret }).eq("id", matchId);
     }
 
+    let checkInCode = (match.check_in_code as string | null)?.toUpperCase() ?? null;
+    if (!checkInCode) {
+      const CHECKIN_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const bytes = crypto.getRandomValues(new Uint8Array(10));
+        const candidate = Array.from(bytes, (b) => CHECKIN_CHARS[b % CHECKIN_CHARS.length]).join("");
+        const { data: existing } = await svc.from("matches").select("id").eq("check_in_code", candidate).maybeSingle();
+        if (!existing) {
+          checkInCode = candidate;
+          await svc.from("matches").update({ check_in_code: candidate }).eq("id", matchId);
+          break;
+        }
+      }
+    }
+
     const token = encodeToken(matchId, secret);
-    return new Response(JSON.stringify({ token, matchId }), {
+    return new Response(JSON.stringify({
+      token,
+      checkInCode,
+      joinCode: match.join_code,
+      matchId,
+    }), {
       status: 200, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
     });
   } catch (err: any) {

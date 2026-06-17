@@ -50,6 +50,7 @@ const Lobby = () => {
   const [scanning, setScanning] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const scanIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const scanningRef = useRef(false);
 
   useEffect(() => () => {
     if (scanIntervalRef.current) clearInterval(scanIntervalRef.current);
@@ -238,7 +239,7 @@ const Lobby = () => {
 
   const matchMode = match?.match_mode === "gala" ? "gala" : "two-team";
   const targetDate = match?.match_date;
-  const { h, m, s, totalSec, isLive } = useCountdown(targetDate);
+  const { h, m, s, totalSec, isLive, kickoffPassed } = useCountdown(targetDate, match?.status);
 
   const venueCost = match ? Number(match.entry_fee) * maxCore : 0;
   const sharePerPlayer = maxCore && maxCore > 0 ? Math.ceil(venueCost / maxCore) : 0;
@@ -264,10 +265,11 @@ const Lobby = () => {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
       videoRef.current.srcObject = stream;
       await videoRef.current.play();
+      scanningRef.current = true;
       setScanning(true);
 
       const detect = async () => {
-        if (!videoRef.current || !scanning) return;
+        if (!videoRef.current || !scanningRef.current) return;
         const hasDetector = "BarcodeDetector" in window;
         if (hasDetector) {
           try {
@@ -289,6 +291,7 @@ const Lobby = () => {
   };
 
   const stopScan = () => {
+    scanningRef.current = false;
     if (scanIntervalRef.current) {
       clearInterval(scanIntervalRef.current);
       scanIntervalRef.current = null;
@@ -474,11 +477,14 @@ const Lobby = () => {
 
   // Countdown display
   const isMatchOver = match?.status === 'completed';
-  const isMatchLive = isLive && !isMatchOver;
+  const isMatchLive = match?.status === 'live';
+  const isWaitingKickoff = kickoffPassed && match?.status === 'full';
   const countdownMain = isMatchOver
     ? "Match Over"
     : isMatchLive
     ? "Live now"
+    : isWaitingKickoff
+    ? "Starting…"
     : totalSec < 3600
     ? `${m}m ${String(s).padStart(2, "0")}s`
     : `${h}h ${String(m).padStart(2, "0")}m`;
@@ -486,6 +492,8 @@ const Lobby = () => {
     ? "This match has ended"
     : isMatchLive
     ? "Match in progress"
+    : isWaitingKickoff
+    ? "Lobby full — waiting for kickoff"
     : `${String(s).padStart(2, "0")}s`;
 
   const turfOwners = useMemo(() => new Set(activeParticipants.filter((p: any) => p.slot_type === "turf_owner").map((p: any) => p.user_id)), [activeParticipants]);
@@ -570,6 +578,7 @@ const Lobby = () => {
             setCheckInCode={setCheckInCode}
             checkInBusy={checkInBusy}
             scanning={scanning}
+            videoRef={videoRef}
             startScan={startScan}
             stopScan={stopScan}
             submitCheckIn={submitCheckIn}

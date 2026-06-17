@@ -183,6 +183,7 @@ export default function VenueOwnerDashboard() {
   const [qrOpen, setQrOpen] = useState(false);
   const [qrMatch, setQrMatch] = useState<TodayMatch | null>(null);
   const [qrToken, setQrToken] = useState<string | null>(null);
+  const [qrCheckInCode, setQrCheckInCode] = useState<string | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
 
   const [rosterOpen, setRosterOpen] = useState(false);
@@ -450,6 +451,7 @@ export default function VenueOwnerDashboard() {
     setQrMatch(m);
     setQrOpen(true);
     setQrToken(null);
+    setQrCheckInCode(null);
     setQrLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("generate-match-qr", {
@@ -457,7 +459,9 @@ export default function VenueOwnerDashboard() {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      setQrToken(data?.token ?? null);
+      const code = (data?.checkInCode as string | undefined)?.toUpperCase() ?? null;
+      setQrCheckInCode(code);
+      setQrToken(code ?? data?.token ?? null);
     } catch (e: any) {
       toast.error(e?.message || "Could not load QR");
       setQrOpen(false);
@@ -1128,12 +1132,15 @@ export default function VenueOwnerDashboard() {
           ) : qrToken ? (
             <div className="flex flex-col items-center gap-3 py-2">
               <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(qrToken)}`}
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(qrCheckInCode ?? qrToken)}`}
                 alt="Match QR"
                 className="rounded-xl border border-border bg-white p-2"
               />
-              <p className="text-[10px] text-muted-foreground font-mono break-all max-h-24 overflow-y-auto w-full px-1">
-                {qrToken}
+              {qrCheckInCode && (
+                <p className="font-display font-black text-2xl tracking-widest text-foreground">{qrCheckInCode}</p>
+              )}
+              <p className="text-[10px] text-muted-foreground text-center uppercase tracking-widest">
+                Players scan this QR or type the 10-character code in the lobby
               </p>
             </div>
           ) : (

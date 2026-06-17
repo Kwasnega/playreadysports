@@ -119,10 +119,9 @@ export function ProtectedRoute({ children, roles }: Props) {
   // when a token refresh completed but the profile fetch silently failed.
   useEffect(() => {
     if (user && profileRole === null && !isAdmin && roles && roles.length > 0) {
-      timerRef.current = setTimeout(async () => {
-        await supabase.auth.getSession();
+      timerRef.current = setTimeout(() => {
         setProfileTimedOut(true);
-      }, 5000);
+      }, 8000);
     } else {
       if (timerRef.current) clearTimeout(timerRef.current);
       setProfileTimedOut(false);

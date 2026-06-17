@@ -73,23 +73,31 @@ export default function AdminOverview() {
     }
     setResetting(true);
     try {
-      // Delete in order to respect foreign keys
+      // Wipe operational data only — keep registered users (profiles + auth)
       const tables = [
+        "platform_revenue",
+        "match_votes",
+        "match_voting_windows",
+        "match_checkin_events",
+        "match_ratings",
         "transactions",
         "match_participants",
         "notifications",
+        "friendships",
+        "reviews",
+        "venue_blockouts",
+        "venue_payout_requests",
         "matches",
-        "venues",
-        "profiles",
+        "wallet_transactions",
+        "wallet_balances",
         "audit_log",
       ];
       for (const table of tables) {
-        const { error } = await (supabase as any).from(table).delete().neq("id", "00000000-0000-0000-0000-000000000000");
-        if (error) {
-          // Table clear failed — silently continue
-        }
+        await (supabase as any).from(table).delete().neq("id", "00000000-0000-0000-0000-000000000000");
       }
-      toast.success("Platform wiped clean. Reloading…");
+      // Reset wallet balances to zero but keep rows for existing users
+      await (supabase as any).from("wallet_balances").update({ balance: 0 }).neq("user_id", "00000000-0000-0000-0000-000000000000");
+      toast.success("Platform data reset. User accounts preserved. Reloading…");
       setTimeout(() => window.location.reload(), 1500);
     } catch (e: any) {
       toast.error(e.message || "Reset failed");
@@ -102,10 +110,10 @@ export default function AdminOverview() {
     (async () => {
       setLoading(true);
       try {
-        const [{ count: players }, { count: matches }, { data: walletTxns }, { data: chart }, { data: recent }, { data: setting }, { data: maintenanceSetting }] = await Promise.all([
+        const [{ count: players }, { count: matches }, { data: platformRev }, { data: chart }, { data: recent }, { data: setting }, { data: maintenanceSetting }] = await Promise.all([
           supabase.from("profiles").select("*", { count: "exact", head: true }),
           supabase.from("matches").select("*", { count: "exact", head: true }).eq("status", "upcoming"),
-          (supabase as any).from("wallet_transactions").select("amount").eq("type", "spend").eq("status", "completed"),
+          (supabase as any).from("platform_revenue").select("amount"),
           (supabase as any).rpc("matches_per_day", { days: 14 }),
           (supabase as any).from("wallet_transactions").select("id, amount, type, status, created_at, user:profiles(full_name, username), match:matches(join_code)").not("type", "in", "(venue_cut,organizer_profit)").order("created_at", { ascending: false }).limit(10),
           (supabase as any).from("platform_settings").select("value").eq("key", "commission_rate").single(),
@@ -114,8 +122,9 @@ export default function AdminOverview() {
         const rate = parseFloat(setting?.value ?? "0.05");
         setCommissionRate(isNaN(rate) ? 0.05 : rate);
         setMaintenanceMode(maintenanceSetting?.value === "true");
-        const revenue = (walletTxns ?? []).reduce((s, t) => s + (Math.abs(Number(t.amount)) || 0), 0);
-        setMetrics({ players: players ?? 0, matches: matches ?? 0, revenue, fees: Math.round(revenue * rate * 100) / 100 });
+        const fees = (platformRev ?? []).reduce((s: number, r: any) => s + (Number(r.amount) || 0), 0);
+        const revenue = fees > 0 ? fees / rate : 0;
+        setMetrics({ players: players ?? 0, matches: matches ?? 0, revenue, fees: Math.round(fees * 100) / 100 });
         const chartPoints = (chart ?? []).map((d: any) => ({ day: d.day.slice(5), count: Number(d.count) }));
         setChartData(chartPoints);
         // Compute match trend: last 7 days vs prior 7 days from chart data
@@ -337,12 +346,12 @@ export default function AdminOverview() {
                 <AlertTriangle className="w-5 h-5 text-rose-400" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-white">Wipe everything?</h2>
-                <p className="text-xs text-slate-400">This permanently deletes all data.</p>
+                <h2 className="text-lg font-bold text-white">Reset platform data?</h2>
+                <p className="text-xs text-slate-400">Clears matches, wallets, and venues — keeps user accounts.</p>
               </div>
             </div>
             <p className="text-sm text-slate-300 mb-4">
-              All matches, players, venues, payments, and logs will be erased. This cannot be undone.
+              All matches, payments, venues, and logs will be erased. Registered players and turf owners are kept.
             </p>
             <label className="block text-xs text-slate-500 mb-1.5">Type RESET to confirm</label>
             <input

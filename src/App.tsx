@@ -116,7 +116,7 @@ function AppRoutes() {
       <Route path="/player/:username" element={<PlayerProfile />} />
       <Route path="/profile/edit" element={<EditProfile />} />
       <Route path="/wallet" element={<WalletPage />} />
-      <Route path="/my-matches" element={<MyMatches />} />
+      <Route path="/my-matches" element={<ProtectedRoute><MyMatches /></ProtectedRoute>} />
       <Route path="/venue/earnings" element={<VenueOwnerDashboard />} />
       <Route path="/venue/dashboard" element={<VenueOwnerDashboard />} />
       <Route path="/turf/owner" element={<Navigate to="/venue/dashboard" replace />} />

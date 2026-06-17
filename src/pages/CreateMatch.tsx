@@ -9,7 +9,7 @@ import { useVenues } from "@/hooks/useVenues";
 import { useUserLocation } from "@/hooks/useUserLocation";
 import { useCreateMatch } from "@/hooks/useCreateMatch";
 import { useAuth } from "@/hooks/useAuth";
-import { getDistanceKm, getFormattedTime, extractFormatNumber, getVenueHours, isVenueOpen } from "@/lib/matchHelpers";
+import { getDistanceKm, getFormattedTime, extractFormatNumber, getVenueHours, isVenueOpen, isVenueOpenForMatch } from "@/lib/matchHelpers";
 import { format } from "date-fns";
 import { ShareMatchCard, ShareMatchData } from "@/components/matches/ShareMatchCard";
 
@@ -150,16 +150,9 @@ const CreateMatch = () => {
       const d = new Date(matchDate);
       d.setHours(matchHour, matchMinute, 0, 0);
       if (d.getTime() <= Date.now() + 30 * 60 * 1000) return false;
-      // Ensure match end time does not exceed venue close time
-      if (selectedVenue?.close_time) {
-        const endDate = new Date(d);
-        endDate.setMinutes(endDate.getMinutes() + duration);
-        const closeMin = (() => {
-          const [h, m] = selectedVenue.close_time.split(":").map(Number);
-          return (h ?? 0) * 60 + (m ?? 0);
-        })();
-        const endMin = endDate.getHours() * 60 + endDate.getMinutes();
-        if (endMin > closeMin) return false;
+      if (selectedVenue) {
+        const hoursCheck = isVenueOpenForMatch(selectedVenue, d, duration);
+        if (!hoursCheck.isOpen) return false;
       }
       return true;
     }
@@ -851,6 +844,14 @@ const CreateMatch = () => {
                   >
                     OPEN LOBBY <ChevronRight className="w-4 h-4 -mt-0.5" />
                   </button>
+                  {type === "private" && (
+                    <button
+                      onClick={() => navigate("/my-matches")}
+                      className="w-full bg-secondary text-foreground border-2 border-border rounded-xl py-4 text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:border-foreground transition-colors active:scale-[0.99]"
+                    >
+                      MY CREATED MATCHES
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

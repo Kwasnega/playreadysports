@@ -11,6 +11,7 @@ interface DayRevenue {
   date: string;
   gross: number;
   refunds: number;
+  fees: number;
   net: number;
 }
 
@@ -32,41 +33,44 @@ export default function AdminRevenue() {
       start.setDate(start.getDate() - RANGE_DAYS[range]);
       const startStr = start.toISOString();
 
-      // Pull all completed/failed wallet_transactions in range
-      const { data: txData, error } = await (supabase as any)
-        .from("wallet_transactions")
-        .select("amount, type, status, created_at")
-        .gte("created_at", startStr)
-        .in("status", ["completed", "failed"]);
+      const [{ data: revData, error: revErr }, { data: refundData, error: refundErr }] = await Promise.all([
+        (supabase as any)
+          .from("platform_revenue")
+          .select("amount, created_at")
+          .gte("created_at", startStr),
+        (supabase as any)
+          .from("wallet_transactions")
+          .select("amount, created_at")
+          .eq("type", "refund")
+          .eq("status", "completed")
+          .gte("created_at", startStr),
+      ]);
 
-      if (error) throw error;
+      if (revErr) throw revErr;
+      if (refundErr) throw refundErr;
 
       const map: Record<string, DayRevenue> = {};
-      const txs = (txData ?? []) as any[];
 
-      txs.forEach((t) => {
-        const d = t.created_at.slice(0, 10);
-        if (!map[d]) map[d] = { date: d, gross: 0, refunds: 0, net: 0 };
-        const amt = Math.abs(parseFloat(t.amount) || 0);
-        if (t.status === "completed") {
-          if (t.type === "deposit" || t.type === "spend") {
-            map[d].gross += amt;
-          } else if (t.type === "refund") {
-            // cancelled-match refunds reduce platform revenue
-            map[d].refunds += amt;
-          }
-          // withdrawal = user outflow, not a platform revenue loss — excluded
-        }
+      (revData ?? []).forEach((r: any) => {
+        const d = r.created_at.slice(0, 10);
+        if (!map[d]) map[d] = { date: d, gross: 0, refunds: 0, fees: 0, net: 0 };
+        map[d].fees += Number(r.amount) || 0;
       });
 
-      // Fill missing days with zeros
+      (refundData ?? []).forEach((t: any) => {
+        const d = t.created_at.slice(0, 10);
+        if (!map[d]) map[d] = { date: d, gross: 0, refunds: 0, fees: 0, net: 0 };
+        map[d].refunds += Math.abs(Number(t.amount) || 0);
+      });
+
       const result: DayRevenue[] = [];
       for (let i = RANGE_DAYS[range] - 1; i >= 0; i--) {
         const d = new Date();
         d.setDate(d.getDate() - i);
         const s = d.toISOString().slice(0, 10);
-        const entry = map[s] || { date: s, gross: 0, refunds: 0, net: 0 };
-        entry.net = entry.gross - entry.refunds;
+        const entry = map[s] || { date: s, gross: 0, refunds: 0, fees: 0, net: 0 };
+        entry.gross = entry.fees;
+        entry.net = entry.fees;
         result.push(entry);
       }
       setDays(result);
@@ -82,16 +86,16 @@ export default function AdminRevenue() {
   }, [range]);
 
   const totals = useMemo(() => {
-    const gross = days.reduce((s, d) => s + d.gross, 0);
+    const fees = days.reduce((s, d) => s + d.fees, 0);
     const refunds = days.reduce((s, d) => s + d.refunds, 0);
-    const net = gross - refunds;
+    const net = fees;
     const avg = days.length ? net / days.length : 0;
     const prev = days.slice(0, Math.floor(days.length / 2));
     const curr = days.slice(Math.floor(days.length / 2));
     const prevNet = prev.reduce((s, d) => s + d.net, 0);
     const currNet = curr.reduce((s, d) => s + d.net, 0);
     const trend = prevNet === 0 ? 0 : ((currNet - prevNet) / prevNet) * 100;
-    return { gross, refunds, net, avg, trend };
+    return { gross: fees, refunds, net, avg, trend, fees };
   }, [days]);
 
   return (
@@ -99,7 +103,7 @@ export default function AdminRevenue() {
       <header className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-display font-bold text-white">Revenue</h2>
-          <p className="text-slate-400 text-sm mt-1">Platform financials</p>
+          <p className="text-slate-400 text-sm mt-1">Platform commission from completed matches</p>
         </div>
         <div className="flex items-center gap-2">
           {(["7d", "30d", "90d"] as const).map((r) => (
@@ -125,25 +129,24 @@ export default function AdminRevenue() {
         </div>
       </header>
 
-      {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-[#0B1120] border border-white/[0.06] rounded-xl p-4">
           <div className="flex items-center gap-2 text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
-            <Wallet className="w-3.5 h-3.5" /> Gross Revenue
+            <PiggyBank className="w-3.5 h-3.5" /> Platform Fees
           </div>
-          <p className="text-2xl font-display font-bold text-white">₵{totals.gross.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          <p className="text-2xl font-display font-bold text-emerald-400">₵{totals.fees.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
         </div>
         <div className="bg-[#0B1120] border border-white/[0.06] rounded-xl p-4">
           <div className="flex items-center gap-2 text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
-            <PiggyBank className="w-3.5 h-3.5" /> Refunds (cancelled)
+            <Wallet className="w-3.5 h-3.5" /> Refunds Issued
           </div>
           <p className="text-2xl font-display font-bold text-red-400">₵{totals.refunds.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
         </div>
         <div className="bg-[#0B1120] border border-white/[0.06] rounded-xl p-4">
           <div className="flex items-center gap-2 text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
-            <BarChart3 className="w-3.5 h-3.5" /> Net Revenue
+            <BarChart3 className="w-3.5 h-3.5" /> Net Platform Income
           </div>
-          <p className="text-2xl font-display font-bold text-emerald-400">₵{totals.net.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          <p className="text-2xl font-display font-bold text-white">₵{totals.net.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
         </div>
         <div className="bg-[#0B1120] border border-white/[0.06] rounded-xl p-4">
           <div className="flex items-center gap-2 text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
@@ -156,9 +159,8 @@ export default function AdminRevenue() {
         </div>
       </div>
 
-      {/* Chart */}
       <div className="bg-[#0B1120] border border-white/[0.06] rounded-xl p-5">
-        <h3 className="text-sm font-bold text-white mb-4">Daily Net Revenue</h3>
+        <h3 className="text-sm font-bold text-white mb-4">Daily Platform Fees</h3>
         {loading ? (
           <div className="h-64 flex items-center justify-center gap-2 text-slate-400 text-sm">
             <Loader2 className="w-5 h-5 animate-spin" /> Loading…
@@ -183,13 +185,13 @@ export default function AdminRevenue() {
                   tickFormatter={(value) => `₵${value}`}
                 />
                 <Tooltip
-                  formatter={(value: any) => [`₵${Number(value).toFixed(2)}`, 'Net Revenue']}
+                  formatter={(value: any) => [`₵${Number(value).toFixed(2)}`, 'Platform Fees']}
                   labelFormatter={(label: string) => new Date(label + "T00:00:00").toLocaleDateString()}
                   contentStyle={{ backgroundColor: '#0F172A', borderColor: 'rgba(255,255,255,0.12)', color: '#F8FAFC' }}
                 />
-                <Bar dataKey="net" radius={[8, 8, 0, 0]} maxBarSize={36}>
+                <Bar dataKey="fees" radius={[8, 8, 0, 0]} maxBarSize={36}>
                   {days.map((entry) => (
-                    <Cell key={entry.date} fill={entry.net >= 0 ? '#34D399' : '#F87171'} />
+                    <Cell key={entry.date} fill={entry.fees >= 0 ? '#34D399' : '#F87171'} />
                   ))}
                 </Bar>
               </BarChart>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState, type RefObject } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Check, Clock, MapPin, Wallet, Trophy, Calendar, QrCode, Camera, X,
@@ -32,6 +32,7 @@ interface LobbyMatchTabProps {
   setCheckInCode: (v: string) => void;
   checkInBusy: boolean;
   scanning: boolean;
+  videoRef: RefObject<HTMLVideoElement>;
   startScan: () => void;
   stopScan: () => void;
   submitCheckIn: (token: string) => void;
@@ -52,11 +53,22 @@ export const LobbyMatchTab = (props: LobbyMatchTabProps) => {
     match, venue, organizer, weather, isOrganizer, userParticipant, user,
     countdownMain, countdownSub, isLive,
     venueCost, sharePerPlayer, allPaid, corePaidCount, maxCore,
-    showCheckIn, checkInCode, setCheckInCode, checkInBusy, scanning,
+    showCheckIn, checkInCode, setCheckInCode, checkInBusy, scanning, videoRef,
     startScan, stopScan, submitCheckIn,
     endMatch, cancelMatch, ending,
     onLeaveMatch, openProfile, activeParticipants, myReviews, submitReview, matchCode,
   } = props;
+
+  const [slideIdx, setSlideIdx] = useState(0);
+  const imageUrls = venue?.image_urls?.filter(Boolean) ?? [];
+
+  useEffect(() => {
+    if (imageUrls.length <= 1) return;
+    const id = window.setInterval(() => {
+      setSlideIdx((i) => (i + 1) % imageUrls.length);
+    }, 4000);
+    return () => window.clearInterval(id);
+  }, [imageUrls.length]);
 
   const [reviewTarget, setReviewTarget] = useState<string | null>(null);
   const [reviewRating, setReviewRating] = useState(0);
@@ -112,13 +124,29 @@ export const LobbyMatchTab = (props: LobbyMatchTabProps) => {
         </div>
       )}
 
-      {/* Venue Images */}
-      {venue?.image_urls && venue.image_urls.length > 0 && (
+      {/* Venue Images — slideshow when multiple uploaded */}
+      {imageUrls.length > 0 && (
         <div className="rounded-2xl overflow-hidden border-2 border-border p-1 bg-card">
           <div className="relative aspect-[16/9] rounded-xl overflow-hidden">
-            <img src={venue.image_urls[0]} alt={venue.name} className="w-full h-full object-cover transition-all" />
-            {venue.image_urls.length > 1 && (
-              <div className="absolute bottom-3 right-3 bg-foreground text-background text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-sm">+{venue.image_urls.length - 1} MORE</div>
+            {imageUrls.map((url: string, idx: number) => (
+              <img
+                key={url}
+                src={url}
+                alt={venue?.name ?? "Venue"}
+                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${idx === slideIdx ? "opacity-100" : "opacity-0"}`}
+              />
+            ))}
+            {imageUrls.length > 1 && (
+              <>
+                <div className="absolute bottom-3 right-3 bg-foreground/90 text-background text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-sm">
+                  {slideIdx + 1} / {imageUrls.length}
+                </div>
+                <div className="absolute bottom-3 left-3 flex gap-1.5">
+                  {imageUrls.map((_: string, idx: number) => (
+                    <span key={idx} className={`w-1.5 h-1.5 rounded-full ${idx === slideIdx ? "bg-background" : "bg-background/40"}`} />
+                  ))}
+                </div>
+              </>
             )}
           </div>
         </div>
@@ -151,7 +179,7 @@ export const LobbyMatchTab = (props: LobbyMatchTabProps) => {
           ) : scanning ? (
             <div className="space-y-4">
               <div className="relative aspect-square rounded-xl overflow-hidden border-2 border-border bg-black">
-                <video className="w-full h-full object-cover grayscale" playsInline muted />
+                <video ref={videoRef} className="w-full h-full object-cover grayscale" playsInline muted autoPlay />
                 <div className="absolute inset-0 border-4 border-dashed border-white/50 rounded-xl m-8" />
               </div>
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground text-center">Point camera at venue QR</p>
@@ -164,9 +192,9 @@ export const LobbyMatchTab = (props: LobbyMatchTabProps) => {
                 <Camera className="w-4 h-4" />{checkInBusy ? "Checking in…" : "Scan QR Code"}
               </button>
               <div className="pt-4 border-t-2 border-border border-dashed">
-                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Or paste code manually</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Or enter 10-character code manually</p>
                 <div className="flex gap-2">
-                  <input value={checkInCode} onChange={(e) => setCheckInCode(e.target.value.trim())} placeholder="CODE" className="flex-1 rounded-xl border-2 border-border bg-background px-4 py-2.5 text-xs font-mono font-bold uppercase" autoCapitalize="off" autoCorrect="off" spellCheck={false} />
+                  <input value={checkInCode} onChange={(e) => setCheckInCode(e.target.value.trim().toUpperCase().slice(0, 10))} placeholder="E.G. A3K9M2X7Q1" maxLength={10} className="flex-1 rounded-xl border-2 border-border bg-background px-4 py-2.5 text-xs font-mono font-bold uppercase tracking-widest" autoCapitalize="characters" autoCorrect="off" spellCheck={false} />
                   <button type="button" disabled={checkInBusy || !checkInCode} onClick={() => submitCheckIn(checkInCode)} className="px-5 py-2.5 rounded-xl border-2 border-foreground bg-foreground text-background text-[11px] font-black uppercase disabled:opacity-40 hover:opacity-90">Go</button>
                 </div>
               </div>

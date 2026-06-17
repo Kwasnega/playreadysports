@@ -201,6 +201,34 @@ export function formatVenueHours(
   return venue.opening_hours ?? null;
 }
 
+/** Random 10-char check-in code for pitch QR fallback entry. */
+export function generateCheckInCode(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const bytes = crypto.getRandomValues(new Uint8Array(10));
+  return Array.from(bytes, (b) => chars[b % chars.length]).join("");
+}
+
+/** Whether venue is open at kickoff and through match duration. */
+export function isVenueOpenForMatch(
+  venue: { open_time?: string | null; close_time?: string | null } | null | undefined,
+  kickoff: Date,
+  durationMinutes = 60,
+): { isOpen: boolean; label: string } {
+  if (!venue?.open_time || !venue?.close_time) {
+    return { isOpen: true, label: "Open" };
+  }
+  const start = isVenueOpen(venue, kickoff);
+  if (!start.isOpen) return start;
+  const end = new Date(kickoff.getTime() + durationMinutes * 60_000);
+  const openMin = timeToMinutes(venue.open_time);
+  const closeMin = timeToMinutes(venue.close_time);
+  const endMin = end.getHours() * 60 + end.getMinutes();
+  if (openMin <= closeMin && endMin > closeMin) {
+    return { isOpen: false, label: `Closed · match ends after ${formatTimeStr(venue.close_time)}` };
+  }
+  return { isOpen: true, label: start.label };
+}
+
 /**
  * Return the array of valid kickoff hours constrained to a venue's operating window.
  * If no venue hours, returns 0-23 (all hours).

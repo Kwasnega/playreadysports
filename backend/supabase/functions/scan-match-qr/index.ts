@@ -2,8 +2,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { checkRateLimit } from "../_shared/rateLimiter.ts";
 
-// CORS is handled via getCorsHeaders() from _shared/cors.ts
-
+const CHECKIN_CODE_RE = /^[A-Z2-9]{10}$/;
 const WINDOW_BEFORE_MS = 2 * 60 * 60 * 1000;
 const WINDOW_AFTER_BUFFER_MS = 2 * 60 * 60 * 1000;
 
@@ -48,42 +47,67 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
-    const token = (body?.token as string | undefined)?.trim();
-    if (!token) {
+    const rawToken = (body?.token as string | undefined)?.trim();
+    if (!rawToken) {
       return new Response(JSON.stringify({ error: "Missing token" }), {
         status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
-    let matchId = "";
-    let secret = "";
-    try {
-      const decoded = atob(token);
-      const idx = decoded.indexOf(":");
-      if (idx <= 0) throw new Error("bad");
-      matchId = decoded.slice(0, idx);
-      secret = decoded.slice(idx + 1);
-    } catch {
-      return new Response(JSON.stringify({ error: "Invalid check-in code" }), {
-        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
-      });
-    }
-
     const svc = createClient(supabaseUrl, serviceKey);
+    let matchId = "";
+    let match: Record<string, unknown> | null = null;
 
-    const { data: match, error: mErr } = await svc
-      .from("matches")
-      .select("id, join_code, venue_id, match_date, duration_minutes, status, qr_code_secret, entry_fee")
-      .eq("id", matchId)
-      .maybeSingle();
+    const normalized = rawToken.toUpperCase().replace(/[^A-Z0-9]/g, "");
 
-    if (mErr || !match || !match.qr_code_secret || match.qr_code_secret !== secret) {
-      return new Response(JSON.stringify({ error: "Invalid or expired check-in code" }), {
-        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+    if (CHECKIN_CODE_RE.test(normalized)) {
+      const { data, error } = await svc
+        .from("matches")
+        .select("id, join_code, venue_id, match_date, duration_minutes, status, entry_fee, check_in_code")
+        .eq("check_in_code", normalized)
+        .maybeSingle();
+      if (error || !data) {
+        return new Response(JSON.stringify({ error: "Invalid check-in code" }), {
+          status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        });
+      }
+      matchId = data.id;
+      match = data;
+    } else {
+      let secret = "";
+      try {
+        const decoded = atob(rawToken);
+        const idx = decoded.indexOf(":");
+        if (idx <= 0) throw new Error("bad");
+        matchId = decoded.slice(0, idx);
+        secret = decoded.slice(idx + 1);
+      } catch {
+        return new Response(JSON.stringify({ error: "Invalid check-in code" }), {
+          status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        });
+      }
+
+      const { data, error: mErr } = await svc
+        .from("matches")
+        .select("id, join_code, venue_id, match_date, duration_minutes, status, qr_code_secret, entry_fee")
+        .eq("id", matchId)
+        .maybeSingle();
+
+      if (mErr || !data || !data.qr_code_secret || data.qr_code_secret !== secret) {
+        return new Response(JSON.stringify({ error: "Invalid or expired check-in code" }), {
+          status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        });
+      }
+      match = data;
+    }
+
+    if (!match) {
+      return new Response(JSON.stringify({ error: "Match not found" }), {
+        status: 404, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
     }
 
-    if (match.status !== "upcoming" && match.status !== "live") {
+    if (match.status !== "upcoming" && match.status !== "live" && match.status !== "full") {
       return new Response(JSON.stringify({ error: "This match is not open for check-in" }), {
         status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
@@ -120,6 +144,7 @@ Deno.serve(async (req) => {
     }
 
     const paidOk = participant.payment_status === "paid" ||
+      participant.payment_status === "exempt" ||
       (entryFee <= 0 && participant.payment_status !== "refunded");
     if (!paidOk) {
       return new Response(JSON.stringify({ error: "Complete payment before checking in" }), {
@@ -167,7 +192,7 @@ Deno.serve(async (req) => {
       notifs.push({
         user_id: venue.owner_id,
         title: "Player checked in",
-        body: `${scannerName} scanned the pitch QR for ${match.join_code}${venue.name ? ` at ${venue.name}` : ""}.`,
+        body: `${scannerName} checked in for ${match.join_code}${venue.name ? ` at ${venue.name}` : ""}.`,
         type: "match_update",
         data: { match_id: matchId, join_code: match.join_code },
       });
@@ -177,7 +202,7 @@ Deno.serve(async (req) => {
         notifs.push({
           user_id: ownerProf.id,
           title: "Player checked in",
-          body: `${scannerName} scanned the pitch QR for ${match.join_code}${venue.name ? ` at ${venue.name}` : ""}.`,
+          body: `${scannerName} checked in for ${match.join_code}${venue.name ? ` at ${venue.name}` : ""}.`,
           type: "match_update",
           data: { match_id: matchId, join_code: match.join_code },
         });

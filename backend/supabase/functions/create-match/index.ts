@@ -217,28 +217,37 @@ Deno.serve(async (req) => {
     }
 
     // ------------------------------------------------------------------
-    // 4b. Check venue operating hours
+    // 4b. Check venue operating hours (Africa/Accra — Ghana)
     // ------------------------------------------------------------------
     if (venue.open_time && venue.close_time) {
-      const kickoffTime = kickoff.toTimeString().slice(0, 8);
+      const tz = "Africa/Accra";
+      const kickoffParts = new Intl.DateTimeFormat("en-GB", {
+        timeZone: tz, hour: "2-digit", minute: "2-digit", hour12: false,
+      }).formatToParts(kickoff);
+      const kickoffH = Number(kickoffParts.find((p) => p.type === "hour")?.value ?? 0);
+      const kickoffM = Number(kickoffParts.find((p) => p.type === "minute")?.value ?? 0);
       const matchEnd = new Date(kickoff.getTime() + (durationMinutes ?? 60) * 60_000);
-      const endTime = matchEnd.toTimeString().slice(0, 8);
+      const endParts = new Intl.DateTimeFormat("en-GB", {
+        timeZone: tz, hour: "2-digit", minute: "2-digit", hour12: false,
+      }).formatToParts(matchEnd);
+      const endH = Number(endParts.find((p) => p.type === "hour")?.value ?? 0);
+      const endM = Number(endParts.find((p) => p.type === "minute")?.value ?? 0);
 
       const openMin = (venue.open_time.split(":").map(Number)[0] ?? 0) * 60 + (venue.open_time.split(":").map(Number)[1] ?? 0);
       const closeMin = (venue.close_time.split(":").map(Number)[0] ?? 0) * 60 + (venue.close_time.split(":").map(Number)[1] ?? 0);
-      const startMin = kickoff.getHours() * 60 + kickoff.getMinutes();
-      const endMin = matchEnd.getHours() * 60 + matchEnd.getMinutes();
+      const startMin = kickoffH * 60 + kickoffM;
+      const endMinVal = endH * 60 + endM;
 
       const withinHours = openMin <= closeMin
-        ? (startMin >= openMin && endMin <= closeMin)
-        : (startMin >= openMin || endMin <= closeMin);
+        ? (startMin >= openMin && endMinVal <= closeMin)
+        : (startMin >= openMin || endMinVal <= closeMin);
 
       if (!withinHours) {
         return new Response(JSON.stringify({
-          error: `This venue is only open ${venue.open_time.slice(0, 5)} – ${venue.close_time.slice(0, 5)}. Your match (${kickoffTime.slice(0, 5)} – ${endTime.slice(0, 5)}) falls outside these hours.`,
+          error: `This venue is only open ${venue.open_time.slice(0, 5)} – ${venue.close_time.slice(0, 5)} (Ghana time). Please pick a time within operating hours.`,
         }), {
           status: 409,
-          headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
     }
@@ -324,6 +333,28 @@ Deno.serve(async (req) => {
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
 
+    const CHECKIN_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let checkInCode = "";
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const bytes = crypto.getRandomValues(new Uint8Array(10));
+      const candidate = Array.from(bytes, (b) => CHECKIN_CHARS[b % CHECKIN_CHARS.length]).join("");
+      const { data: existingCode } = await svc
+        .from("matches")
+        .select("id")
+        .eq("check_in_code", candidate)
+        .maybeSingle();
+      if (!existingCode) {
+        checkInCode = candidate;
+        break;
+      }
+    }
+    if (!checkInCode) {
+      return new Response(JSON.stringify({ error: "Could not generate check-in code" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Resolve sport identifier: for now, only "football" is supported
     // sportType can be "football", the numeric id, or a uuid
     let resolvedSportId: any = null;
@@ -388,6 +419,7 @@ Deno.serve(async (req) => {
         escrow_status: "none" as any,
         core_paid_count: 0,
         qr_code_secret: qrSecret,
+        check_in_code: checkInCode,
         team_color_a: teamColorA ?? "Red",
         team_color_b: teamColorB ?? "Blue",
       })

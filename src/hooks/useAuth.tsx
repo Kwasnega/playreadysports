@@ -102,26 +102,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       else setPendingVerifyEmail(null);
     });
 
-    // When the tab regains focus after being backgrounded, proactively refresh
-    // the session so an expired access token doesn't leave the page stuck.
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible") {
-        supabase.auth.getSession();
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibility);
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       const u = session?.user ?? null;
       setSbUser(u);
       setLoading(false);
       if (u && !isVerified(u)) setPendingVerifyEmail(u.email);
       else setPendingVerifyEmail(null);
-      if (event === "TOKEN_REFRESHED" && u) {
-        // Token refreshed — invalidate all React Query caches so components
-        // re-fetch with the new access token instead of showing stale/empty data.
-        _qc?.invalidateQueries();
-      }
+      // Do NOT invalidate all queries on TOKEN_REFRESHED — that triggers a
+      // request storm and can hit Supabase auth rate limits (429).
       if (event === 'SIGNED_IN' && u && isVerified(u)) {
         if (pendingActionRef.current) {
           const pending = pendingActionRef.current;
@@ -132,7 +120,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
     return () => {
       subscription.unsubscribe();
-      document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, []);
 

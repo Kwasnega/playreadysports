@@ -20,8 +20,8 @@ export interface LobbyParticipant {
   no_show?: boolean;
 }
 
-/* ---- Countdown hook ---- */
-export const useCountdown = (targetStr: string | undefined) => {
+/** Countdown until kickoff; `isLive` only when the match status is actually live. */
+export const useCountdown = (targetStr: string | undefined, matchStatus?: string) => {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000);
@@ -30,12 +30,13 @@ export const useCountdown = (targetStr: string | undefined) => {
   const target = targetStr ? new Date(targetStr) : new Date();
   const diffMs = target.getTime() - now.getTime();
   const diff = Math.max(0, diffMs);
-  const isLive = diffMs < 0;
+  const kickoffPassed = diffMs < 0;
+  const isLive = kickoffPassed && matchStatus === "live";
   const totalSec = Math.floor(diff / 1000);
   const h = Math.floor(diff / 3_600_000);
   const m = Math.floor((diff % 3_600_000) / 60_000);
   const s = Math.floor((diff % 60_000) / 1000);
-  return { h, m, s, totalSec, isLive, done: diff === 0 };
+  return { h, m, s, totalSec, isLive, kickoffPassed, done: diff === 0 };
 };
 
 /* ---- Player list builders ---- */

@@ -3,12 +3,9 @@ import { getCorsHeaders } from "../_shared/cors.ts";
 
 /**
  * auto-cancel-matches
- * Invoked by a Supabase cron schedule every minute.
- * Cancels upcoming matches that are underfilled within the cutoff window
- * (default 20 min before kickoff if paid count < min threshold).
+ * Cancels underfilled paid matches within the admin-configured window,
+ * refunds all players, and sends notifications.
  */
-
-// CORS is handled via getCorsHeaders() from _shared/cors.ts
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -20,7 +17,14 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const svc = createClient(supabaseUrl, serviceKey);
 
-    // Pull platform config
+    // Prefer SQL function when available (also scheduled via pg_cron)
+    const { data: sqlCount, error: sqlErr } = await svc.rpc("auto_cancel_underfilled_matches");
+    if (!sqlErr && typeof sqlCount === "number") {
+      return new Response(JSON.stringify({ cancelled: sqlCount, source: "sql" }), {
+        headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+      });
+    }
+
     const { data: settings } = await svc
       .from("platform_settings")
       .select("key, value")
@@ -30,34 +34,19 @@ Deno.serve(async (req) => {
     (settings ?? []).forEach((r: any) => { settingsMap[r.key] = r.value; });
 
     const windowMinutes = parseInt(settingsMap["auto_cancel_window_minutes"] ?? "20", 10);
-    const minPaidPct = parseFloat(settingsMap["auto_cancel_min_paid_pct"] ?? "0.5");
+    const minPaidPct = parseFloat(settingsMap["auto_cancel_min_paid_pct"] ?? "1");
 
     const now = new Date();
     const windowEnd = new Date(now.getTime() + windowMinutes * 60 * 1000);
-    // Look ahead 1 extra minute to catch boundary
-    const windowStart = new Date(now.getTime() + (windowMinutes - 1) * 60 * 1000);
 
-    // Find upcoming matches kicking off inside the window
-    const { data: windowCandidates } = await svc
+    const { data: candidates } = await svc
       .from("matches")
       .select("id, join_code, match_date, organizer_id, entry_fee, max_core_players, core_paid_count, venue:venues(name, id)")
-      .eq("status", "upcoming")
-      .gte("match_date", windowStart.toISOString())
-      .lte("match_date", windowEnd.toISOString());
+      .in("status", ["upcoming", "full"])
+      .gt("entry_fee", 0)
+      .or(`and(match_date.lte.${windowEnd.toISOString()},match_date.gt.${now.toISOString()}),match_date.lt.${now.toISOString()}`);
 
-    // Also find upcoming matches whose kickoff has ALREADY PASSED (expired)
-    const { data: expiredCandidates } = await svc
-      .from("matches")
-      .select("id, join_code, match_date, organizer_id, entry_fee, max_core_players, core_paid_count, venue:venues(name, id)")
-      .eq("status", "upcoming")
-      .lt("match_date", now.toISOString());
-
-    const candidates = [
-      ...(windowCandidates ?? []),
-      ...(expiredCandidates ?? []),
-    ];
-
-    if (candidates.length === 0) {
+    if (!candidates?.length) {
       return new Response(JSON.stringify({ cancelled: 0, checked: 0 }), {
         headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
       });
@@ -69,32 +58,24 @@ Deno.serve(async (req) => {
       const maxCore = Number(match.max_core_players) || 10;
       const paidCount = Number(match.core_paid_count) || 0;
       const entryFee = Number(match.entry_fee) || 0;
-
-      // Only auto-cancel paid matches (free matches can proceed regardless)
-      if (entryFee <= 0) continue;
-
       const fillRatio = paidCount / maxCore;
-      if (fillRatio >= minPaidPct) continue; // Adequately filled — skip
+      if (fillRatio >= minPaidPct) continue;
 
       const venueName =
         Array.isArray(match.venue)
           ? match.venue[0]?.name ?? "the venue"
           : (match.venue as any)?.name ?? "the venue";
 
-      // Mark cancelled and refund
       await svc
         .from("matches")
         .update({ status: "cancelled" as any, escrow_status: "refunded" as any })
         .eq("id", match.id);
 
-      // Get paid participants
       const { data: paidParts } = await svc
         .from("match_participants")
-        .select("id, user_id, payment_reference")
+        .select("id, user_id")
         .eq("match_id", match.id)
         .eq("payment_status", "paid");
-
-      const refundErrors: string[] = [];
 
       for (const p of paidParts ?? []) {
         if (entryFee > 0) {
@@ -104,25 +85,18 @@ Deno.serve(async (req) => {
             p_amount: entryFee,
             p_type: "refund",
             p_reference: ref,
+            p_match_id: match.id,
+            p_description: `Auto-cancel refund: ${match.join_code}`,
           });
-          if (rpcErr) {
-            refundErrors.push(p.user_id);
-            console.error("Refund failed for", p.user_id, rpcErr);
-          } else {
+          if (!rpcErr) {
             await svc
               .from("match_participants")
               .update({ payment_status: "refunded" as any, status: "left" as any })
               .eq("id", p.id);
           }
-        } else {
-          await svc
-            .from("match_participants")
-            .update({ status: "left" as any })
-            .eq("id", p.id);
         }
       }
 
-      // Mark remaining active participants as left
       await svc
         .from("match_participants")
         .update({ status: "left" as any })
@@ -131,7 +105,6 @@ Deno.serve(async (req) => {
 
       await svc.from("matches").update({ core_paid_count: 0 }).eq("id", match.id);
 
-      // Notify all active roster + organizer
       const { data: roster } = await svc
         .from("match_participants")
         .select("user_id")
@@ -144,8 +117,8 @@ Deno.serve(async (req) => {
           user_id: uid,
           title: "Match auto-cancelled",
           body: isOrganizer
-            ? `Your match ${match.join_code} at ${venueName} was auto-cancelled — not enough players confirmed. All fees have been refunded.`
-            : `Match ${match.join_code} at ${venueName} was cancelled (not enough players). Your entry fee has been refunded to your wallet.`,
+            ? `Your match ${match.join_code} at ${venueName} was auto-cancelled — the lobby was not full. All fees have been refunded.`
+            : `Match ${match.join_code} at ${venueName} was cancelled (lobby not full). Your entry fee has been refunded to your wallet.`,
           type: "match_cancel",
           data: { match_id: match.id, join_code: match.join_code, auto: true },
         };
