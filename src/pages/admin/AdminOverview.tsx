@@ -74,10 +74,10 @@ export default function AdminOverview() {
     setResetting(true);
     try {
       // Wipe operational data only — keep registered users (profiles + auth)
-      const tables = [
+      // Tables whose PK is 'id':
+      const tablesWithId = [
         "platform_revenue",
         "match_votes",
-        "match_voting_windows",
         "match_checkin_events",
         "match_ratings",
         "transactions",
@@ -92,9 +92,14 @@ export default function AdminOverview() {
         "wallet_balances",
         "audit_log",
       ];
-      for (const table of tables) {
+      for (const table of tablesWithId) {
         await (supabase as any).from(table).delete().neq("id", "00000000-0000-0000-0000-000000000000");
       }
+      // match_voting_windows PK is match_id (no id column) — delete separately
+      await (supabase as any)
+        .from("match_voting_windows")
+        .delete()
+        .neq("match_id", "00000000-0000-0000-0000-000000000000");
       // Reset wallet balances to zero but keep rows for existing users
       await (supabase as any).from("wallet_balances").update({ balance: 0 }).neq("user_id", "00000000-0000-0000-0000-000000000000");
       toast.success("Platform data reset. User accounts preserved. Reloading…");
