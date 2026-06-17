@@ -339,7 +339,7 @@ export default function AdminPlayers() {
       supabase.from("audit_log").select("*").eq("target_id", p.id).order("created_at", { ascending: false }).limit(100),
       supabase.from("notifications").select("*").eq("user_id", p.id).order("created_at", { ascending: false }).limit(50),
       supabase.from("reputation_history").select("*").eq("user_id", p.id).order("created_at", { ascending: false }),
-      supabase.from("wallet_balances").select("balance").eq("user_id", p.id).single(),
+      supabase.from("wallet_balances").select("balance").eq("user_id", p.id).maybeSingle(),
     ]);
 
     // Fetch match details for participants

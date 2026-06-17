@@ -92,6 +92,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const isVerified = (u: any) =>
     u?.email_confirmed_at != null || u?.app_metadata?.provider !== "email";
 
+  const sbUserId = sbUser?.id;
+  const sbUserEmail = sbUser?.email;
+  const sbUserEmailConfirmed = sbUser?.email_confirmed_at;
+  const sbUserProvider = sbUser?.app_metadata?.provider;
+  const sbUserFullName = sbUser?.user_metadata?.full_name || sbUser?.user_metadata?.displayName;
+  const userVerified = sbUser ? isVerified(sbUser) : false;
+
   // Track auth state across reloads.
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -125,7 +132,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Load profile role / admin flag for route guards and dashboards.
   useEffect(() => {
-    if (!sbUser?.id || !isVerified(sbUser)) {
+    if (!sbUserId || !userVerified) {
       setProfileRole(null);
       setProfileIsAdminFlag(false);
       return;
@@ -135,7 +142,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const { data } = await supabase
         .from("profiles")
         .select("role, is_admin")
-        .eq("id", sbUser.id)
+        .eq("id", sbUserId)
         .maybeSingle();
       if (cancelled) return;
       const prof = data as any;
@@ -144,7 +151,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setProfileIsAdminFlag(!!prof?.is_admin);
     })();
     return () => { cancelled = true; };
-  }, [sbUser]);
+  }, [sbUserId, userVerified]);
 
   // Poll for verification while the modal is showing.
   useEffect(() => {
@@ -358,7 +365,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Only expose the user to the rest of the app once verified (or OAuth).
   const exposed: AppUser | null = useMemo(() => {
     return sbUser && isVerified(sbUser) ? toAppUser(sbUser) : null;
-  }, [sbUser]);
+  }, [sbUserId, sbUserEmail, sbUserEmailConfirmed, sbUserProvider, sbUserFullName, userVerified]);
 
   const isAdmin = useMemo(
     () =>

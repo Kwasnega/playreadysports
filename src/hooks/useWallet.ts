@@ -17,6 +17,7 @@ export type WalletTransaction = {
 
 export function useWallet() {
   const { user } = useAuth();
+  const userId = user?.id;
   const [balance, setBalance] = useState<number>(0);
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -26,7 +27,7 @@ export function useWallet() {
   const [paying, setPaying] = useState(false);
 
   const fetchWallet = useCallback(async () => {
-    if (!user) {
+    if (!userId) {
       setBalance(0);
       setTransactions([]);
       setLoading(false);
@@ -41,10 +42,10 @@ export function useWallet() {
       const { data: balanceData, error: balanceErr } = await (supabase as any)
         .from("wallet_balances")
         .select("balance")
-        .eq("user_id", user.id)
-        .single();
+        .eq("user_id", userId)
+        .maybeSingle();
 
-      if (balanceErr && balanceErr.code !== 'PGRST116') {
+      if (balanceErr) {
         throw balanceErr;
       }
 
@@ -54,7 +55,7 @@ export function useWallet() {
       const { data: txData, error: txErr } = await (supabase as any)
         .from("wallet_transactions")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .order("created_at", { ascending: false })
         .limit(20);
 
@@ -66,7 +67,7 @@ export function useWallet() {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [userId]);
 
   useEffect(() => {
     fetchWallet();
@@ -75,12 +76,12 @@ export function useWallet() {
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
     const ch = supabase
-      .channel(`wallet_balance:${user.id}`)
+      .channel(`wallet_balance:${userId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "wallet_balances", filter: `user_id=eq.${user.id}` },
+        { event: "*", schema: "public", table: "wallet_balances", filter: `user_id=eq.${userId}` },
         (payload) => {
           if (payload.new && typeof (payload.new as any).balance !== "undefined") {
             setBalance(Number((payload.new as any).balance) || 0);
@@ -92,7 +93,7 @@ export function useWallet() {
     return () => {
       supabase.removeChannel(ch);
     };
-  }, [user]);
+  }, [userId]);
 
   const topUp = async (amountInCedis: number) => {
     if (!user) return false;
