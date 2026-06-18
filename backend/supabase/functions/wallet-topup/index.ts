@@ -75,6 +75,8 @@ Deno.serve(async (req) => {
       }
 
       const verified = await verifyMoolrePayment(reference);
+      console.log("[wallet-topup] Moolre verification result:", { reference, verified });
+      
       if (verified.pending) {
         return new Response(JSON.stringify({
           success: false,
@@ -85,6 +87,7 @@ Deno.serve(async (req) => {
         });
       }
       if (!verified.success) {
+        console.error("[wallet-topup] Moolre verification failed:", { reference, message: verified.message, raw: verified.raw });
         return new Response(JSON.stringify({ error: verified.message || "Payment not verified" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });

@@ -136,8 +136,9 @@ const CreateMatch = () => {
     if (step === 2) {
       if (!title.trim() || !matchDate) return false;
       if (mode === "gala" && teamName.trim().length < 2) return false;
-      const d = new Date(matchDate);
-      d.setHours(matchHour, matchMinute, 0, 0);
+      // Parse date string as local timezone (YYYY-MM-DD format)
+      const [year, month, day] = matchDate.split("-").map(Number);
+      const d = new Date(year, month - 1, day, matchHour, matchMinute, 0, 0);
       if (d.getTime() <= Date.now() + 30 * 60 * 1000) return false;
       if (selectedVenue) {
         const hoursCheck = isVenueOpenForMatch(selectedVenue, d, duration);
@@ -184,8 +185,9 @@ const CreateMatch = () => {
       newErrors.maxCore = "Max players cannot exceed 100";
     }
 
-    const dateObj = new Date(matchDate);
-    dateObj.setHours(matchHour, matchMinute, 0, 0);
+    // Parse date string as local timezone (YYYY-MM-DD format)
+    const [year, month, day] = matchDate.split("-").map(Number);
+    const dateObj = new Date(year, month - 1, day, matchHour, matchMinute, 0, 0);
     if (dateObj.getTime() <= Date.now() + 30 * 60 * 1000) {
       newErrors.matchDate = "Match must be scheduled at least 30 minutes from now";
     }
@@ -208,8 +210,9 @@ const CreateMatch = () => {
     setErrors({});
     if (!validateForm()) return;
 
-    const dateObj = new Date(matchDate);
-    dateObj.setHours(matchHour, matchMinute, 0, 0);
+    // Parse date string as local timezone (YYYY-MM-DD format)
+    const [year, month, day] = matchDate.split("-").map(Number);
+    const dateObj = new Date(year, month - 1, day, matchHour, matchMinute, 0, 0);
     const matchDateIso = dateObj.toISOString();
 
     const result = await createMatch({
