@@ -102,14 +102,22 @@ Deno.serve(async (req) => {
 
     // Call Moolre Bulk Disbursement API
     try {
+      // Normalize phone: convert 0XXXXXXXXX to +233XXXXXXXXX
+      let normalizedPhone = phone.trim();
+      if (normalizedPhone.startsWith("0")) {
+        normalizedPhone = "+233" + normalizedPhone.slice(1);
+      } else if (!normalizedPhone.startsWith("+233")) {
+        normalizedPhone = "+233" + normalizedPhone;
+      }
+
       const moolreData = await moolrePost<any>(
         "/disburse/send",
         {
           type: 1, // 1 = mobile money disbursement
           amount: Number(request.amount).toFixed(2),
-          phone: phone.replace(/^0/, "233"), // Convert to E.164 format (+233...)
+          phone: normalizedPhone, // E.164 format: +233XXXXXXXXX
           provider: request.provider.toUpperCase(), // MTN, VODAFONE, AIRTELTIGO
-          reference: reference,
+          externalref: reference, // Use externalref to match webhook callback
           callback: `${supabaseUrl}/functions/v1/moolre-payout-webhook`,
           accountnumber: config.accountNumber,
           description: `Venue payout for request ${request_id}`,
@@ -118,7 +126,8 @@ Deno.serve(async (req) => {
       );
 
       // Check if request was successful
-      if (Number(moolreData?.status) !== 1 || !moolreData?.data?.reference) {
+      const moolreRef = moolreData?.data?.reference || moolreData?.data?.externalref;
+      if (Number(moolreData?.status) !== 1 || !moolreRef) {
         await svc
           .from("venue_payout_requests")
           .update({
@@ -143,7 +152,7 @@ Deno.serve(async (req) => {
         .from("venue_payout_requests")
         .update({
           status: "in_transit",
-          moolre_reference: moolreData.data.reference,
+          moolre_reference: moolreRef,
           moolre_transaction_id: moolreData.data.transactionid,
           processing_started_at: new Date().toISOString(),
         })
@@ -152,7 +161,7 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: true,
-          moolre_reference: moolreData.data.reference,
+          moolre_reference: moolreRef,
           moolre_transaction_id: moolreData.data.transactionid,
           status: "in_transit",
         }),
