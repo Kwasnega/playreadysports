@@ -248,5 +248,5 @@ CREATE INDEX IF NOT EXISTS idx_match_lineups_team ON public.match_lineups(match_
 CREATE INDEX IF NOT EXISTS idx_match_lineups_formation ON public.match_lineups(formation);
 
 -- 7. Add to realtime publication
-ALTER PUBLICATION supabase_realtime ADD TABLE IF NOT EXISTS public.match_lineups;
-ALTER PUBLICATION supabase_realtime ADD TABLE IF NOT EXISTS public.lineup_formations;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.match_lineups;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.lineup_formations;
