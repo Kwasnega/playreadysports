@@ -38,7 +38,29 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { reference, provider } = body;
+    let { reference, provider } = body;
+    
+    // If reference is "latest", fetch the most recent pending wallet transaction for this user
+    if (reference === "latest") {
+      const { data: pendingTx, error: pendingErr } = await svc
+        .from("wallet_transactions")
+        .select("reference")
+        .eq("user_id", user.id)
+        .eq("status", "pending")
+        .eq("type", "deposit")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (pendingErr) throw pendingErr;
+      if (!pendingTx) {
+        return new Response(JSON.stringify({ error: "No pending wallet transaction found" }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      reference = pendingTx.reference;
+    }
+    
     if (!reference) {
       return new Response(JSON.stringify({ error: "Missing reference" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },

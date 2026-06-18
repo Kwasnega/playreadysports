@@ -58,7 +58,15 @@ const CreateMatch = () => {
   const [title, setTitle] = useState("");
   const sportType = "football";
   const [matchDate, setMatchDate] = useState<string>("");
-  const [matchHour, setMatchHour] = useState<number>(() => Math.min(new Date().getHours() + 2, 22));
+  const [matchHour, setMatchHour] = useState<number>(() => {
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    // Ensure at least 30 minutes from now
+    const minHour = currentMinute >= 30 ? currentHour + 1 : currentHour;
+    const suggestedHour = Math.min(currentHour + 2, 22);
+    return Math.max(minHour, suggestedHour);
+  });
   const [matchMinute, setMatchMinute] = useState<number>(0);
   const [duration, setDuration] = useState<number>(60);
   const [entryFeeEnabled, setEntryFeeEnabled] = useState(false);

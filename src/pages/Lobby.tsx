@@ -23,6 +23,7 @@ import { LobbyTeamsTab } from "@/components/lobby/LobbyTeamsTab";
 import { useCountdown, buildPlayerList, buildSpareList } from "@/components/lobby/LobbyShared";
 import { MatchVotingModal, type PublicProfile } from "@/components/matches/MatchVotingModal";
 import { SubmitMatchResult } from "@/components/matches/SubmitMatchResult";
+import MatchLineup from "@/components/matches/MatchLineup";
 
 /* Tier-3 Lobby — wired to Supabase --------------------------------------- */
 
@@ -80,7 +81,7 @@ const Lobby = () => {
   const { myReviews, submitReview } = useMatchReviews(match?.id, user?.id);
   const { weather } = useWeather(venue?.lat, venue?.lng, match?.match_date);
 
-  const [tab, setTab] = useState<"match" | "teams" | "chat">("match");
+  const [tab, setTab] = useState<"match" | "teams" | "chat" | "lineup">("match");
   const [ending, setEnding] = useState(false);
   const [chatUnread] = useState(0);
   const [chatPreview] = useState("");
@@ -516,10 +517,11 @@ const Lobby = () => {
         </div>
         {/* Tab strip */}
         <div className="max-w-[680px] mx-auto px-5 pb-3">
-          <div className={`grid gap-2 ${userParticipant ? "grid-cols-3" : "grid-cols-2"}`}>
+          <div className={`grid gap-2 ${userParticipant ? (match?.status === "confirmed" ? "grid-cols-4" : "grid-cols-3") : "grid-cols-2"}`}>
             {([
               { id: "match" as const, label: "MATCH" },
               { id: "teams" as const, label: `TEAMS · ${corePaidCount}/${maxCore}` },
+              ...(userParticipant && match?.status === "confirmed" ? [{ id: "lineup" as const, label: "LINEUP" }] : []),
               ...(userParticipant ? [{ id: "chat" as const, label: "CHAT" }] : []),
             ] as const).map(t => (
               <button key={t.id} onClick={() => setTab(t.id as any)} className={`inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl border-2 px-2 sm:px-4 py-2.5 text-[9px] sm:text-[10px] font-black tracking-widest transition-colors ${tab === t.id ? "bg-foreground text-background border-foreground shadow-sm" : "bg-card text-foreground border-border hover:bg-secondary"}`}>
@@ -625,6 +627,20 @@ const Lobby = () => {
             openAuth={openAuth}
             user={user}
             openProfile={openProfile}
+          />
+        )}
+
+        {tab === "lineup" && match && (
+          <MatchLineup
+            matchId={match.id}
+            teamSide={userParticipant?.team === "A" ? "team_a" : "team_b"}
+            teamName={
+              userParticipant?.team === "A"
+                ? (match.team_color_a ?? "Team A")
+                : (match.team_color_b ?? "Team B")
+            }
+            maxPlayers={match.max_core_players ?? 10}
+            canEdit={isOrganizer || userParticipant?.user_id === user?.id}
           />
         )}
 

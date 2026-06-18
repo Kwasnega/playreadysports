@@ -21,17 +21,25 @@ const WalletPage = () => {
     if (!user) return;
 
     const params = new URLSearchParams(window.location.search);
+    const status = params.get("status");
     const reference = params.get("moolre_ref") || params.get("reference");
-    if (!reference || handledMoolreRef.current === reference) return;
-
-    handledMoolreRef.current = reference;
-    verifyTopUp(reference, "moolre").finally(() => {
-      params.delete("moolre_ref");
-      params.delete("reference");
-      const query = params.toString();
-      const nextUrl = `${window.location.pathname}${query ? `?${query}` : ""}`;
-      window.history.replaceState({}, "", nextUrl);
-    });
+    
+    // Handle Moolre redirect with or without reference
+    if (status === "success" || reference) {
+      // Skip if already handled
+      if (handledMoolreRef.current === (reference || "moolre_latest")) return;
+      handledMoolreRef.current = reference || "moolre_latest";
+      
+      // Call verifyTopUp with reference or "latest" to fetch most recent pending transaction
+      verifyTopUp(reference || "latest", "moolre").finally(() => {
+        params.delete("moolre_ref");
+        params.delete("reference");
+        params.delete("status");
+        const query = params.toString();
+        const nextUrl = `${window.location.pathname}${query ? `?${query}` : ""}`;
+        window.history.replaceState({}, "", nextUrl);
+      });
+    }
   }, [user, verifyTopUp]);
 
   if (!user) {
