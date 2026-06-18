@@ -156,18 +156,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Profit
-    const profitNum = Number(profitAmount ?? 0);
-    if (profitNum < 0) {
-      return new Response(JSON.stringify({ error: "VALIDATION_ERROR", field: "profitAmount", message: "Profit cannot be negative" }), {
-        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
-      });
-    }
-    if (profitNum >= feeNum * maxCoreNum) {
-      return new Response(JSON.stringify({ error: "VALIDATION_ERROR", field: "profitAmount", message: "Profit must be less than total pot (entry fee × max players)" }), {
-        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
-      });
-    }
+    // Profit is no longer supported — always set to 0
+    const profitNum = 0;
 
     // Date — must be at least 30 minutes in the future
     const kickoff = new Date(matchDate);
@@ -413,15 +403,15 @@ Deno.serve(async (req) => {
         match_date: matchDate,
         duration_minutes: durationMinutes ?? 60,
         entry_fee: feeNum,
-        organizer_profit_amount: profitNum,
+        organizer_profit_amount: 0,
         notes: notes ?? null,
         status: "upcoming" as any,
         escrow_status: "none" as any,
         core_paid_count: 0,
         qr_code_secret: qrSecret,
         check_in_code: checkInCode,
-        team_color_a: teamColorA ?? "Red",
-        team_color_b: teamColorB ?? "Blue",
+        team_color_a: "Team A",
+        team_color_b: "Team B",
       })
       .select("*")
       .single();

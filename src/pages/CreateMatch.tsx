@@ -26,14 +26,6 @@ type Format = "5v5" | "6v6" | "7v7" | "8v8" | "9v9" | "10v10" | "11v11";
 const TWO_TEAM_FORMATS: Format[] = ["5v5", "6v6", "7v7", "8v8", "9v9", "10v10", "11v11"];
 const GALA_FORMATS: Format[] = ["5v5", "7v7"];
 
-const TEAM_COLOR_PRESETS: { a: string; b: string; labelA: string; labelB: string; hexA: string; hexB: string }[] = [
-  { a: "Red", b: "Blue", labelA: "Red", labelB: "Blue", hexA: "#dc2626", hexB: "#2563eb" },
-  { a: "Black", b: "White", labelA: "Black", labelB: "White", hexA: "#1c1917", hexB: "#f5f5f4" },
-  { a: "Green", b: "Yellow", labelA: "Green", labelB: "Yellow", hexA: "#16a34a", hexB: "#eab308" },
-  { a: "Orange", b: "Purple", labelA: "Orange", labelB: "Purple", hexA: "#ea580c", hexB: "#9333ea" },
-  { a: "Navy", b: "Gold", labelA: "Navy", labelB: "Gold", hexA: "#1e3a5f", hexB: "#ca8a04" },
-];
-
 const STEP_LABELS = ["Setup", "Venue", "Details"] as const;
 
 const DEFAULT_HOURS = Array.from({ length: 24 }, (_, i) => i);
@@ -71,11 +63,9 @@ const CreateMatch = () => {
   const [duration, setDuration] = useState<number>(60);
   const [entryFeeEnabled, setEntryFeeEnabled] = useState(false);
   const [entryFee, setEntryFee] = useState<number>(0);
-  const [profitAmount, setProfitAmount] = useState<number>(0);
   const [maxCore, setMaxCore] = useState<number>(10);
   const [notes, setNotes] = useState("");
   const [teamName, setTeamName] = useState("");
-  const [teamColorIdx, setTeamColorIdx] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const selectedVenue = venues.find((v) => v.id === venueId);
@@ -100,7 +90,6 @@ const CreateMatch = () => {
   useEffect(() => {
     if (step === 2 && basePerPlayer > 0) {
       setEntryFeeEnabled(true);
-      setProfitAmount(0);
     }
   }, [step, basePerPlayer]);
 
@@ -114,8 +103,8 @@ const CreateMatch = () => {
   }, [matchFormat, mode]);
 
   useEffect(() => {
-    if (basePerPlayer > 0) setEntryFee(basePerPlayer + profitAmount);
-  }, [basePerPlayer, profitAmount]);
+    if (basePerPlayer > 0) setEntryFee(basePerPlayer);
+  }, [basePerPlayer]);
 
   const availableFormats = mode === "gala" ? GALA_FORMATS : TWO_TEAM_FORMATS;
 
@@ -195,12 +184,6 @@ const CreateMatch = () => {
       newErrors.maxCore = "Max players cannot exceed 100";
     }
 
-    if (profitAmount < 0) {
-      newErrors.profitAmount = "Profit cannot be negative";
-    } else if (entryFeeEnabled && profitAmount >= entryFee * maxCore) {
-      newErrors.profitAmount = "Profit must be less than total pot (entry fee × max players)";
-    }
-
     const dateObj = new Date(matchDate);
     dateObj.setHours(matchHour, matchMinute, 0, 0);
     if (dateObj.getTime() <= Date.now() + 30 * 60 * 1000) {
@@ -229,7 +212,6 @@ const CreateMatch = () => {
     dateObj.setHours(matchHour, matchMinute, 0, 0);
     const matchDateIso = dateObj.toISOString();
 
-    const colorPair = TEAM_COLOR_PRESETS[teamColorIdx];
     const result = await createMatch({
       title: title.trim(),
       sportType,
@@ -241,10 +223,7 @@ const CreateMatch = () => {
       durationMinutes: duration,
       entryFee: entryFeeEnabled ? entryFee : 0,
       maxCore,
-      profitAmount: entryFeeEnabled ? profitAmount : 0,
       notes: notes || undefined,
-      teamColorA: type === "public" && mode === "two-team" ? colorPair.a : undefined,
-      teamColorB: type === "public" && mode === "two-team" ? colorPair.b : undefined,
     });
 
     if (result.success) {
@@ -293,29 +272,7 @@ const CreateMatch = () => {
               />
             </Group> */}
 
-            {type === "public" && mode === "two-team" && (
-              <Group title="Team Colours" hint="Select the primary team colours">
-                <div className="flex flex-wrap gap-2.5">
-                  {TEAM_COLOR_PRESETS.map((p, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setTeamColorIdx(i)}
-                      className={`flex items-center gap-2 rounded-xl px-3 py-2 text-[10px] font-black tracking-widest uppercase border-2 transition-all ${
-                        teamColorIdx === i
-                          ? "border-foreground bg-foreground text-background shadow-md scale-[1.02]"
-                          : "border-border bg-card hover:border-foreground text-foreground"
-                      }`}
-                    >
-                      <div className="flex -space-x-1">
-                        <span className="w-4 h-4 rounded-full border-2 border-background relative z-10" style={{ background: p.hexA }} />
-                        <span className="w-4 h-4 rounded-full border-2 border-background" style={{ background: p.hexB }} />
-                      </div>
-                      <span>{p.labelA} / {p.labelB}</span>
-                    </button>
-                  ))}
-                </div>
-              </Group>
-            )}
+
 
             <Group title="Format" hint="Select match format">
               <div className="flex flex-wrap gap-2.5">
@@ -708,27 +665,7 @@ const CreateMatch = () => {
                         <span>₵{basePerPlayer}</span>
                       </div>
 
-                      <div className="flex justify-between items-center pt-2">
-                        <span className="text-foreground font-black uppercase tracking-widest text-[11px] font-sans">Organizer Profit</span>
-                        <div className="flex items-center gap-1.5 bg-card border-2 border-border rounded-lg px-2 py-1">
-                          <span className="text-xs font-black font-sans text-muted-foreground">+₵</span>
-                          <input
-                            type="number"
-                            min={0}
-                            value={profitAmount || ""}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              if (val === "") { setProfitAmount(0); return; }
-                              const num = Number(val);
-                              setProfitAmount(isNaN(num) ? 0 : Math.max(0, num));
-                            }}
-                            className="w-16 bg-transparent text-sm font-black focus:outline-none text-right font-mono text-foreground"
-                            placeholder="0"
-                          />
-                        </div>
-                      </div>
-                      {errors.profitAmount && <p className="text-[11px] text-red-600 font-sans font-bold">{errors.profitAmount}</p>}
-                      
+
                       <div className="border-t-2 border-dashed border-border pt-3 flex items-center justify-between mt-4">
                         <span className="font-sans font-black uppercase tracking-widest text-foreground text-[10px]">Player Pays</span>
                         <span className="font-display font-black text-2xl text-foreground">₵{entryFee}</span>
@@ -801,7 +738,7 @@ const CreateMatch = () => {
               <SummaryRow label="Venue" value={selectedVenue ? `${selectedVenue.name}` : "—"} />
               <SummaryRow label="When" value={matchDate ? `${matchDate} @ ${String(matchHour).padStart(2, "0")}:${String(matchMinute).padStart(2, "0")}` : "—"} />
               <SummaryRow label="Duration" value={`${duration} min`} />
-              <SummaryRow label="Entry fee" value={entryFeeEnabled ? (profitAmount > 0 ? `₵${entryFee}/player (₵${basePerPlayer} base + ₵${profitAmount} profit)` : `₵${entryFee}/player`) : venueCost > 0 ? `Free (you pay ₵${venueCost.toFixed(0)})` : "Free"} />
+              <SummaryRow label="Entry fee" value={entryFeeEnabled ? `₵${entryFee}/player` : venueCost > 0 ? `Free (you pay ₵${venueCost.toFixed(0)})` : "Free"} />
             </div>
           </div>
         )}
