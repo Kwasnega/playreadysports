@@ -77,8 +77,7 @@ export async function verifyMoolrePayment(reference: string): Promise<MoolrePaym
   const config = getMoolreConfig();
   const data = await moolrePost<any>("/open/transact/status", {
     type: 1,
-    idtype: "1",
-    id: reference,
+    externalref: reference,
     accountnumber: config.accountNumber,
   });
 
