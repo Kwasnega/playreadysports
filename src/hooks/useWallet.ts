@@ -98,6 +98,44 @@ export function useWallet() {
   const topUp = async (amountInCedis: number) => {
     if (!user) return false;
     setToppingUp(true);
+
+    const EDGE_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
+    const paymentProvider = (import.meta.env.VITE_PAYMENT_PROVIDER || "paystack").toLowerCase();
+
+    if (paymentProvider === "moolre") {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        if (!token) {
+          setToppingUp(false);
+          return false;
+        }
+
+        const redirectUrl = `${window.location.origin}/wallet`;
+        const res = await fetch(`${EDGE_BASE}/moolre-init`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ amount: amountInCedis, redirectUrl }),
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.authorizationUrl) {
+          setError(data.error || "Could not start Moolre top-up");
+          setToppingUp(false);
+          return false;
+        }
+
+        window.location.href = data.authorizationUrl;
+        return true;
+      } catch (err: any) {
+        setError(err.message || "Could not start Moolre top-up");
+        setToppingUp(false);
+        return false;
+      }
+    }
     
     return new Promise<boolean>((resolve) => {
       try {
@@ -121,7 +159,6 @@ export function useWallet() {
               return resolve(false);
             }
 
-            const EDGE_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
             const res = await fetch(`${EDGE_BASE}/wallet-topup`, {
               method: "POST",
               headers: {
@@ -153,6 +190,51 @@ export function useWallet() {
       }
     });
   };
+
+  const verifyTopUp = useCallback(async (reference: string, provider = "moolre") => {
+    if (!user) return { success: false, error: "Not signed in" };
+    setToppingUp(true);
+    setError(null);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        setToppingUp(false);
+        return { success: false, error: "Session expired" };
+      }
+
+      const EDGE_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
+      const res = await fetch(`${EDGE_BASE}/wallet-topup`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ reference, provider }),
+      });
+
+      const data = await res.json();
+      if (res.status === 202 && data.pending) {
+        await fetchWallet();
+        setToppingUp(false);
+        return { success: false, pending: true };
+      }
+      if (res.ok && data.success) {
+        await fetchWallet();
+        setToppingUp(false);
+        return { success: true, newBalance: data.newBalance };
+      }
+
+      setError(data.error || "Top-up verification failed");
+      setToppingUp(false);
+      return { success: false, error: data.error || "Top-up verification failed" };
+    } catch (err: any) {
+      setError(err.message || "Top-up verification failed");
+      setToppingUp(false);
+      return { success: false, error: err.message || "Top-up verification failed" };
+    }
+  }, [fetchWallet, user]);
 
   const withdraw = async (amount: number, phone: string, provider: string) => {
     if (!user) return { success: false, error: "Not signed in" };
@@ -224,6 +306,7 @@ export function useWallet() {
     paying,
     error,
     topUp,
+    verifyTopUp,
     withdraw,
     payForMatch,
     refresh: fetchWallet,

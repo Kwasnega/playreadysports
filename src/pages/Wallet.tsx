@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Wallet as WalletIcon, Plus, History, Check, Loader2,
@@ -12,9 +12,27 @@ const TOPUP_OPTIONS = [20, 50, 100, 200];
 const WalletPage = () => {
   const nav = useNavigate();
   const { user, openAuth } = useAuth();
-  const { balance, transactions, loading, toppingUp, error, topUp } = useWallet();
+  const { balance, transactions, loading, toppingUp, error, topUp, verifyTopUp } = useWallet();
   const [customAmount, setCustomAmount] = useState("");
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
+  const handledMoolreRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const reference = params.get("moolre_ref") || params.get("reference");
+    if (!reference || handledMoolreRef.current === reference) return;
+
+    handledMoolreRef.current = reference;
+    verifyTopUp(reference, "moolre").finally(() => {
+      params.delete("moolre_ref");
+      params.delete("reference");
+      const query = params.toString();
+      const nextUrl = `${window.location.pathname}${query ? `?${query}` : ""}`;
+      window.history.replaceState({}, "", nextUrl);
+    });
+  }, [user, verifyTopUp]);
 
   if (!user) {
     return (
