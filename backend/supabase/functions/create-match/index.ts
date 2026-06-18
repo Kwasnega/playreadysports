@@ -223,8 +223,10 @@ Deno.serve(async (req) => {
       const endH = Number(endParts.find((p) => p.type === "hour")?.value ?? 0);
       const endM = Number(endParts.find((p) => p.type === "minute")?.value ?? 0);
 
-      const openMin = (venue.open_time.split(":").map(Number)[0] ?? 0) * 60 + (venue.open_time.split(":").map(Number)[1] ?? 0);
-      const closeMin = (venue.close_time.split(":").map(Number)[0] ?? 0) * 60 + (venue.close_time.split(":").map(Number)[1] ?? 0);
+      let openMin = (venue.open_time.split(":").map(Number)[0] ?? 0) * 60 + (venue.open_time.split(":").map(Number)[1] ?? 0);
+      let closeMin = (venue.close_time.split(":").map(Number)[0] ?? 0) * 60 + (venue.close_time.split(":").map(Number)[1] ?? 0);
+      // Treat 00:00 closing time as end of day (24:00 = 1440 minutes)
+      if (closeMin === 0) closeMin = 1440;
       const startMin = kickoffH * 60 + kickoffM;
       const endMinVal = endH * 60 + endM;
 

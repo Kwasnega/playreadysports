@@ -220,8 +220,10 @@ export function isVenueOpenForMatch(
   const start = isVenueOpen(venue, kickoff);
   if (!start.isOpen) return start;
   const end = new Date(kickoff.getTime() + durationMinutes * 60_000);
-  const openMin = timeToMinutes(venue.open_time);
-  const closeMin = timeToMinutes(venue.close_time);
+  let openMin = timeToMinutes(venue.open_time);
+  let closeMin = timeToMinutes(venue.close_time);
+  // Treat 00:00 closing time as end of day (24:00 = 1440 minutes)
+  if (closeMin === 0) closeMin = 1440;
   const endMin = end.getHours() * 60 + end.getMinutes();
   if (openMin <= closeMin && endMin > closeMin) {
     return { isOpen: false, label: `Closed · match ends after ${formatTimeStr(venue.close_time)}` };

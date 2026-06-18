@@ -557,7 +557,9 @@ const CreateMatch = () => {
             {/* Validation Errors for Date/Time */}
             {selectedVenue?.close_time && (() => {
               const [h, m] = selectedVenue.close_time.split(":").map(Number);
-              const closeMin = (h ?? 0) * 60 + (m ?? 0);
+              let closeMin = (h ?? 0) * 60 + (m ?? 0);
+              // Treat 00:00 closing time as end of day (24:00 = 1440 minutes)
+              if (closeMin === 0) closeMin = 1440;
               const startMin = matchHour * 60 + matchMinute;
               const endMin = startMin + duration;
               if (endMin > closeMin) {
