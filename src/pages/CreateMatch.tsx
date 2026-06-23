@@ -245,8 +245,8 @@ const CreateMatch = () => {
     if (result.success) {
       setCreatedCode(result.match.join_code);
       setCreated(true);
-    } else if (result.field) {
-      setErrors((prev) => ({ ...prev, [result.field!]: result.error }));
+    } else if ("field" in result && result.field) {
+      setErrors((prev) => ({ ...prev, [result.field as string]: result.error }));
     }
   };
 
