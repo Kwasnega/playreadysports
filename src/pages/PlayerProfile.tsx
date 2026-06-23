@@ -111,7 +111,7 @@ const ReportModal = ({
 const PlayerProfile = () => {
   const { username } = useParams<{ username: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, openAuth } = useAuth();
   const { profile, stats, matchHistory, reviews, loading } = useProfile(username);
   const { sendRequest, acceptRequest, unfriend, getFriendshipStatus } = useFriends();
   const [reportOpen, setReportOpen] = useState(false);
@@ -145,13 +145,20 @@ const PlayerProfile = () => {
 
   const handleAddFriend = async () => {
     if (!profile?.id) return;
+    if (!user) {
+      toast.info("You're not logged in. Please log in to send friend requests.");
+      openAuth("signin");
+      return;
+    }
     setFriendLoading(true);
     const result = await sendRequest(profile.id);
     if (!result.error) {
       setFriendStatus("pending_sent");
+    } else {
+      toast.error(result.error);
     }
     setFriendLoading(false);
-  };
+  };"},{
 
   const handleAccept = async () => {
     if (!friendshipId) return;

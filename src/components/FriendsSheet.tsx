@@ -14,7 +14,7 @@ type Props = { trigger: ReactNode };
 type Tab = "friends" | "requests" | "suggested";
 
 export const FriendsSheet = ({ trigger }: Props) => {
-  const { user } = useAuth();
+  const { user, openAuth } = useAuth();
   const { friends, pendingRequests, loading, acceptRequest, rejectRequest, unfriend, refresh } = useFriends();
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("friends");
@@ -113,9 +113,15 @@ export const FriendsSheet = ({ trigger }: Props) => {
 
   const handleSendRequest = async (recipientId: string) => {
     setSendingTo(recipientId);
+    if (!user) {
+      toast.info("You're not logged in. Please log in to send friend requests.");
+      openAuth("signin");
+      setSendingTo(null);
+      return;
+    }
     // @ts-ignore
     const { error } = await supabase.from("friendships").insert({
-      requester_id: user!.id,
+      requester_id: user.id,
       recipient_id: recipientId,
       status: "pending",
     });
@@ -126,9 +132,9 @@ export const FriendsSheet = ({ trigger }: Props) => {
       await supabase.from("notifications").insert({
         user_id: recipientId,
         title: "Friend request",
-        body: `${user?.user_metadata?.full_name || "Someone"} wants to be friends`,
+        body: `${user.user_metadata?.full_name || "Someone"} wants to be friends`,
         type: "system",
-        data: { sender_id: user!.id },
+        data: { sender_id: user.id },
       });
       refresh();
     }
