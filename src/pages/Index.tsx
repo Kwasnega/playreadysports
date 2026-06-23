@@ -14,6 +14,7 @@ import { NotificationsBell } from "@/components/NotificationsBell";
 import { FriendsSheet } from "@/components/FriendsSheet";
 import { useHomeMatches, HomeMatch } from "@/hooks/useHomeMatches";
 import { useHomeFeed } from "@/hooks/useHomeFeed";
+import { useSEO } from "@/hooks/useSEO";
 import { useWallet } from "@/hooks/useWallet";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -442,6 +443,16 @@ const Index = () => {
   }).length;
   const friendIds = useMemo(() => new Set(friends.map((f) => f.id)), [friends]);
   const feedItems = transformMatches(matches, userLat, userLng, user?.id, friendIds);
+
+  useSEO({
+    title: "PlayReady Sports | Discover Football Matches in Ghana",
+    description: "Find local pickup football matches, join tournaments, and connect with players near you.",
+    structuredData: {
+      "@type": "WebSite",
+      "name": "PlayReady Sports",
+      "url": "https://joinplayready.com/"
+    }
+  });
 
   return (
     <main className="min-h-screen bg-background pb-20">

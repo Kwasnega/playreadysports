@@ -54,7 +54,7 @@ export default function ReportButton({ reportedUserId, matchId, reportedName, si
     <>
       <button
         onClick={() => setOpen(true)}
-        className={`inline-flex items-center gap-1.5 rounded-lg text-rose-400 hover:bg-rose-500/10 transition-all ${
+        className={`inline-flex items-center gap-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-all ${
           size === "sm" ? "px-2 py-1 text-[11px] font-medium" : "px-3 py-1.5 text-xs font-semibold"
         }`}
       >
@@ -63,27 +63,27 @@ export default function ReportButton({ reportedUserId, matchId, reportedName, si
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setOpen(false)}>
-          <div className="bg-[#0F172A] border border-white/10 rounded-xl p-6 w-full max-w-sm shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-card border border-border rounded-xl p-6 w-full max-w-sm shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center">
-                <AlertTriangle className="w-5 h-5 text-rose-400" />
+              <div className="w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-destructive" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-white">Report {reportedName || "issue"}</h2>
-                <p className="text-xs text-slate-400">Reports are anonymous to other players.</p>
+                <h2 className="text-lg font-bold text-foreground">Report {reportedName || "issue"}</h2>
+                <p className="text-xs text-muted-foreground">Reports are anonymous to other players.</p>
               </div>
             </div>
 
-            <label className="block text-xs text-slate-500 mb-1.5">Reason</label>
+            <label className="block text-xs text-muted-foreground mb-1.5">Reason</label>
             <div className="grid grid-cols-2 gap-2 mb-3">
               {REASONS.map((r) => (
                 <button
                   key={r}
                   onClick={() => setReason(r)}
-                  className={`text-left px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+                  className={`text-left px-3 py-2 rounded-xl text-xs font-medium transition-all border ${
                     reason === r
-                      ? "bg-rose-500/10 text-rose-400 border border-rose-500/20"
-                      : "bg-white/[0.04] text-slate-300 border border-white/[0.06] hover:bg-white/[0.08]"
+                      ? "bg-destructive/10 text-destructive border-destructive/20"
+                      : "bg-background text-muted-foreground border-border hover:bg-secondary"
                   }`}
                 >
                   {r}
@@ -91,26 +91,26 @@ export default function ReportButton({ reportedUserId, matchId, reportedName, si
               ))}
             </div>
 
-            <label className="block text-xs text-slate-500 mb-1.5">Details (optional)</label>
+            <label className="block text-xs text-muted-foreground mb-1.5">Details (optional)</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Describe what happened..."
               rows={3}
-              className="w-full rounded-xl bg-white/[0.04] border border-white/[0.08] p-3 text-sm text-white placeholder:text-slate-600 outline-none focus:border-white/20 transition-all resize-none mb-4"
+              className="w-full rounded-xl bg-background border border-border p-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-foreground transition-all resize-none mb-4"
             />
 
             <div className="flex gap-3">
               <button
                 onClick={() => setOpen(false)}
-                className="flex-1 py-2.5 rounded-xl bg-white/[0.04] text-slate-300 text-sm font-semibold hover:bg-white/[0.08] transition-all"
+                className="flex-1 py-2.5 rounded-xl bg-secondary text-foreground text-sm font-semibold hover:bg-secondary/80 transition-all"
               >
                 Cancel
               </button>
               <button
                 onClick={submit}
                 disabled={submitting}
-                className="flex-1 py-2.5 rounded-xl bg-rose-600 text-white text-sm font-semibold hover:bg-rose-500 transition-all disabled:opacity-50"
+                className="flex-1 py-2.5 rounded-xl bg-destructive text-destructive-foreground text-sm font-semibold hover:bg-destructive/90 transition-all disabled:opacity-50"
               >
                 {submitting ? "Submitting…" : "Submit Report"}
               </button>

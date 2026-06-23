@@ -133,8 +133,8 @@ export function SubmitMatchResult({
     if (disputeRaised) {
       return (
         <div className="rounded-xl border border-border bg-card p-6 text-center space-y-3">
-          <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto">
-            <AlertTriangle className="w-6 h-6 text-amber-400" />
+          <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center mx-auto">
+            <AlertTriangle className="w-6 h-6 text-foreground" />
           </div>
           <h3 className="font-display font-bold text-lg">Dispute Raised</h3>
           <p className="text-sm text-muted-foreground">
@@ -147,7 +147,7 @@ export function SubmitMatchResult({
     if (!disputeWindowOpen) {
       return (
         <div className="rounded-xl border border-border bg-card p-5 text-center space-y-2">
-          <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto" />
+          <CheckCircle2 className="w-8 h-8 text-foreground mx-auto" />
           <p className="text-sm text-muted-foreground">Match result finalised. Dispute window closed.</p>
         </div>
       );
@@ -156,14 +156,14 @@ export function SubmitMatchResult({
     return (
       <div className="rounded-xl border border-border bg-card p-5 space-y-4">
         <div className="flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 text-amber-400" />
+          <AlertTriangle className="w-4 h-4 text-foreground" />
           <h3 className="font-display font-bold text-sm">Challenge Result</h3>
-          <span className="ml-auto text-xs text-slate-500">{hoursRemaining}h remaining</span>
+          <span className="ml-auto text-xs text-muted-foreground">{hoursRemaining}h remaining</span>
         </div>
 
         <p className="text-xs text-muted-foreground">
           If you believe the submitted result is incorrect, you have{" "}
-          <span className="text-amber-400 font-semibold">{DISPUTE_WINDOW_HOURS} hours</span>{" "}
+          <span className="text-foreground font-semibold">{DISPUTE_WINDOW_HOURS} hours</span>{" "}
           from when the result was submitted to raise a dispute.
         </p>
 
@@ -174,13 +174,13 @@ export function SubmitMatchResult({
               onChange={(e) => setDisputeReason(e.target.value)}
               placeholder="Describe what was wrong with the result (e.g. wrong winning team selected, scores were incorrect)…"
               rows={3}
-              className="w-full bg-white/[0.04] text-white placeholder-slate-600 rounded-xl px-4 py-3 text-sm outline-none focus:ring-1 focus:ring-amber-500/40 resize-none"
+              className="w-full bg-background text-foreground placeholder-muted-foreground rounded-xl px-4 py-3 text-sm border border-border outline-none focus:ring-1 focus:ring-foreground/40 resize-none"
             />
             <div className="flex gap-2">
               <button
                 onClick={handleRaiseDispute}
                 disabled={raisingDispute || !disputeReason.trim()}
-                className="flex-1 h-10 rounded-xl bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 font-semibold text-sm flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                className="flex-1 h-10 rounded-xl bg-foreground text-background hover:bg-foreground/90 font-semibold text-sm flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
               >
                 {raisingDispute && <Loader2 className="w-4 h-4 animate-spin" />}
                 Submit Dispute
@@ -196,7 +196,7 @@ export function SubmitMatchResult({
         ) : (
           <button
             onClick={() => setShowDisputeForm(true)}
-            className="w-full h-11 rounded-xl border border-amber-500/20 bg-amber-500/5 text-amber-400 hover:bg-amber-500/10 font-semibold text-sm flex items-center justify-center gap-2 transition-colors"
+            className="w-full h-11 rounded-xl border border-border bg-background text-foreground hover:bg-secondary font-semibold text-sm flex items-center justify-center gap-2 transition-colors"
           >
             <AlertTriangle className="w-4 h-4" />
             Raise a Dispute
@@ -209,8 +209,8 @@ export function SubmitMatchResult({
   if (submitted) {
     return (
       <div className="rounded-xl border border-border bg-card p-6 text-center space-y-3">
-        <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto">
-          <Trophy className="w-6 h-6 text-emerald-500" />
+        <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center mx-auto">
+          <Trophy className="w-6 h-6 text-foreground" />
         </div>
         <h3 className="font-display font-bold text-lg">Result Submitted</h3>
         <p className="text-sm text-muted-foreground">

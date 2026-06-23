@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { getFormattedTime } from "@/lib/matchHelpers";
 import VenueOwnerCalendar from "@/components/venues/VenueOwnerCalendar";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { useSEO } from "@/hooks/useSEO";
 import {
   Dialog,
   DialogContent,
@@ -168,6 +169,12 @@ function VenueOwnerLoginGate({ onSuccess }: { onSuccess: () => void }) {
 
 export default function VenueOwnerDashboard() {
   const { user, signOut, isTurfOwner, loading: authLoading } = useAuth();
+  
+  useSEO({
+    title: "Venue Owner Dashboard | PlayReady Sports",
+    description: "Manage your football pitches, view bookings, track earnings, and withdraw funds on PlayReady Sports."
+  });
+
   const [venues, setVenues] = useState<VenueRow[]>([]);
   const [venueBalance, setVenueBalance] = useState(0);
   const [todayMatches, setTodayMatches] = useState<TodayMatch[]>([]);

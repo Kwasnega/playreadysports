@@ -23,6 +23,7 @@ import { LobbyTeamsTab } from "@/components/lobby/LobbyTeamsTab";
 import { useCountdown, buildPlayerList, buildSpareList } from "@/components/lobby/LobbyShared";
 import { MatchVotingModal, type PublicProfile } from "@/components/matches/MatchVotingModal";
 import { SubmitMatchResult } from "@/components/matches/SubmitMatchResult";
+import { useSEO } from "@/hooks/useSEO";
 
 /* Tier-3 Lobby — wired to Supabase --------------------------------------- */
 
@@ -79,6 +80,21 @@ const Lobby = () => {
   const { acceptRequest, rejectRequest } = useJoinRequests(match?.id);
   const { myReviews, submitReview } = useMatchReviews(match?.id, user?.id);
   const { weather } = useWeather(venue?.lat, venue?.lng, match?.match_date);
+
+  useSEO({
+    title: venue ? `Match at ${venue.name} | PlayReady Sports` : "Match Lobby | PlayReady Sports",
+    description: "Join the match lobby, see the roster, and pay your match entry fee securely.",
+    structuredData: match && venue ? {
+      "@type": "SportsEvent",
+      "name": `Football Match at ${venue.name}`,
+      "startDate": match.match_date,
+      "location": {
+        "@type": "Place",
+        "name": venue.name,
+        "address": venue.area || venue.city || ""
+      }
+    } : undefined
+  });
 
   const [tab, setTab] = useState<"match" | "teams" | "chat">("match");
   const [ending, setEnding] = useState(false);

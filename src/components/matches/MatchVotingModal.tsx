@@ -70,7 +70,7 @@ function StarRating({
             <Star
               className={cn(
                 "w-5 h-5",
-                filled ? "fill-amber-400 text-amber-400" : "text-muted-foreground/40"
+                filled ? "fill-foreground text-foreground" : "text-muted-foreground/40"
               )}
             />
           </button>
@@ -354,8 +354,8 @@ export function MatchVotingModal({
         <DialogContent className="max-w-md rounded-xl p-0 overflow-hidden">
           <DialogTitle className="sr-only">Already voted</DialogTitle>
           <div className="p-8 text-center space-y-4">
-            <div className="w-14 h-14 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto">
-              <CheckCircle className="w-6 h-6 text-emerald-500" />
+            <div className="w-14 h-14 rounded-full bg-secondary flex items-center justify-center mx-auto">
+              <CheckCircle className="w-6 h-6 text-foreground" />
             </div>
             <div>
               <h2 className="font-display font-bold text-lg tracking-tight">Already voted</h2>
@@ -382,8 +382,8 @@ export function MatchVotingModal({
         <DialogContent className="max-w-md rounded-xl p-0 overflow-hidden">
           <DialogTitle className="sr-only">Votes submitted</DialogTitle>
           <div className="p-8 text-center space-y-4">
-            <div className="w-14 h-14 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto">
-              <CheckCircle className="w-6 h-6 text-emerald-500" />
+            <div className="w-14 h-14 rounded-full bg-secondary flex items-center justify-center mx-auto">
+              <CheckCircle className="w-6 h-6 text-foreground" />
             </div>
             <div>
               <h2 className="font-display font-bold text-lg tracking-tight">Votes submitted</h2>
@@ -412,7 +412,7 @@ export function MatchVotingModal({
             <DialogTitle className="font-display font-bold text-xl tracking-tight">
               Match Voting
             </DialogTitle>
-            <div className="flex items-center gap-1.5 text-xs font-medium text-amber-500 bg-amber-500/10 rounded-full px-2.5 py-1">
+            <div className="flex items-center gap-1.5 text-xs font-medium text-foreground bg-secondary rounded-full px-2.5 py-1">
               <Clock className="w-3.5 h-3.5" />
               {fmtTimeLeft}
             </div>
@@ -427,7 +427,7 @@ export function MatchVotingModal({
           <SectionCard
             icon={Crown}
             label="King of the Match"
-            accent="bg-amber-500"
+            accent="bg-foreground"
             vote={king}
             onPick={pickKing}
             onRate={(n) => setKing((prev) => ({ ...prev, rating: n }))}

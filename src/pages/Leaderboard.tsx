@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLeaderboard, type Timeframe } from "@/hooks/useLeaderboard";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useSEO } from "@/hooks/useSEO";
 
 function initials(name: string | null) {
   if (!name) return "?";
@@ -34,6 +35,11 @@ export default function Leaderboard() {
 
   const { players, cities, topVenue, loading, userRank, userEntry, refetch } =
     useLeaderboard(timeframe, city || null);
+
+  useSEO({
+    title: "Player Leaderboard | PlayReady Sports",
+    description: "Check the top-ranked football players on PlayReady Sports in your city."
+  });
 
   // Realtime subscription: refetch leaderboard when new vote results are recorded
   useEffect(() => {
@@ -245,67 +251,71 @@ export default function Leaderboard() {
 
       {/* Share Modal — branded rank card */}
       {shareOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShareOpen(false)}>
-          <div className="bg-card rounded-xl p-6 w-full max-w-sm space-y-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300" onClick={() => setShareOpen(false)}>
+          <div className="bg-card/95 backdrop-blur-xl border border-white/10 dark:border-white/5 rounded-[24px] p-6 w-full max-w-sm space-y-6 shadow-[0_0_40px_rgba(0,0,0,0.15)] animate-in zoom-in-95 slide-in-from-bottom-4 duration-300" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
-              <h2 className="font-display font-bold text-lg">Share your rank</h2>
-              <button onClick={() => setShareOpen(false)} className="p-1 rounded-full hover:bg-secondary">
-                <X className="w-5 h-5" />
+              <h2 className="font-display font-bold text-xl tracking-tight">Share your rank</h2>
+              <button onClick={() => setShareOpen(false)} className="p-2 rounded-full bg-secondary/50 hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground">
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Branded rank card */}
             <div
-              className="rounded-xl p-5 text-center relative overflow-hidden"
+              className="rounded-2xl p-6 text-center relative overflow-hidden shadow-inner group"
               style={{
-                background: "linear-gradient(135deg, hsl(var(--primary) / 0.25), hsl(var(--primary) / 0.05) 60%, hsl(var(--background)))",
-                border: "1px solid hsl(var(--primary) / 0.25)",
+                background: "hsl(var(--card))",
+                border: "1px solid hsl(var(--border) / 0.5)",
               }}
             >
+              <div className="absolute inset-0 bg-gradient-to-tr from-black/5 to-transparent pointer-events-none z-10" />
               {/* PRS wordmark */}
-              <p className="text-[10px] font-bold tracking-[0.25em] uppercase text-muted-foreground mb-3">PlayReady Sports</p>
+              <p className="text-[10px] font-bold tracking-[0.25em] uppercase text-muted-foreground mb-4">PlayReady Sports</p>
 
               {/* Avatar */}
               {userEntry?.avatar_url ? (
-                <img src={userEntry.avatar_url} alt="" className="w-16 h-16 rounded-full object-cover mx-auto border-2 border-primary/40" />
+                <img src={userEntry.avatar_url} alt="" className="w-20 h-20 rounded-full object-cover mx-auto ring-4 ring-background shadow-lg transform transition-transform duration-500 group-hover:scale-105" />
               ) : (
-                <div className="w-16 h-16 rounded-full bg-primary/20 border-2 border-primary/30 flex items-center justify-center text-xl font-bold mx-auto">
+                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-2xl font-bold mx-auto ring-4 ring-background shadow-lg transform transition-transform duration-500 group-hover:scale-105 text-primary">
                   {initials(userEntry?.full_name || userEntry?.username)}
                 </div>
               )}
 
-              <p className="font-display font-bold text-3xl mt-2 text-primary">#{userRank ?? "—"}</p>
-              <p className="font-semibold text-sm mt-0.5">
+              <p className="font-display font-extrabold text-4xl mt-4 text-primary tracking-tighter">#{userRank ?? "—"}</p>
+              <p className="font-bold text-base mt-1">
                 {userEntry?.full_name || userEntry?.username || "Player"}
               </p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                {userEntry?.reputation_score?.toFixed(1) ?? "—"} rep pts
-                {city ? ` · ${city}` : ""}
-                {timeframe !== "all" ? ` · ${TIMEFRAMES.find(t => t.key === timeframe)?.label}` : ""}
-              </p>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-secondary/50 rounded-full mt-2">
+                <span className="text-[11px] font-semibold text-muted-foreground">
+                  {userEntry?.reputation_score?.toFixed(1) ?? "—"} rep pts
+                  {city ? ` · ${city}` : ""}
+                  {timeframe !== "all" ? ` · ${TIMEFRAMES.find(t => t.key === timeframe)?.label}` : ""}
+                </span>
+              </div>
 
-              <div className="mt-3 flex justify-center gap-4 text-[11px] text-muted-foreground">
-                <span><span className="font-bold text-foreground">{userEntry?.total_matches_played ?? 0}</span> matches</span>
-                <span><span className="font-bold text-foreground">{userEntry?.total_wins ?? 0}</span> wins</span>
+              <div className="mt-4 flex justify-center gap-6 text-[12px] text-muted-foreground bg-background/40 rounded-xl py-2 px-4 backdrop-blur-sm border border-white/5">
+                <span className="flex flex-col items-center"><span className="font-bold text-foreground text-sm">{userEntry?.total_matches_played ?? 0}</span> matches</span>
+                <div className="w-px h-8 bg-border/50" />
+                <span className="flex flex-col items-center"><span className="font-bold text-foreground text-sm">{userEntry?.total_wins ?? 0}</span> wins</span>
               </div>
 
               {/* Watermark */}
-              <p className="text-[9px] text-muted-foreground/50 mt-3 tracking-wide">joinplayready.com</p>
+              <p className="text-[9px] text-muted-foreground/40 mt-4 tracking-widest uppercase font-semibold">joinplayready.com</p>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-3">
               <a
                 href={`https://wa.me/?text=${encodeURIComponent(`${shareText} ${window.location.href}`)}`}
                 target="_blank"
                 rel="noreferrer"
                 onClick={() => setShareOpen(false)}
-                className="w-full h-12 rounded-full bg-[#25D366] text-white text-sm font-bold flex items-center justify-center gap-2"
+                className="w-full h-12 rounded-xl bg-foreground text-background text-sm font-bold flex items-center justify-center gap-2.5 shadow-lg shadow-foreground/10 hover:-translate-y-0.5 active:scale-[0.98] transition-all"
               >
-                <Share2 className="w-4 h-4" /> Share on WhatsApp
+                <Share2 className="w-5 h-5" /> Share on WhatsApp
               </a>
               <button
                 onClick={handleShare}
-                className="w-full h-12 rounded-full bg-secondary text-foreground text-sm font-semibold flex items-center justify-center gap-2"
+                className="w-full h-12 rounded-xl bg-secondary text-foreground text-sm font-semibold flex items-center justify-center gap-2 hover:bg-secondary/80 active:scale-[0.98] transition-all"
               >
                 Copy link
               </button>

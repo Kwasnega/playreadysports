@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { getDistanceKm, getFormattedTime, extractFormatNumber, getVenueHours, isVenueOpen, isVenueOpenForMatch } from "@/lib/matchHelpers";
 import { format } from "date-fns";
 import { ShareMatchCard, ShareMatchData } from "@/components/matches/ShareMatchCard";
+import { useSEO } from "@/hooks/useSEO";
 
 /* Tier-3 Create flow — wired to Supabase via Edge Function ----------------
    1. Setup   — type + mode + format
@@ -26,13 +27,6 @@ type Format = "5v5" | "6v6" | "7v7" | "8v8" | "9v9" | "10v10" | "11v11";
 const TWO_TEAM_FORMATS: Format[] = ["5v5", "6v6", "7v7", "8v8", "9v9", "10v10", "11v11"];
 const GALA_FORMATS: Format[] = ["5v5", "7v7"];
 
-const TEAM_COLOR_PRESETS: { a: string; b: string; labelA: string; labelB: string; hexA: string; hexB: string }[] = [
-  { a: "Red", b: "Blue", labelA: "Red", labelB: "Blue", hexA: "#dc2626", hexB: "#2563eb" },
-  { a: "Black", b: "White", labelA: "Black", labelB: "White", hexA: "#1c1917", hexB: "#f5f5f4" },
-  { a: "Green", b: "Yellow", labelA: "Green", labelB: "Yellow", hexA: "#16a34a", hexB: "#eab308" },
-  { a: "Orange", b: "Purple", labelA: "Orange", labelB: "Purple", hexA: "#ea580c", hexB: "#9333ea" },
-  { a: "Navy", b: "Gold", labelA: "Navy", labelB: "Gold", hexA: "#1e3a5f", hexB: "#ca8a04" },
-];
 
 const STEP_LABELS = ["Setup", "Venue", "Details"] as const;
 
@@ -47,6 +41,11 @@ const CreateMatch = () => {
   const { createMatch, creating } = useCreateMatch();
   const { location } = useUserLocation();
   const { venues, loading: venuesLoading } = useVenues(location?.lat, location?.lng);
+
+  useSEO({
+    title: "Host a Match | PlayReady Sports",
+    description: "Create a public or private football match, set entry fees, and invite players instantly."
+  });
 
   const [step, setStep] = useState(0);
   const [created, setCreated] = useState(false);
@@ -75,7 +74,6 @@ const CreateMatch = () => {
   const [maxCore, setMaxCore] = useState<number>(10);
   const [notes, setNotes] = useState("");
   const [teamName, setTeamName] = useState("");
-  const [teamColorIdx, setTeamColorIdx] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const selectedVenue = venues.find((v) => v.id === venueId);
@@ -229,7 +227,6 @@ const CreateMatch = () => {
     dateObj.setHours(matchHour, matchMinute, 0, 0);
     const matchDateIso = dateObj.toISOString();
 
-    const colorPair = TEAM_COLOR_PRESETS[teamColorIdx];
     const result = await createMatch({
       title: title.trim(),
       sportType,
@@ -243,8 +240,6 @@ const CreateMatch = () => {
       maxCore,
       profitAmount: entryFeeEnabled ? profitAmount : 0,
       notes: notes || undefined,
-      teamColorA: type === "public" && mode === "two-team" ? colorPair.a : undefined,
-      teamColorB: type === "public" && mode === "two-team" ? colorPair.b : undefined,
     });
 
     if (result.success) {
@@ -270,7 +265,7 @@ const CreateMatch = () => {
 
         {/* ============ STEP 1 — SETUP ============ */}
         {!created && step === 0 && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 ease-out fill-mode-both">
             <Group title="Privacy">
               <SegmentedTwo
                 a={{ id: "public",  icon: Globe2, label: "Public",  desc: "Open feed · Anyone can join" }}
@@ -293,29 +288,6 @@ const CreateMatch = () => {
               />
             </Group> */}
 
-            {type === "public" && mode === "two-team" && (
-              <Group title="Team Colours" hint="Select the primary team colours">
-                <div className="flex flex-wrap gap-2.5">
-                  {TEAM_COLOR_PRESETS.map((p, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setTeamColorIdx(i)}
-                      className={`flex items-center gap-2 rounded-xl px-3 py-2 text-[10px] font-black tracking-widest uppercase border-2 transition-all ${
-                        teamColorIdx === i
-                          ? "border-foreground bg-foreground text-background shadow-md scale-[1.02]"
-                          : "border-border bg-card hover:border-foreground text-foreground"
-                      }`}
-                    >
-                      <div className="flex -space-x-1">
-                        <span className="w-4 h-4 rounded-full border-2 border-background relative z-10" style={{ background: p.hexA }} />
-                        <span className="w-4 h-4 rounded-full border-2 border-background" style={{ background: p.hexB }} />
-                      </div>
-                      <span>{p.labelA} / {p.labelB}</span>
-                    </button>
-                  ))}
-                </div>
-              </Group>
-            )}
 
             <Group title="Format" hint="Select match format">
               <div className="flex flex-wrap gap-2.5">
@@ -323,10 +295,10 @@ const CreateMatch = () => {
                   <button
                     key={f}
                     onClick={() => setMatchFormat(f)}
-                    className={`rounded-xl px-5 py-2.5 text-xs font-black uppercase tracking-widest transition-all border-2 ${
+                    className={`rounded-xl px-5 py-2.5 text-xs font-black uppercase tracking-widest transition-all duration-300 border-2 ${
                       matchFormat === f 
-                        ? "border-foreground bg-foreground text-background shadow-md scale-[1.02]" 
-                        : "border-border bg-card hover:border-foreground text-foreground"
+                        ? "border-foreground bg-foreground text-background shadow-lg scale-105 ring-4 ring-foreground/20" 
+                        : "border-border bg-card hover:border-foreground hover:scale-105 active:scale-95 text-foreground shadow-sm"
                     }`}
                   >
                     {f}
@@ -339,7 +311,7 @@ const CreateMatch = () => {
 
         {/* ============ STEP 2 — VENUE ============ */}
         {!created && step === 1 && (
-          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500 ease-out fill-mode-both">
             {/* Search */}
             <div className="flex items-center gap-2.5 bg-background border-2 border-border rounded-xl px-4 py-3 focus-within:border-foreground focus-within:ring-1 focus-within:ring-foreground transition-all shadow-sm">
               <Search className="w-5 h-5 text-muted-foreground shrink-0" />
@@ -377,8 +349,8 @@ const CreateMatch = () => {
                     <li key={v.id} className="group">
                       <button
                         onClick={() => setVenueId(v.id)}
-                        className={`w-full flex items-center gap-4 py-4 text-left transition-colors ${
-                          active ? "bg-secondary/50 px-3 -mx-3 rounded-xl border-l-4 border-foreground" : "hover:bg-secondary/30 px-3 -mx-3 rounded-xl border-l-4 border-transparent"
+                        className={`w-full flex items-center gap-4 py-4 text-left transition-all duration-300 ease-out ${
+                          active ? "bg-secondary/50 px-3 -mx-3 rounded-xl border-l-4 border-foreground shadow-sm scale-[1.01]" : "hover:bg-secondary/30 px-3 -mx-3 rounded-xl border-l-4 border-transparent hover:scale-[1.01] active:scale-[0.99]"
                         }`}
                       >
                         {v.image_urls && v.image_urls.length > 0 ? (
@@ -394,8 +366,8 @@ const CreateMatch = () => {
                             {(() => {
                               const { isOpen, label } = isVenueOpen(v);
                               return (
-                                <span className={`shrink-0 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-sm border-2 ${isOpen ? "border-emerald-500 text-emerald-600 bg-emerald-500/10" : "border-foreground text-muted-foreground bg-card"}`}>
-                                  {label}
+                                <span className={`shrink-0 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-sm border-2 ${isOpen ? "border-foreground text-foreground bg-foreground/10" : "border-foreground text-muted-foreground bg-card"}`}>
+                                  {isOpen ? "Open" : "Closed"}
                                 </span>
                               );
                             })()}
@@ -424,7 +396,7 @@ const CreateMatch = () => {
 
                       {/* Expanded venue details when selected */}
                       {active && (
-                        <div className="px-3 pb-5 pt-1 -mx-3 space-y-4 animate-in slide-in-from-top-2 duration-200">
+                        <div className="px-3 pb-5 pt-1 -mx-3 space-y-4 animate-in slide-in-from-top-4 fade-in duration-300 ease-out fill-mode-both overflow-hidden">
                           {/* Image gallery */}
                           {v.image_urls && v.image_urls.length > 0 && (
                             <div className="flex gap-2.5 overflow-x-auto snap-x snap-mandatory scrollbar-hide py-1">
@@ -511,7 +483,7 @@ const CreateMatch = () => {
 
         {/* ============ STEP 3 — DETAILS ============ */}
         {!created && step === 2 && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 ease-out fill-mode-both">
             {/* Title */}
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Match Title</label>
@@ -522,7 +494,7 @@ const CreateMatch = () => {
                 maxLength={60}
                 className="w-full bg-background border-2 border-border rounded-xl px-4 py-3 text-xs font-black uppercase tracking-widest focus:outline-none focus:border-foreground focus:ring-1 focus:ring-foreground transition-all shadow-sm text-foreground placeholder:text-muted-foreground"
               />
-              {errors.title && <p className="text-[11px] text-red-600 font-bold mt-1.5 ml-1">{errors.title}</p>}
+              {errors.title && <p className="text-[11px] text-destructive font-bold mt-1.5 ml-1">{errors.title}</p>}
             </div>
 
             {/* Max players */}
@@ -534,7 +506,7 @@ const CreateMatch = () => {
               max={100}
               help="Total number of core players allowed"
             />
-            {errors.maxCore && <p className="text-[11px] text-red-600 font-bold mt-1 px-1">{errors.maxCore}</p>}
+            {errors.maxCore && <p className="text-[11px] text-destructive font-bold mt-1 px-1">{errors.maxCore}</p>}
 
             {/* Date & Time Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -608,8 +580,8 @@ const CreateMatch = () => {
                 const overrunH = Math.floor(overrun / 60);
                 const overrunM = overrun % 60;
                 return (
-                  <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
-                    <p className="text-[11px] text-red-600 font-bold">
+                  <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-xl">
+                    <p className="text-[11px] text-destructive font-bold">
                       Match ends {overrunH > 0 ? `${overrunH}h ` : ""}{overrunM > 0 ? `${overrunM}m ` : ""}after closing ({selectedVenue.close_time.slice(0, 5)}). Pick an earlier time or shorter duration.
                     </p>
                   </div>
@@ -617,7 +589,7 @@ const CreateMatch = () => {
               }
               return null;
             })()}
-            {errors.matchDate && <p className="text-[11px] text-red-600 font-bold mt-2 ml-1">{errors.matchDate}</p>}
+            {errors.matchDate && <p className="text-[11px] text-destructive font-bold mt-2 ml-1">{errors.matchDate}</p>}
 
             {/* Duration */}
             <div className="space-y-2">
@@ -627,10 +599,10 @@ const CreateMatch = () => {
                   <button
                     key={d}
                     onClick={() => setDuration(d)}
-                    className={`flex-1 rounded-xl py-3 text-xs font-black uppercase tracking-widest transition-all border-2 ${
+                    className={`flex-1 rounded-xl py-3 text-xs font-black uppercase tracking-widest transition-all duration-300 border-2 ${
                       duration === d 
-                        ? "bg-foreground text-background border-foreground shadow-sm" 
-                        : "bg-background text-foreground border-border hover:border-foreground"
+                        ? "bg-foreground text-background border-foreground shadow-md scale-105" 
+                        : "bg-background text-foreground border-border hover:border-foreground hover:scale-105 active:scale-95"
                     }`}
                   >
                     {d} MIN
@@ -682,7 +654,7 @@ const CreateMatch = () => {
               </div>
 
               {entryFeeEnabled && (
-                <div className="pt-2 animate-in fade-in duration-200">
+                <div className="pt-2 animate-in fade-in slide-in-from-top-2 duration-300 ease-out">
                   {basePerPlayer > 0 ? (
                     /* Breakdown card — Invoice Style */
                     <div className="space-y-4 font-mono text-sm">
@@ -727,7 +699,7 @@ const CreateMatch = () => {
                           />
                         </div>
                       </div>
-                      {errors.profitAmount && <p className="text-[11px] text-red-600 font-sans font-bold">{errors.profitAmount}</p>}
+                      {errors.profitAmount && <p className="text-[11px] text-destructive font-sans font-bold">{errors.profitAmount}</p>}
                       
                       <div className="border-t-2 border-dashed border-border pt-3 flex items-center justify-between mt-4">
                         <span className="font-sans font-black uppercase tracking-widest text-foreground text-[10px]">Player Pays</span>
@@ -774,7 +746,7 @@ const CreateMatch = () => {
                       </p>
                     </div>
                   )}
-                  {errors.entryFee && <p className="text-[11px] text-red-600 font-bold mt-2">{errors.entryFee}</p>}
+                  {errors.entryFee && <p className="text-[11px] text-destructive font-bold mt-2">{errors.entryFee}</p>}
                 </div>
               )}
             </div>

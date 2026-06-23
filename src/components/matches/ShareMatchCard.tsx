@@ -128,7 +128,7 @@ export function ShareMatchCard({
       // Spots
       const spotsLeft = data.spotsLeft;
       c.font = "700 13px system-ui, sans-serif";
-      c.fillStyle = spotsLeft <= 2 ? "#fbbf24" : "#94a3b8";
+      c.fillStyle = spotsLeft <= 2 ? "#e2e8f0" : "#94a3b8";
       const sl = spotsLeft <= 0 ? "Full" : `${spotsLeft} spot${spotsLeft === 1 ? "" : "s"} left`;
       c.fillText(sl, cx, y); y += 40;
 
@@ -221,118 +221,139 @@ export function ShareMatchCard({
     <>
       {/* Modal overlay */}
       <div
-        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300"
         onClick={onClose}
       >
-        <div className="bg-card rounded-xl p-6 w-full max-w-sm space-y-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="bg-card/95 backdrop-blur-xl border border-white/10 dark:border-white/5 rounded-[24px] p-6 w-full max-w-sm space-y-6 shadow-[0_0_40px_rgba(0,0,0,0.15)] animate-in zoom-in-95 slide-in-from-bottom-4 duration-300"
+          onClick={(e) => e.stopPropagation()}
+        >
           {/* Header */}
           <div className="flex items-center justify-between">
-            <h2 className="font-display font-bold text-lg">Share match</h2>
-            <button onClick={onClose} className="p-2 rounded-full hover:bg-secondary">
+            <h2 className="font-display font-bold text-xl tracking-tight">Share match</h2>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-full bg-secondary/50 hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+            >
               <X className="w-4 h-4" />
             </button>
           </div>
 
           {/* Preview */}
-          <div className="rounded-xl overflow-hidden border border-border">
+          <div className="relative rounded-2xl overflow-hidden border border-border/50 shadow-inner group">
+            <div className="absolute inset-0 bg-gradient-to-tr from-black/5 to-transparent pointer-events-none z-10" />
             {generating ? (
-              <div className="aspect-[4/5] bg-secondary flex items-center justify-center">
-                <div className="w-6 h-6 border-2 border-foreground/30 border-t-foreground rounded-full animate-spin" />
+              <div className="aspect-[4/5] bg-secondary/30 flex flex-col gap-3 items-center justify-center">
+                <div className="w-8 h-8 border-3 border-primary/20 border-t-primary rounded-full animate-spin" />
+                <span className="text-xs font-semibold text-muted-foreground animate-pulse">Designing card...</span>
               </div>
             ) : blobUrl ? (
-              <img src={blobUrl} alt="Match card" className="w-full h-auto" />
+              <img
+                src={blobUrl}
+                alt="Match card"
+                className="w-full h-auto transform transition-transform duration-700 group-hover:scale-105"
+              />
             ) : (
-              <div className="aspect-[4/5] bg-secondary flex items-center justify-center text-sm text-muted-foreground">
-                Generating…
+              <div className="aspect-[4/5] bg-secondary/30 flex items-center justify-center text-sm text-muted-foreground">
+                Waiting...
               </div>
             )}
           </div>
 
           {/* Actions */}
-          <div className="space-y-2.5">
+          <div className="space-y-3">
             {/* WhatsApp */}
             <a
               href={`https://wa.me/?text=${whatsappText}`}
               target="_blank"
               rel="noreferrer"
-              className="w-full h-12 rounded-full bg-[#25D366] text-white text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.99] transition-transform"
+              className="w-full h-12 rounded-xl bg-foreground text-background text-sm font-bold flex items-center justify-center gap-2.5 shadow-lg shadow-foreground/10 hover:-translate-y-0.5 active:scale-[0.98] transition-all"
             >
               <MessageCircle className="w-5 h-5" />
               Share on WhatsApp
             </a>
 
-            {/* Share image */}
-            <button
-              onClick={shareImage}
-              disabled={generating || !blobUrl}
-              className="w-full h-12 rounded-lg bg-primary text-primary-foreground text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-40 active:scale-[0.99]"
-            >
-              {navigator.canShare ? (
-                <>
-                  <Share2 className="w-4 h-4" /> Share image
-                </>
-              ) : (
-                <>
-                  <Download className="w-4 h-4" /> Download image
-                </>
-              )}
-            </button>
+            <div className="grid grid-cols-2 gap-3">
+              {/* Share image */}
+              <button
+                onClick={shareImage}
+                disabled={generating || !blobUrl}
+                className="h-12 rounded-xl bg-primary text-primary-foreground text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-40 hover:bg-primary-hover hover:shadow-md active:scale-[0.98] transition-all"
+              >
+                {navigator.canShare ? (
+                  <>
+                    <Share2 className="w-4 h-4" /> Share
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4" /> Save
+                  </>
+                )}
+              </button>
 
-            {/* Copy code */}
-            <button
-              onClick={copyCode}
-              className="w-full h-12 rounded-full bg-secondary text-foreground text-sm font-semibold flex items-center justify-center gap-2 active:scale-[0.99]"
-            >
-              {copied ? (
-                <>
-                  <CheckCheck className="w-4 h-4 text-success" /> Copied
-                </>
-              ) : (
-                <>
-                  <Copy className="w-4 h-4" /> Copy code
-                </>
-              )}
-            </button>
+              {/* Copy code */}
+              <button
+                onClick={copyCode}
+                className="h-12 rounded-xl bg-secondary text-foreground text-sm font-semibold flex items-center justify-center gap-2 hover:bg-secondary/80 active:scale-[0.98] transition-all"
+              >
+                {copied ? (
+                  <>
+                    <CheckCheck className="w-4 h-4 text-success" /> Copied
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" /> Copy Code
+                  </>
+                )}
+              </button>
+            </div>
 
             {/* Invite friends toggle */}
             {user && (
-              <div className="pt-2 border-t border-border">
+              <div className="pt-3">
                 <button
                   onClick={() => setShowFriends((s) => !s)}
-                  className="w-full flex items-center justify-between py-2 text-sm font-semibold"
+                  className="w-full flex items-center justify-between p-3 rounded-xl border border-border/50 bg-secondary/20 hover:bg-secondary/40 transition-colors"
                 >
-                  <span className="flex items-center gap-2">
-                    <Users className="w-4 h-4" />
+                  <span className="flex items-center gap-2.5 text-sm font-semibold">
+                    <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                      <Users className="w-3.5 h-3.5" />
+                    </div>
                     Invite friends
                   </span>
-                  <span className="text-xs text-muted-foreground">{friends.length} friends</span>
+                  <span className="text-xs font-medium text-muted-foreground bg-secondary px-2 py-1 rounded-full">
+                    {friends.length}
+                  </span>
                 </button>
 
                 {showFriends && (
-                  <div className="mt-2 max-h-48 overflow-y-auto space-y-1">
+                  <div className="mt-2 max-h-48 overflow-y-auto space-y-1.5 scrollbar-none animate-in slide-in-from-top-2 fade-in duration-200">
                     {friendsLoading ? (
-                      <div className="py-4 flex items-center justify-center">
-                        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                      <div className="py-6 flex flex-col items-center justify-center gap-2">
+                        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground/60" />
+                        <span className="text-xs text-muted-foreground font-medium">Loading friends...</span>
                       </div>
                     ) : friends.length === 0 ? (
-                      <p className="text-xs text-muted-foreground py-2">No friends yet</p>
+                      <p className="text-xs text-center text-muted-foreground py-4 bg-secondary/20 rounded-xl border border-border/50">
+                        No friends yet
+                      </p>
                     ) : (
                       friends.map((f: any) => (
-                        <div key={f.id} className="flex items-center justify-between py-1.5">
-                          <div className="flex items-center gap-2">
+                        <div key={f.id} className="flex items-center justify-between p-2 rounded-xl hover:bg-secondary/30 transition-colors border border-transparent hover:border-border/50">
+                          <div className="flex items-center gap-3">
                             {f.avatar_url ? (
-                              <img src={f.avatar_url} alt="" className="w-7 h-7 rounded-full object-cover" />
+                              <img src={f.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover ring-2 ring-background shadow-sm" />
                             ) : (
-                              <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-[10px] font-bold">
+                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-xs font-bold text-primary ring-2 ring-background shadow-sm">
                                 {(f.full_name?.[0] || f.username?.[0] || "?").toUpperCase()}
                               </div>
                             )}
-                            <span className="text-xs font-medium">{f.full_name || f.username || "Friend"}</span>
+                            <span className="text-sm font-semibold">{f.full_name || f.username || "Friend"}</span>
                           </div>
                           <button
                             onClick={() => sendInvite(f.id)}
                             disabled={sendingTo === f.id}
-                            className="p-1.5 rounded-full bg-primary/8 border border-primary/15 text-primary hover:bg-primary/20 disabled:opacity-50"
+                            className="p-2 rounded-full bg-primary text-primary-foreground hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100 transition-all shadow-sm"
                           >
                             {sendingTo === f.id ? (
                               <Loader2 className="w-3.5 h-3.5 animate-spin" />

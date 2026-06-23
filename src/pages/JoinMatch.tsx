@@ -10,6 +10,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useWallet } from "@/hooks/useWallet";
 import { useBrowseMatches, useBrowseFilters } from "@/hooks/useBrowseMatches";
+import { useSEO } from "@/hooks/useSEO";
 import {
   getFormattedTime,
   getDistanceKm,
@@ -42,6 +43,11 @@ const JoinMatch = () => {
 
   // URL-driven filter state
   const { filters, setMode, setSort, setSearch } = useBrowseFilters();
+
+  useSEO({
+    title: "Find a Match | PlayReady Sports",
+    description: "Browse available pickup football matches and tournaments happening today."
+  });
 
   // Local debounced search input
   const [rawQuery, setRawQuery] = useState(filters.search ?? "");

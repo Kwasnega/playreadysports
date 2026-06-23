@@ -46,13 +46,13 @@ export function useCreateMatch() {
 
   const createMatch = async (payload: CreateMatchPayload): Promise<CreateMatchResult> => {
     setCreating(true);
-    console.log("[createMatch] Payload:", payload);
+
     try {
       const { data, error } = await supabase.functions.invoke("create-match", {
         body: payload,
       });
 
-      console.log("[createMatch] Response:", { data, error });
+
 
       if (error) {
         const friendly = await friendlyFunctionError(error);

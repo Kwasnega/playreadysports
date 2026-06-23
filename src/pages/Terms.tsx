@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import logoLight from "@/assets/playready-logo-light.jpg";
 import logoDark from "@/assets/playready-logo-dark.jpg";
+import { useSEO } from "@/hooks/useSEO";
 
 const Section = ({ n, title, children }: { n: string; title: string; children: React.ReactNode }) => (
   <section className="space-y-3">
@@ -12,8 +13,14 @@ const Section = ({ n, title, children }: { n: string; title: string; children: R
   </section>
 );
 
-const Terms = () => (
-  <main className="min-h-screen bg-background">
+const Terms = () => {
+  useSEO({
+    title: "Terms & Conditions | PlayReady Sports",
+    description: "Read the rules, guidelines, and terms of service for using the PlayReady Sports app."
+  });
+
+  return (
+    <main className="min-h-screen bg-background">
     <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b border-border">
       <div className="max-w-[760px] mx-auto px-5 h-14 flex items-center gap-3">
         <Link to="/" className="p-2 -ml-2 rounded-full hover:bg-secondary" aria-label="Back">
@@ -123,6 +130,7 @@ const Terms = () => (
       </p>
     </article>
   </main>
-);
+  );
+};
 
 export default Terms;
