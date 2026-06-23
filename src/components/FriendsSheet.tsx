@@ -76,7 +76,7 @@ export const FriendsSheet = ({ trigger }: Props) => {
           .eq("status", "active")
           .neq("user_id", user.id)
           .limit(30);
-        const coIds = [...new Set((coPlayers ?? []).map((p: any) => p.user_id))]
+        const coIds = [...new Set<string>((coPlayers ?? []).map((p: any) => p.user_id as string))]
           .filter((id) => !friendIds.has(id) && !pendingIds.has(id));
         if (coIds.length > 0) {
           const { data: coProfiles } = await (supabase as any)
