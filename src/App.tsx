@@ -26,6 +26,7 @@ const PlayerProfile = lazy(() => import("./pages/PlayerProfile.tsx"));
 const EditProfile = lazy(() => import("./pages/EditProfile.tsx"));
 const WalletPage = lazy(() => import("./pages/Wallet.tsx"));
 const VenueOwnerDashboard = lazy(() => import("./pages/VenueOwnerDashboard.tsx"));
+const TurfOwnerDashboard = lazy(() => import("./pages/TurfOwnerDashboard.tsx"));
 const MyMatches = lazy(() => import("./pages/MyMatches.tsx"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard.tsx"));
 const AdminLayout = lazy(() => import("@/components/admin/AdminLayout"));
@@ -43,6 +44,7 @@ const AdminSettings = lazy(() => import("@/pages/admin/AdminSettings"));
 const AdminCreateOwner = lazy(() => import("@/pages/admin/AdminCreateOwner"));
 const AdminVenueDetail = lazy(() => import("@/pages/admin/AdminVenueDetail"));
 const AdminDisputes = lazy(() => import("@/pages/admin/AdminDisputes"));
+const AdminEmail = lazy(() => import("@/pages/admin/AdminEmail"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -119,7 +121,8 @@ function AppRoutes() {
       <Route path="/my-matches" element={<ProtectedRoute><MyMatches /></ProtectedRoute>} />
       <Route path="/venue/earnings" element={<VenueOwnerDashboard />} />
       <Route path="/venue/dashboard" element={<VenueOwnerDashboard />} />
-      <Route path="/turf/owner" element={<Navigate to="/venue/dashboard" replace />} />
+      <Route path="/turf-owner" element={<TurfOwnerDashboard />} />
+      <Route path="/turf/owner" element={<Navigate to="/turf-owner" replace />} />
       {/* HIDDEN — Leaderboard: re-enable when feature is released */}
       {/* <Route path="/leaderboard" element={<Leaderboard />} /> */}
       {/* Admin dashboard */}
@@ -138,6 +141,7 @@ function AppRoutes() {
         <Route path="settings" element={<AdminSettings />} />
         <Route path="owners" element={<AdminCreateOwner />} />
         <Route path="disputes" element={<AdminDisputes />} />
+        <Route path="email" element={<AdminEmail />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>

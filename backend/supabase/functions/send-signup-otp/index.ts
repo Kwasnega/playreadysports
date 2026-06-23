@@ -1,4 +1,4 @@
-import { createClient } from "jsr:@supabase/supabase-js@2";
+﻿import { createClient } from "jsr:@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { checkRateLimit } from "../_shared/rateLimiter.ts";
 import { sendBrandedEmail, signupOtpEmail } from "../_shared/brandedEmail.ts";
@@ -98,3 +98,4 @@ Deno.serve(async (req) => {
     return json({ error: "Something went wrong. Please try again." }, 500, requestOrigin);
   }
 });
+

@@ -33,44 +33,66 @@ export default function AdminRevenue() {
       start.setDate(start.getDate() - RANGE_DAYS[range]);
       const startStr = start.toISOString();
 
-      const [{ data: revData, error: revErr }, { data: refundData, error: refundErr }] = await Promise.all([
+      // Query paid match activity + refund transactions. Revenue should show as soon
+      // as players pay, not only after the organizer completes the match.
+      const [{ data: matches, error: matchErr }, { data: txData, error: txErr }] = await Promise.all([
         (supabase as any)
-          .from("platform_revenue")
-          .select("amount, created_at")
+          .from("matches")
+          .select("id, entry_fee, core_paid_count, match_date, status, created_at")
           .gte("created_at", startStr),
         (supabase as any)
           .from("wallet_transactions")
-          .select("amount, created_at")
-          .eq("type", "refund")
-          .eq("status", "completed")
+          .select("amount, type, status, created_at, match_id")
+          .in("type", ["spend", "entry_fee", "refund"])
           .gte("created_at", startStr),
       ]);
 
-      if (revErr) throw revErr;
-      if (refundErr) throw refundErr;
+      if (matchErr) throw matchErr;
+      if (txErr) throw txErr;
+
+      // Get commission rate from admin settings
+      const { data: settingsData } = await (supabase as any)
+        .from("admin_auto_settings")
+        .select("commission_rate_percent")
+        .single();
+      const commissionPercent = settingsData?.commission_rate_percent ?? 5; // Default 5%
+      const commissionRate = commissionPercent / 100;
 
       const map: Record<string, DayRevenue> = {};
 
-      (revData ?? []).forEach((r: any) => {
-        const d = r.created_at.slice(0, 10);
-        if (!map[d]) map[d] = { date: d, gross: 0, refunds: 0, fees: 0, net: 0 };
-        map[d].fees += Number(r.amount) || 0;
-      });
-
-      (refundData ?? []).forEach((t: any) => {
+      // Process transactions - prefer actual wallet movement when present
+      const transactionGrossDays = new Set<string>();
+      (txData ?? []).forEach((t: any) => {
         const d = t.created_at.slice(0, 10);
         if (!map[d]) map[d] = { date: d, gross: 0, refunds: 0, fees: 0, net: 0 };
-        map[d].refunds += Math.abs(Number(t.amount) || 0);
+        if (t.type === "refund") {
+          map[d].refunds += Math.abs(Number(t.amount) || 0);
+        } else if (["completed", "paid", null, undefined].includes(t.status)) {
+          const gross = Math.abs(Number(t.amount) || 0);
+          map[d].gross += gross;
+          map[d].fees += gross * commissionRate;
+          transactionGrossDays.add(d);
+        }
       });
 
+      // Process matches only as fallback for days without transaction rows.
+      (matches ?? []).forEach((m: any) => {
+        const d = new Date(m.created_at ?? m.match_date).toISOString().slice(0, 10);
+        if (transactionGrossDays.has(d)) return;
+        if (!map[d]) map[d] = { date: d, gross: 0, refunds: 0, fees: 0, net: 0 };
+        const grossRevenue = (Number(m.entry_fee) || 0) * (Number(m.core_paid_count) || 0);
+        map[d].gross += grossRevenue;
+        map[d].fees += grossRevenue * commissionRate;
+      });
+
+      // Build result with all dates in range
       const result: DayRevenue[] = [];
       for (let i = RANGE_DAYS[range] - 1; i >= 0; i--) {
         const d = new Date();
         d.setDate(d.getDate() - i);
         const s = d.toISOString().slice(0, 10);
         const entry = map[s] || { date: s, gross: 0, refunds: 0, fees: 0, net: 0 };
-        entry.gross = entry.fees;
-        entry.net = entry.fees;
+        entry.net = entry.fees - entry.refunds; // Net = fees minus refunds
         result.push(entry);
       }
       setDays(result);
@@ -86,16 +108,17 @@ export default function AdminRevenue() {
   }, [range]);
 
   const totals = useMemo(() => {
+    const gross = days.reduce((s, d) => s + d.gross, 0);
     const fees = days.reduce((s, d) => s + d.fees, 0);
     const refunds = days.reduce((s, d) => s + d.refunds, 0);
-    const net = fees;
+    const net = fees - refunds;
     const avg = days.length ? net / days.length : 0;
     const prev = days.slice(0, Math.floor(days.length / 2));
     const curr = days.slice(Math.floor(days.length / 2));
     const prevNet = prev.reduce((s, d) => s + d.net, 0);
     const currNet = curr.reduce((s, d) => s + d.net, 0);
     const trend = prevNet === 0 ? 0 : ((currNet - prevNet) / prevNet) * 100;
-    return { gross: fees, refunds, net, avg, trend, fees };
+    return { gross, refunds, net, avg, trend, fees };
   }, [days]);
 
   return (

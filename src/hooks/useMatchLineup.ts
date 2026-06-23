@@ -46,12 +46,13 @@ export function useMatchLineup(matchId: string | null, teamSide: TeamSide | null
         .select(
           `id, match_id, team_side, player_id, assigned_position, jersey_number, 
            formation, x_position, y_position, is_starting_player, updated_at, updated_by,
-           player:profiles(id, full_name, avatar_url)`
+           player:profiles!match_lineups_player_id_fkey(id, full_name, avatar_url)`
         )
         .eq("match_id", matchId)
         .eq("team_side", teamSide)
         .order("is_starting_player", { ascending: false })
-        .order("created_at");
+        .order("jersey_number", { ascending: true, nullsFirst: false })
+        .order("updated_at", { ascending: true });
 
       if (err) throw err;
 
@@ -248,6 +249,53 @@ export function useMatchLineup(matchId: string | null, teamSide: TeamSide | null
     [matchId, teamSide, user, formations, updatePlayerPosition, fetchLineups]
   );
 
+  const initializeLineup = useCallback(
+    async (
+      players: Array<{ user_id: string; full_name?: string | null; avatar_url?: string | null }>,
+      maxPlayers: number
+    ): Promise<boolean> => {
+      if (!matchId || !teamSide || !user || players.length === 0) return false;
+
+      try {
+        const positions = getDefaultSmallSidedPositions(Math.min(players.length, maxPlayers));
+        const rows = players.map((player, idx) => {
+          const pos = positions[idx] ?? { position: "CM" as FootballPosition, x: 50, y: 50 };
+          return {
+            player_id: player.user_id,
+            assigned_position: pos.position,
+            x_position: pos.x,
+            y_position: pos.y,
+            formation: `${positions.length}-side`,
+            is_starting_player: idx < positions.length,
+            jersey_number: idx + 1,
+            updated_by: user.id,
+          };
+        });
+
+        const { data: initResult, error: insertErr } = await (supabase as any).rpc("initialize_match_lineup", {
+          p_match_id: matchId,
+          p_team_side: teamSide,
+          p_rows: rows,
+        });
+
+        if (insertErr) throw insertErr;
+        if (initResult && initResult.success === false) {
+          throw new Error(initResult.error || "Could not open lineup");
+        }
+
+        await fetchLineups();
+        toast.success("Lineup opened for editing");
+        return true;
+      } catch (err: any) {
+        const msg = err.message || "Failed to open lineup";
+        setError(msg);
+        toast.error(msg);
+        return false;
+      }
+    },
+    [fetchLineups, matchId, teamSide, user]
+  );
+
   // Get starting vs bench players
   const starters = lineups.filter((l) => l.is_starting_player);
   const subs = lineups.filter((l) => !l.is_starting_player);
@@ -269,6 +317,63 @@ export function useMatchLineup(matchId: string | null, teamSide: TeamSide | null
     fetchFormations,
     updatePlayerPosition,
     changeFormation,
+    initializeLineup,
     setCurrentFormation,
   };
+}
+
+function getDefaultSmallSidedPositions(count: number): Array<{ position: FootballPosition; x: number; y: number }> {
+  const layouts: Record<number, Array<{ position: FootballPosition; x: number; y: number }>> = {
+    2: [
+      { position: "GK", x: 50, y: 90 },
+      { position: "ST", x: 50, y: 20 },
+    ],
+    3: [
+      { position: "GK", x: 50, y: 90 },
+      { position: "CM", x: 35, y: 50 },
+      { position: "ST", x: 65, y: 20 },
+    ],
+    4: [
+      { position: "GK", x: 50, y: 90 },
+      { position: "CB", x: 50, y: 65 },
+      { position: "LM", x: 30, y: 40 },
+      { position: "RM", x: 70, y: 40 },
+    ],
+    5: [
+      { position: "GK", x: 50, y: 90 },
+      { position: "CB", x: 50, y: 68 },
+      { position: "LM", x: 25, y: 45 },
+      { position: "RM", x: 75, y: 45 },
+      { position: "ST", x: 50, y: 18 },
+    ],
+    6: [
+      { position: "GK", x: 50, y: 90 },
+      { position: "LB", x: 28, y: 68 },
+      { position: "RB", x: 72, y: 68 },
+      { position: "CM", x: 50, y: 48 },
+      { position: "LW", x: 30, y: 24 },
+      { position: "RW", x: 70, y: 24 },
+    ],
+    7: [
+      { position: "GK", x: 50, y: 90 },
+      { position: "LB", x: 25, y: 70 },
+      { position: "CB", x: 50, y: 72 },
+      { position: "RB", x: 75, y: 70 },
+      { position: "CM", x: 50, y: 48 },
+      { position: "LW", x: 32, y: 22 },
+      { position: "RW", x: 68, y: 22 },
+    ],
+    8: [
+      { position: "GK", x: 50, y: 90 },
+      { position: "LB", x: 24, y: 72 },
+      { position: "CB", x: 50, y: 74 },
+      { position: "RB", x: 76, y: 72 },
+      { position: "CM", x: 38, y: 48 },
+      { position: "CM", x: 62, y: 48 },
+      { position: "LW", x: 34, y: 22 },
+      { position: "RW", x: 66, y: 22 },
+    ],
+  };
+
+  return layouts[Math.max(2, Math.min(8, count))] ?? layouts[5];
 }

@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
     const { data: matches } = await svc
       .from("matches")
       .select(`
-        id, join_code, match_date, reminder_sent_flags,
+        id, join_code, match_date, reminder_sent_flags, organizer_id, max_core_players,
         venue:venues(name)
       `)
       .eq("status", "upcoming")
@@ -83,6 +83,40 @@ Deno.serve(async (req) => {
         minute: "2-digit",
         hour12: true,
       });
+
+      // ── Low Registration Alert: 10 minutes before kickoff ──
+      const lowRegAlertKey = "low_registration_alert";
+      const tenMinBeforeKickoff = kickoff - (10 * 60 * 1000);
+      if (!flags[lowRegAlertKey] && now >= tenMinBeforeKickoff && now < tenMinBeforeKickoff + (15 * 60 * 1000)) {
+        const { data: participants } = await svc
+          .from("match_participants")
+          .select("id")
+          .eq("match_id", match.id)
+          .eq("status", "checked_in");
+
+        const checkedInCount = (participants ?? []).length;
+        const maxCore = Number(match.max_core_players) || 10;
+        const minRequired = Math.ceil(maxCore * 0.5);
+
+        // Only notify if below threshold
+        if (checkedInCount < minRequired) {
+          await svc.from("notifications").insert({
+            user_id: match.organizer_id,
+            title: "Low Registration Alert",
+            body: `Only ${checkedInCount}/${maxCore} players checked in for match ${match.join_code}. Consider cancelling to avoid issues.`,
+            type: "match_low_registration" as any,
+            data: {
+              original_type: "match_low_registration",
+              match_id: match.id,
+              join_code: match.join_code,
+            },
+            is_read: false,
+          });
+
+          flags[lowRegAlertKey] = true;
+          totalSent++;
+        }
+      }
 
       for (const window of REMINDER_WINDOWS) {
         if (flags[window.key]) continue; // Already sent
@@ -120,6 +154,12 @@ Deno.serve(async (req) => {
           console.log(`match-reminders: sent ${window.key} for ${match.join_code} to ${notifs.length} players`);
         }
       }
+
+      // Save any updated flags (low registration alert)
+      await svc
+        .from("matches")
+        .update({ reminder_sent_flags: flags })
+        .eq("id", match.id);
     }
 
     return new Response(

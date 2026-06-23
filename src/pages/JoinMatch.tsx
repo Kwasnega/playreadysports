@@ -263,6 +263,7 @@ const FeedRow = ({ m, user, onTap }: { m: BrowseMatch; user: any; onTap: () => v
   const organizerRating = m.organizer?.reputation_score ?? 5.0;
   const isConfirmed = m.core_paid_count >= max;
   const isOrganizer = user?.id && m.organizer_id === user.id;
+  const isJoined = user?.id && m.participants?.some((p: any) => p.user_id === user.id && p.status === "active");
 
   return (
     <li>
@@ -328,7 +329,11 @@ const FeedRow = ({ m, user, onTap }: { m: BrowseMatch; user: any; onTap: () => v
               {m.match_mode === "gala" ? <Repeat className="w-2.5 h-2.5" /> : <Users className="w-2.5 h-2.5" />}
               {m.match_mode === "gala" ? `Gala ${m.format}` : m.format}
             </span>
-            {isConfirmed ? (
+            {isJoined ? (
+              <span className="inline-flex items-center gap-1 rounded-sm border-2 border-foreground bg-foreground text-background px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest">
+                <Check className="w-2.5 h-2.5" /> Joined
+              </span>
+            ) : isConfirmed ? (
               <span className="inline-flex items-center gap-1 rounded-sm border-2 border-foreground bg-foreground text-background px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest">
                 <Check className="w-2.5 h-2.5" /> Confirmed
               </span>
@@ -357,11 +362,14 @@ const JoinSheet = ({
 }) => {
   const [picked, setPicked] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showSubstituteConfirm, setShowSubstituteConfirm] = useState(false);
 
   // Reset team selection whenever a different match opens
   useEffect(() => { setPicked(null); }, [match?.id]);
 
   const open = !!match;
+  const isJoined = user?.id && match?.participants?.some((p: any) => p.user_id === user.id && p.status === "active");
+  const isFull = match?.match_type !== "private" && match?.match_mode !== "gala" && getActiveCoreCount(match) >= (match?.max_core_players ?? match?.players_per_side ?? 10);
 
   const handlePick = (teamName: string) => {
     if (!user) {
@@ -377,7 +385,16 @@ const JoinSheet = ({
       openAuth("signin");
       return;
     }
-    onJoin(picked);
+    if (isFull) {
+      setShowSubstituteConfirm(true);
+    } else {
+      onJoin(picked);
+    }
+  };
+
+  const confirmSubstituteJoin = () => {
+    setShowSubstituteConfirm(false);
+    onJoin("__substitute__");
   };
 
   return (
@@ -413,8 +430,19 @@ const JoinSheet = ({
             </SheetHeader>
 
             <section className="px-5 pt-5 pb-4">
-              {/* Public matches: auto-assign team server-side */}
-              {match.match_type !== "private" && match.match_mode !== "gala" ? (
+              {/* Check if match is full - offer substitute option */}
+              {match.match_type !== "private" && match.match_mode !== "gala" && getActiveCoreCount(match) >= (match.max_core_players ?? match.players_per_side ?? 10) ? (
+                <div className="text-center py-4 bg-amber-500/10 border-2 border-amber-500/20 rounded-xl">
+                  <p className="text-sm font-bold text-amber-600 dark:text-amber-400 mb-1">Match is full</p>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    You can join as a substitute and take a spot if someone leaves
+                  </p>
+                  <div className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400">
+                    <Users className="w-3.5 h-3.5" />
+                    Substitute available
+                  </div>
+                </div>
+              ) : match.match_type !== "private" && match.match_mode !== "gala" ? (
                 <div className="text-center py-4">
                   <p className="text-sm text-muted-foreground mb-1">Team will be auto-assigned for balance</p>
                   <p className="text-xs text-muted-foreground">
@@ -485,6 +513,14 @@ const JoinSheet = ({
                   Manage match
                   <ArrowRight className="w-4 h-4" />
                 </button>
+              ) : isJoined ? (
+                <button
+                  onClick={() => { onJoin("__auto__"); }}
+                  className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-lg bg-secondary border-2 border-border text-foreground text-sm font-semibold active:scale-[0.99]"
+                >
+                  View match
+                  <ArrowRight className="w-4 h-4" />
+                </button>
               ) : (
                 <button
                   onClick={() => {
@@ -492,9 +528,19 @@ const JoinSheet = ({
                     setBusy(true);
                     if (match.match_mode === "gala" || match.match_type === "private") {
                       if (!picked) { setBusy(false); return; }
-                      onJoin(picked === "__bring__" ? "__bring__" : picked);
+                      if (isFull) {
+                        setShowSubstituteConfirm(true);
+                        setBusy(false);
+                      } else {
+                        onJoin(picked === "__bring__" ? "__bring__" : picked);
+                      }
                     } else {
-                      onJoin("__auto__");
+                      if (isFull) {
+                        setShowSubstituteConfirm(true);
+                        setBusy(false);
+                      } else {
+                        onJoin("__auto__");
+                      }
                     }
                     setBusy(false);
                   }}
@@ -502,10 +548,44 @@ const JoinSheet = ({
                   className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-lg bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40 active:scale-[0.99]"
                 >
                   {match.match_type !== "private" && match.match_mode !== "gala"
-                    ? "Join match"
+                    ? isFull ? "Join as substitute" : "Join match"
                     : picked ? `Join as ${picked === "__bring__" ? "captain" : picked}` : "Pick a team to join"}
                   <ArrowRight className="w-4 h-4" />
                 </button>
+              )}
+
+              {/* Substitute confirmation modal */}
+              {showSubstituteConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setShowSubstituteConfirm(false)}>
+                  <div className="bg-background border-2 border-border rounded-xl p-6 w-full max-w-sm shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                        <Users className="w-5 h-5 text-amber-500" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-foreground">Join as substitute?</h3>
+                        <p className="text-xs text-muted-foreground">You'll be charged only if you get a spot</p>
+                      </div>
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      This match is currently full. Join as a substitute and you'll be notified if a spot opens up. You'll only be charged ₵{Number(match.entry_fee)} if you get added to the match.
+                    </p>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setShowSubstituteConfirm(false)}
+                        className="flex-1 py-2.5 rounded-xl bg-secondary text-foreground text-sm font-semibold hover:bg-secondary/80 transition-all"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={confirmSubstituteJoin}
+                        className="flex-1 py-2.5 rounded-xl bg-foreground text-background text-sm font-semibold hover:bg-foreground/90 transition-all"
+                      >
+                        Join as substitute
+                      </button>
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
           </>

@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { ChevronLeft, Lock, Edit2 } from "lucide-react";
+import { useMemo, useState, useEffect } from "react";
+import { ChevronLeft, Lock, Edit2, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useMatchLineup } from "@/hooks/useMatchLineup";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,6 +15,13 @@ interface MatchLineupProps {
   teamName: string;
   maxPlayers: number;
   canEdit: boolean;
+  matchDate?: string; // ISO string for match time
+  matchStatus?: string; // Match status to check if ended
+  players?: Array<{
+    user_id: string;
+    full_name: string | null;
+    avatar_url: string | null;
+  }>;
 }
 
 export default function MatchLineup({
@@ -23,6 +30,9 @@ export default function MatchLineup({
   teamName,
   maxPlayers,
   canEdit,
+  matchDate,
+  matchStatus,
+  players = [],
 }: MatchLineupProps) {
   const nav = useNavigate();
   const { user } = useAuth();
@@ -30,8 +40,29 @@ export default function MatchLineup({
     null
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [minutesUntilKickoff, setMinutesUntilKickoff] = useState<number | null>(null);
+
+  // ── Lineup lock: disable editing if < 10 minutes until kickoff ──
+  useEffect(() => {
+    if (!matchDate) return;
+    
+    const updateCountdown = () => {
+      const now = new Date().getTime();
+      const kickoff = new Date(matchDate).getTime();
+      const minutesLeft = Math.ceil((kickoff - now) / (1000 * 60));
+      setMinutesUntilKickoff(minutesLeft);
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 10000); // Update every 10 seconds
+    return () => clearInterval(interval);
+  }, [matchDate]);
+
+  const isLineupLocked = minutesUntilKickoff !== null && minutesUntilKickoff < 10;
+  const isMatchEnded = matchStatus === 'ended' || matchStatus === 'completed' || matchStatus === 'finished';
 
   const {
+    lineups,
     starters,
     subs,
     currentFormation,
@@ -40,7 +71,13 @@ export default function MatchLineup({
     error,
     changeFormation,
     updatePlayerPosition,
+    initializeLineup,
   } = useMatchLineup(matchId, teamSide);
+
+  useEffect(() => {
+    if (!canEdit || loading || lineups.length > 0 || players.length === 0) return;
+    initializeLineup(players, maxPlayers);
+  }, [canEdit, initializeLineup, lineups.length, loading, maxPlayers, players]);
 
   const formationOptions = useMemo(() => {
     return formations
@@ -57,13 +94,14 @@ export default function MatchLineup({
   };
 
   const handlePlayerClick = (player: LineupWithPlayer) => {
-    if (!canEdit) return;
+    if (!canEdit || isLineupLocked || isMatchEnded) return;
     setSelectedPlayer(player);
     setIsModalOpen(true);
   };
 
   const handlePlayerDrop = async (playerId: string, x: number, y: number) => {
-    const player = starters.find((p) => p.id === playerId) || subs.find((p) => p.id === playerId);
+    if (isLineupLocked) return;
+    const player = starters.find((p) => p.player_id === playerId) || subs.find((p) => p.player_id === playerId);
     if (!player) return;
 
     // Update position while maintaining assigned position
@@ -158,20 +196,34 @@ export default function MatchLineup({
           <div className="bg-amber-500/10 border-2 border-amber-500/30 rounded-xl p-4 flex items-start gap-3">
             <Lock className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
             <p className="text-sm font-bold text-amber-500/80 uppercase tracking-widest">
-              You can view your team's lineup but cannot edit positions. Only the match
-              organizer or players can make changes.
+              Only the match organizer can edit lineups. Discuss lineup changes in the chat section.
             </p>
           </div>
         )}
 
         {/* Edit Mode Notice */}
-        {canEdit && (
+        {canEdit && !isLineupLocked && !isMatchEnded && (
           <div className="bg-blue-500/10 border-2 border-blue-500/30 rounded-xl p-4 flex items-start gap-3">
             <Edit2 className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
             <p className="text-sm font-bold text-blue-500/80 uppercase tracking-widest">
               Click on any jersey to change player positions. Positions will update in real-time
               for all team members.
             </p>
+          </div>
+        )}
+
+        {/* Lineup Locked Notice */}
+        {isLineupLocked && !isMatchEnded && (
+          <div className="bg-red-500/10 border-2 border-red-500/30 rounded-xl p-4 flex items-start gap-3">
+            <Lock className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-bold text-red-600 dark:text-red-400 uppercase tracking-widest mb-1">
+                Lineup Locked
+              </p>
+              <p className="text-xs text-red-600/80 dark:text-red-400/80">
+                The lineup is locked {minutesUntilKickoff && minutesUntilKickoff <= 0 ? "now" : `${minutesUntilKickoff} minutes`} before kickoff. No more position changes allowed.
+              </p>
+            </div>
           </div>
         )}
 
@@ -195,7 +247,7 @@ export default function MatchLineup({
               teamSide={teamSide}
               onPlayerClick={handlePlayerClick}
               onPlayerDrop={handlePlayerDrop}
-              canEdit={canEdit}
+              canEdit={canEdit && !isMatchEnded && !isLineupLocked}
             />
           </section>
         )}

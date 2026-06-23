@@ -66,6 +66,10 @@ export async function moolrePost<T>(
   });
 
   const data = await res.json().catch(() => null);
+  
+  // Log all responses for debugging
+  console.log(`[moolrePost] ${path} - status: ${res.status}, response:`, JSON.stringify(data));
+  
   if (!res.ok) {
     throw new Error((data as any)?.message || `Moolre request failed with ${res.status}`);
   }
@@ -73,25 +77,47 @@ export async function moolrePost<T>(
   return data as T;
 }
 
-export async function verifyMoolrePayment(reference: string): Promise<MoolrePaymentStatus> {
+export async function verifyMoolrePayment(reference: string, email?: string): Promise<MoolrePaymentStatus> {
   const config = getMoolreConfig();
-  const data = await moolrePost<any>("/open/transact/status", {
-    type: 1,
-    externalref: reference,
-    accountnumber: config.accountNumber,
-  });
+  
+  try {
+    const data = await moolrePost<any>("/open/transact/status", {
+      type: 1,
+      idtype: 2, // 2 = email
+      id: email || "player@joinplayready.com",
+      externalref: reference,
+      accountnumber: config.accountNumber,
+    });
 
-  const tx = data?.data || {};
-  const txStatus = Number(tx.txstatus ?? 0);
-  const amount = Number(tx.amount ?? tx.value ?? 0);
+    const tx = data?.data || {};
+    const txStatus = Number(tx.txstatus ?? 0);
+    const amount = Number(tx.amount ?? tx.value ?? 0);
 
-  return {
-    success: Number(data?.status) === 1 && txStatus === 1,
-    pending: Number(data?.status) === 1 && txStatus === 0,
-    amount,
-    reference: String(tx.externalref || reference),
-    transactionId: tx.transactionid ? String(tx.transactionid) : undefined,
-    raw: data,
-    message: Array.isArray(data?.message) ? data.message.join(" ") : data?.message,
-  };
+    return {
+      success: Number(data?.status) === 1 && txStatus === 1,
+      pending: Number(data?.status) === 1 && txStatus === 0,
+      amount,
+      reference: String(tx.externalref || reference),
+      transactionId: tx.transactionid ? String(tx.transactionid) : undefined,
+      raw: data,
+      message: Array.isArray(data?.message) ? data.message.join(" ") : data?.message,
+    };
+  } catch (err: any) {
+    console.error("[verifyMoolrePayment] Error:", err.message);
+    
+    // Return a pending status if the transaction is not yet found on Moolre's side
+    // This can happen if the webhook hasn't processed yet
+    if (err.message?.includes("not found") || err.message?.includes("404")) {
+      return {
+        success: false,
+        pending: true, // Treat as still pending so frontend can retry
+        amount: 0,
+        reference,
+        message: "Payment verification pending - please wait for confirmation",
+      };
+    }
+    
+    // Re-throw other errors
+    throw err;
+  }
 }

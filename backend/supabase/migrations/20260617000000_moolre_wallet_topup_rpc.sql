@@ -33,10 +33,12 @@ BEGIN
     END IF;
 
     IF v_tx.status = 'completed' THEN
+      -- Already processed, return success with current balance
+      SELECT balance INTO v_current FROM public.wallet_balances WHERE user_id = p_user_id;
       RETURN jsonb_build_object(
         'success', true,
         'already_processed', true,
-        'new_balance', v_tx.balance_after
+        'new_balance', COALESCE(v_current, 0)
       );
     END IF;
   END IF;
@@ -50,31 +52,30 @@ BEGIN
   IF NOT FOUND THEN
     INSERT INTO public.wallet_balances (user_id, balance)
     VALUES (p_user_id, 0.00)
-    ON CONFLICT (user_id) DO UPDATE SET updated_at = now()
+    ON CONFLICT (user_id) DO NOTHING
     RETURNING balance INTO v_current;
+    
+    -- If still not found after insert, query again
+    SELECT balance INTO v_current FROM public.wallet_balances WHERE user_id = p_user_id;
   END IF;
 
   UPDATE public.wallet_balances
-  SET balance = balance + p_amount,
-      updated_at = now()
+  SET balance = balance + p_amount
   WHERE user_id = p_user_id;
 
   v_new_balance := v_current + p_amount;
 
   IF v_tx.id IS NULL THEN
     INSERT INTO public.wallet_transactions (
-      user_id, amount, type, status, reference, description, balance_after
+      user_id, amount, type, status, reference
     ) VALUES (
-      p_user_id, p_amount, 'deposit', 'completed', p_reference, p_description, v_new_balance
+      p_user_id, p_amount, 'deposit', 'completed', p_reference
     );
   ELSE
     UPDATE public.wallet_transactions
     SET amount = p_amount,
         type = 'deposit',
-        status = 'completed',
-        description = p_description,
-        balance_after = v_new_balance,
-        updated_at = now()
+        status = 'completed'
     WHERE id = v_tx.id;
   END IF;
 

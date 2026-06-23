@@ -53,6 +53,17 @@ function deg2rad(deg: number): number {
   return deg * (Math.PI / 180);
 }
 
+const APP_TIME_ZONE = "Africa/Accra";
+
+function getDateKey(date: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: APP_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
 /** Format a match date into friendly display text
  *  "Tonight · 7:30 PM" / "Sat · 4:00 PM" / "In 2h 15m"
  */
@@ -71,28 +82,20 @@ export function getFormattedTime(matchDate: string): string {
   }
 
   // Today
-  if (isSameDay(date, now)) {
+  if (getDateKey(date) === getDateKey(now)) {
     return `Tonight · ${formatTime(date)}`;
   }
 
   // Tomorrow
   const tomorrow = new Date(now);
   tomorrow.setDate(tomorrow.getDate() + 1);
-  if (isSameDay(date, tomorrow)) {
+  if (getDateKey(date) === getDateKey(tomorrow)) {
     return `Tomorrow · ${formatTime(date)}`;
   }
 
   // Day name
-  const dayName = date.toLocaleDateString("en-US", { weekday: "short" });
+  const dayName = date.toLocaleDateString("en-US", { weekday: "short", timeZone: APP_TIME_ZONE });
   return `${dayName} · ${formatTime(date)}`;
-}
-
-function isSameDay(a: Date, b: Date): boolean {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
 }
 
 function formatTime(date: Date): string {
@@ -100,6 +103,7 @@ function formatTime(date: Date): string {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
+    timeZone: APP_TIME_ZONE,
   });
 }
 

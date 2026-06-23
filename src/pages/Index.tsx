@@ -435,13 +435,15 @@ const Index = () => {
   }, [user]);
 
   const liveCount = matches.filter((m) => {
-    if (m.status !== "live") return false;
+    const isActive = !['ended', 'cancelled', 'archived'].includes(m.intelligent_status || '');
+    if (!isActive) return false;
     const venue = m.venue;
     if (!venue?.lat || !venue?.lng) return false;
     return getDistanceKm(userLat, userLng, venue.lat, venue.lng) <= 20;
   }).length;
   const friendIds = useMemo(() => new Set(friends.map((f) => f.id)), [friends]);
   const feedItems = transformMatches(matches, userLat, userLng, user?.id, friendIds);
+  console.log('Feed items count:', feedItems.length, 'Matches count:', matches.length);
 
   return (
     <main className="min-h-screen bg-background pb-20">

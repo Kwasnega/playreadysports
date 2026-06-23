@@ -23,20 +23,37 @@ const Pitch = memo(function Pitch({
   const teamColor = teamSide === "team_a" ? "white" : "black";
 
   const handleDragOver = (e: React.DragEvent<SVGSVGElement>) => {
-    if (!canEdit) return;
-    e.preventDefault();
-    e.stopPropagation();
+    console.log('=== DRAG OVER ===');
+    console.log('canEdit:', canEdit);
+    console.log('Event target:', e.target);
+    console.log('Current target:', e.currentTarget);
+    
+    if (!canEdit) {
+      console.log('Drag over prevented - canEdit is false');
+      return;
+    }
+    
+    try {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      e.stopPropagation();
 
-    const svg = e.currentTarget;
-    const rect = svg.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
+      const svg = e.currentTarget;
+      const rect = svg.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width) * 100;
+      const y = ((e.clientY - rect.top) / rect.height) * 100;
 
-    // Clamp to pitch boundaries
-    const clampedX = Math.max(0, Math.min(100, x));
-    const clampedY = Math.max(0, Math.min(100, y));
+      // Clamp to pitch boundaries
+      const clampedX = Math.max(0, Math.min(100, x));
+      const clampedY = Math.max(0, Math.min(100, y));
 
-    setDragOverlay({ x: clampedX, y: clampedY });
+      console.log('Drag over at position:', clampedX, clampedY);
+      console.log('SVG rect:', rect);
+      console.log('Client coordinates:', e.clientX, e.clientY);
+      setDragOverlay({ x: clampedX, y: clampedY });
+    } catch (error) {
+      console.error('Error in handleDragOver:', error);
+    }
   };
 
   const handleDragLeave = (e: React.DragEvent<SVGSVGElement>) => {
@@ -46,30 +63,58 @@ const Pitch = memo(function Pitch({
   };
 
   const handleDrop = (e: React.DragEvent<SVGSVGElement>) => {
-    if (!canEdit) return;
-    e.preventDefault();
-    e.stopPropagation();
+    console.log('=== DROP EVENT ===');
+    console.log('canEdit:', canEdit);
+    console.log('Event target:', e.target);
+    console.log('Current target:', e.currentTarget);
+    
+    if (!canEdit) {
+      console.log('Drop prevented - canEdit is false');
+      return;
+    }
+    
+    try {
+      e.preventDefault();
+      e.stopPropagation();
 
-    const playerId = e.dataTransfer.getData("playerId");
-    if (!playerId) return;
+      const playerId = e.dataTransfer.getData("playerId");
+      const playerIdFromText = playerId || e.dataTransfer.getData('text/plain') || e.dataTransfer.getData('text');
+      if (!playerIdFromText) {
+        console.error('No playerId found in dataTransfer');
+        console.error('Available data:', {
+          textPlain: e.dataTransfer.getData('text/plain'),
+          text: e.dataTransfer.getData('text'),
+          playerId: e.dataTransfer.getData('playerId'),
+        });
+        return;
+      }
 
-    const svg = e.currentTarget;
-    const rect = svg.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
+      const svg = e.currentTarget;
+      const rect = svg.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width) * 100;
+      const y = ((e.clientY - rect.top) / rect.height) * 100;
 
-    // Clamp to pitch boundaries
-    const clampedX = Math.max(0, Math.min(100, x));
-    const clampedY = Math.max(0, Math.min(100, y));
+      // Clamp to pitch boundaries
+      const clampedX = Math.max(0, Math.min(100, x));
+      const clampedY = Math.max(0, Math.min(100, y));
 
-    onPlayerDrop(playerId, clampedX, clampedY);
-    setDragOverlay(null);
-    setDraggedPlayer(null);
+      const finalPlayerId = playerIdFromText;
+      console.log('Dropping player:', finalPlayerId, 'at position:', clampedX, clampedY);
+      console.log('Calling onPlayerDrop...');
+      onPlayerDrop(finalPlayerId, clampedX, clampedY);
+      console.log('onPlayerDrop called successfully');
+      setDragOverlay(null);
+      setDraggedPlayer(null);
+    } catch (error) {
+      console.error('Error in handleDrop:', error);
+    }
   };
 
+  console.log('Pitch render - canEdit:', canEdit, 'players:', players.length);
+  
   return (
     <div className="relative w-full aspect-video bg-gradient-to-b from-green-600 via-green-600 to-green-700 rounded-2xl overflow-hidden shadow-2xl border-4 border-green-800">
-      {/* SVG Field Markings */}
+      {/* SVG Field Markings - Drop Zone */}
       <svg
         className="absolute inset-0 w-full h-full"
         viewBox="0 0 100 100"
@@ -123,9 +168,11 @@ const Pitch = memo(function Pitch({
           const x = player.x_position ?? 50;
           const y = player.y_position ?? 50;
 
+          console.log('Rendering player:', player.player_id, 'at position:', x, y);
+
           return (
             <div
-              key={player.id}
+              key={player.player_id}
               className="absolute transform -translate-x-1/2 -translate-y-1/2"
               style={{
                 left: `${x}%`,

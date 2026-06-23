@@ -59,6 +59,36 @@ export const LobbyMatchTab = (props: LobbyMatchTabProps) => {
     onLeaveMatch, openProfile, activeParticipants, myReviews, submitReview, matchCode,
   } = props;
 
+  // Smart validation: Check if match can be completed
+  const canCompleteMatch = () => {
+    if (!match) return { allowed: false, reason: "Match data missing" };
+    
+    // Check if match date/time has passed
+    const matchTime = new Date(match.match_date).getTime();
+    const nowTime = new Date().getTime();
+    if (matchTime > nowTime) {
+      const diffMs = matchTime - nowTime;
+      const diffMins = Math.ceil(diffMs / 60000);
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours > 0) {
+        return { allowed: false, reason: `Match starts in ${diffHours}h ${diffMins % 60}m` };
+      } else {
+        return { allowed: false, reason: `Match starts in ${diffMins}m` };
+      }
+    }
+    
+    // Check if at least 50% of max players have paid
+    const minPaidRequired = Math.ceil(maxCore * 0.5);
+    if (corePaidCount < minPaidRequired) {
+      return { allowed: false, reason: `Waiting for payments — ${corePaidCount}/${minPaidRequired} paid` };
+    }
+    
+    // All checks passed
+    return { allowed: true, reason: "Ready to complete" };
+  };
+
+  const completeCheck = canCompleteMatch();
+
   const [slideIdx, setSlideIdx] = useState(0);
   const imageUrls = venue?.image_urls?.filter(Boolean) ?? [];
 
@@ -203,12 +233,40 @@ export const LobbyMatchTab = (props: LobbyMatchTabProps) => {
         </div>
       )}
 
+      {!showCheckIn && userParticipant?.status === "active" && match?.status !== "cancelled" && match?.status !== "completed" && (
+        <div className="rounded-2xl border-2 border-border bg-secondary p-4 flex items-start gap-3">
+          <QrCode className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-black uppercase tracking-tight text-foreground">Check-in opens near kickoff</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground leading-relaxed mt-1">
+              QR check-in appears from 90 minutes before kickoff until 2 hours after.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Organizer actions */}
       {isOrganizer && match?.status !== 'completed' && match?.status !== 'cancelled' && (
         <div className="space-y-3">
-          <button onClick={endMatch} disabled={ending} className="w-full border-2 border-foreground bg-foreground text-background font-black uppercase tracking-widest text-[11px] rounded-full px-4 py-4 flex items-center justify-center gap-2 hover:opacity-90 transition-all disabled:opacity-50">
-            <Flag className="w-4 h-4" /> {ending ? "Completing…" : "Complete Match"}
-          </button>
+          <div className="relative group">
+            <button 
+              onClick={endMatch} 
+              disabled={ending || !completeCheck.allowed}
+              title={completeCheck.reason}
+              className={`w-full border-2 font-black uppercase tracking-widest text-[11px] rounded-full px-4 py-4 flex items-center justify-center gap-2 transition-all ${
+                completeCheck.allowed 
+                  ? "border-green-500 bg-green-500 text-white hover:opacity-90 active:scale-95" 
+                  : "border-muted-foreground bg-muted-foreground/10 text-muted-foreground cursor-not-allowed opacity-60"
+              }`}
+            >
+              <Flag className="w-4 h-4" /> {ending ? "Completing…" : "Complete Match"}
+            </button>
+            {!completeCheck.allowed && (
+              <div className="absolute left-0 right-0 top-full mt-2 bg-card border-2 border-red-500/30 rounded-lg p-3 text-[10px] font-bold uppercase tracking-widest text-red-600 dark:text-red-400 z-50 whitespace-nowrap pointer-events-none">
+                ⚠️ {completeCheck.reason}
+              </div>
+            )}
+          </div>
           <button onClick={cancelMatch} disabled={ending} className="w-full border-2 border-border bg-card text-foreground font-black uppercase tracking-widest text-[11px] rounded-full px-4 py-4 flex items-center justify-center gap-2 hover:bg-secondary transition-all disabled:opacity-50">
             <X className="w-4 h-4" /> {ending ? "Cancelling…" : "Cancel Match"}
           </button>
@@ -242,12 +300,15 @@ export const LobbyMatchTab = (props: LobbyMatchTabProps) => {
             <>
               <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Select winner</p>
               <div className="flex gap-2">
-                {[match.team_color_a, match.team_color_b].filter(Boolean).map((color: string) => (
-                  <button key={color} disabled={ending} onClick={async () => {
-                    if (!match.id || !color) return;
-                    const { error } = await supabase.from("matches").update({ winning_team: color } as any).eq("id", match.id);
-                    if (error) toast.error("Failed to record result"); else { toast.success(`${color} team wins!`); navigate(0); }
-                  }} className="flex-1 py-3.5 rounded-full font-black text-[11px] uppercase tracking-widest border-2 border-border hover:border-foreground transition-all">{color}</button>
+                {[
+                  { label: match.team_color_a ?? "Team A", value: "reds" },
+                  { label: match.team_color_b ?? "Team B", value: "blues" },
+                ].map((team) => (
+                  <button key={team.value} disabled={ending} onClick={async () => {
+                    if (!match.id) return;
+                    const { error } = await supabase.from("matches").update({ winning_team: team.value } as any).eq("id", match.id);
+                    if (error) toast.error("Failed to record result"); else { toast.success(`${team.label} wins!`); navigate(0); }
+                  }} className="flex-1 py-3.5 rounded-full font-black text-[11px] uppercase tracking-widest border-2 border-border hover:border-foreground transition-all">{team.label}</button>
                 ))}
                 <button disabled={ending} onClick={async () => {
                   if (!match.id) return;

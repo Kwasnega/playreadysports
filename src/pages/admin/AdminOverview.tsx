@@ -89,19 +89,45 @@ export default function AdminOverview() {
         "venue_payout_requests",
         "matches",
         "wallet_transactions",
-        "wallet_balances",
         "audit_log",
+        "match_lineups",
+        "match_status_history",
+        "messages",
+        "match_invites",
+        "reports",
       ];
+      
+      // Delete from all operational tables
       for (const table of tablesWithId) {
-        await (supabase as any).from(table).delete().neq("id", "00000000-0000-0000-0000-000000000000");
+        try {
+          await (supabase as any).from(table).delete().neq("id", "00000000-0000-0000-0000-000000000000");
+        } catch (err: any) {
+          console.warn(`Could not delete from ${table}:`, err.message);
+        }
       }
+      
       // match_voting_windows PK is match_id (no id column) — delete separately
-      await (supabase as any)
-        .from("match_voting_windows")
-        .delete()
-        .neq("match_id", "00000000-0000-0000-0000-000000000000");
-      // Reset wallet balances to zero but keep rows for existing users
-      await (supabase as any).from("wallet_balances").update({ balance: 0 }).neq("user_id", "00000000-0000-0000-0000-000000000000");
+      try {
+        await (supabase as any)
+          .from("match_voting_windows")
+          .delete()
+          .neq("match_id", "00000000-0000-0000-0000-000000000000");
+      } catch (err: any) {
+        console.warn("Could not delete from match_voting_windows:", err.message);
+      }
+
+      // Reset wallet balances to zero for all users (keep rows for existing users)
+      const { data: allUsers } = await (supabase as any).from("profiles").select("id");
+      if (allUsers && allUsers.length > 0) {
+        const userIds = allUsers.map((u: any) => u.id);
+        
+        // Reset existing wallet balances to 0
+        await (supabase as any)
+          .from("wallet_balances")
+          .update({ balance: 0 })
+          .in("user_id", userIds);
+      }
+
       toast.success("Platform data reset. User accounts preserved. Reloading…");
       setTimeout(() => window.location.reload(), 1500);
     } catch (e: any) {
@@ -115,10 +141,11 @@ export default function AdminOverview() {
     (async () => {
       setLoading(true);
       try {
-        const [{ count: players }, { count: matches }, { data: platformRev }, { data: chart }, { data: recent }, { data: setting }, { data: maintenanceSetting }] = await Promise.all([
+        const [{ count: players }, { count: matches }, { data: matchRows }, { data: walletTx }, { data: chart }, { data: recent }, { data: setting }, { data: maintenanceSetting }] = await Promise.all([
           supabase.from("profiles").select("*", { count: "exact", head: true }),
-          supabase.from("matches").select("*", { count: "exact", head: true }).eq("status", "upcoming"),
-          (supabase as any).from("platform_revenue").select("amount"),
+          supabase.from("matches").select("*", { count: "exact", head: true }),
+          (supabase as any).from("matches").select("entry_fee, core_paid_count, status"),
+          (supabase as any).from("wallet_transactions").select("amount, type, status").in("type", ["spend", "entry_fee", "refund"]),
           (supabase as any).rpc("matches_per_day", { days: 14 }),
           (supabase as any).from("wallet_transactions").select("id, amount, type, status, created_at, user_id, match:matches(join_code)").not("type", "in", "(venue_cut,organizer_profit)").order("created_at", { ascending: false }).limit(10),
           (supabase as any).from("platform_settings").select("value").eq("key", "commission_rate").single(),
@@ -143,8 +170,15 @@ export default function AdminOverview() {
         const rate = parseFloat(setting?.value ?? "0.05");
         setCommissionRate(isNaN(rate) ? 0.05 : rate);
         setMaintenanceMode(maintenanceSetting?.value === "true");
-        const fees = (platformRev ?? []).reduce((s: number, r: any) => s + (Number(r.amount) || 0), 0);
-        const revenue = fees > 0 ? fees / rate : 0;
+        const transactionGross = (walletTx ?? [])
+          .filter((t: any) => ["spend", "entry_fee"].includes(t.type) && ["completed", "paid", null, undefined].includes(t.status))
+          .reduce((s: number, t: any) => s + Math.abs(Number(t.amount) || 0), 0);
+        const matchGross = (matchRows ?? []).reduce((s: number, m: any) => s + (Number(m.entry_fee) || 0) * (Number(m.core_paid_count) || 0), 0);
+        const refunds = (walletTx ?? [])
+          .filter((t: any) => t.type === "refund")
+          .reduce((s: number, t: any) => s + Math.abs(Number(t.amount) || 0), 0);
+        const revenue = Math.max(transactionGross, matchGross) - refunds;
+        const fees = revenue * rate;
         setMetrics({ players: players ?? 0, matches: matches ?? 0, revenue, fees: Math.round(fees * 100) / 100 });
         const chartPoints = (chart ?? []).map((d: any) => ({ day: d.day.slice(5), count: Number(d.count) }));
         setChartData(chartPoints);

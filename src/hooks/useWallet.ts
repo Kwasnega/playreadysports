@@ -15,6 +15,13 @@ export type WalletTransaction = {
   created_at: string;
 };
 
+const normalizeTeamSide = (team?: string | null): "reds" | "blues" | "unassigned" => {
+  const value = String(team ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (["reds", "red", "team_a", "a"].includes(value)) return "reds";
+  if (["blues", "blue", "team_b", "b"].includes(value)) return "blues";
+  return "unassigned";
+};
+
 export function useWallet() {
   const { user } = useAuth();
   const userId = user?.id;
@@ -100,7 +107,9 @@ export function useWallet() {
     setToppingUp(true);
 
     const EDGE_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
-    const paymentProvider = (import.meta.env.VITE_PAYMENT_PROVIDER || "paystack").toLowerCase();
+    // On localhost, default to Moolre for testing; production uses env variable
+    const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+    const paymentProvider = (isLocalhost ? "moolre" : import.meta.env.VITE_PAYMENT_PROVIDER || "paystack").toLowerCase();
 
     if (paymentProvider === "moolre") {
       try {
@@ -205,30 +214,53 @@ export function useWallet() {
       }
 
       const EDGE_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
-      const res = await fetch(`${EDGE_BASE}/wallet-topup`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ reference, provider }),
-      });
+      
+      // Poll for up to 10 seconds, checking every 500ms for webhook completion
+      const maxRetries = 20;
+      let retries = 0;
+      
+      while (retries < maxRetries) {
+        const res = await fetch(`${EDGE_BASE}/wallet-topup`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ reference, provider }),
+        });
 
-      const data = await res.json();
-      if (res.status === 202 && data.pending) {
-        await fetchWallet();
+        const data = await res.json();
+        
+        // If successful, we're done
+        if (res.ok && data.success) {
+          await fetchWallet();
+          setToppingUp(false);
+          return { success: true, newBalance: data.newBalance };
+        }
+        
+        // If still pending, wait and retry
+        if (res.status === 202 && data.pending) {
+          retries++;
+          if (retries < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms before retrying
+            continue;
+          } else {
+            // Timeout - still pending after 10 seconds
+            await fetchWallet();
+            setToppingUp(false);
+            return { success: false, pending: true, error: "Payment is taking longer than expected. Please check back in a moment." };
+          }
+        }
+        
+        // Any other error
+        setError(data.error || "Top-up verification failed");
         setToppingUp(false);
-        return { success: false, pending: true };
-      }
-      if (res.ok && data.success) {
-        await fetchWallet();
-        setToppingUp(false);
-        return { success: true, newBalance: data.newBalance };
+        return { success: false, error: data.error || "Top-up verification failed" };
       }
 
-      setError(data.error || "Top-up verification failed");
+      // Shouldn't reach here, but just in case
       setToppingUp(false);
-      return { success: false, error: data.error || "Top-up verification failed" };
+      return { success: false, error: "Verification timeout" };
     } catch (err: any) {
       setError(err.message || "Top-up verification failed");
       setToppingUp(false);
@@ -282,7 +314,7 @@ export function useWallet() {
       const { data, error: rpcError } = await (supabase as any).rpc("join_match_with_wallet", {
         p_match_id: matchId,
         p_user_id: user.id,
-        p_team: team,
+        p_team: normalizeTeamSide(team),
         p_slot_type: slotType,
       });
 

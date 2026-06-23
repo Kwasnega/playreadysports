@@ -27,17 +27,38 @@ export async function callAdminSettings(
   const authHeader = await getAuthHeader();
   if (!authHeader) return { error: "Not authenticated" };
 
-  const res = await fetch(FN_URL, {
-    method,
-    headers: {
-      Authorization: authHeader,
-      "Content-Type": "application/json",
-      apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-    },
-    ...(method === "POST" && body ? { body: JSON.stringify(body) } : {}),
-  });
+  try {
+    const res = await fetch(FN_URL, {
+      method,
+      headers: {
+        Authorization: authHeader,
+        "Content-Type": "application/json",
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+      },
+      ...(method === "POST" && body ? { body: JSON.stringify(body) } : {}),
+    });
 
-  const json = await res.json().catch(() => ({ error: "Invalid response from server" }));
-  if (!res.ok) return { error: json?.error ?? `HTTP ${res.status}` };
-  return json;
+    const json = await res.json().catch(() => ({ error: "Invalid response from server" }));
+    if (!res.ok) return { error: json?.error ?? `HTTP ${res.status}` };
+    return json;
+  } catch {
+    if (method === "GET") {
+      const { data, error } = await (supabase as any)
+        .from("platform_settings")
+        .select("key, value, description")
+        .order("key");
+      if (error) return { error: error.message };
+      return { settings: data ?? [] };
+    }
+
+    if (!body) return { error: "Missing setting body" };
+    const { error } = await (supabase as any)
+      .from("platform_settings")
+      .upsert(
+        { key: body.key, value: body.value, updated_at: new Date().toISOString() },
+        { onConflict: "key" }
+      );
+    if (error) return { error: error.message };
+    return { success: true };
+  }
 }

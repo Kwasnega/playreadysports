@@ -19,6 +19,7 @@ export type ShareMatchData = {
   mode: string;
   entryFee: number;
   spotsLeft: number;
+  status?: string;
 };
 
 export function ShareMatchCard({
@@ -131,6 +132,16 @@ export function ShareMatchCard({
       c.fillStyle = spotsLeft <= 2 ? "#fbbf24" : "#94a3b8";
       const sl = spotsLeft <= 0 ? "Full" : `${spotsLeft} spot${spotsLeft === 1 ? "" : "s"} left`;
       c.fillText(sl, cx, y); y += 40;
+
+      // Status indicator for ended/cancelled matches
+      if (data.status === 'completed' || data.status === 'cancelled') {
+        const statusText = data.status === 'completed' ? 'MATCH FINISHED' : 'MATCH CANCELLED';
+        const statusColor = data.status === 'completed' ? '#22c55e' : '#ef4444';
+        
+        c.fillStyle = statusColor;
+        c.font = "800 14px system-ui, sans-serif";
+        c.fillText(statusText, cx, y); y += 30;
+      }
 
       // Footer
       c.font = "400 10px system-ui, sans-serif"; c.fillStyle = "#64748b";

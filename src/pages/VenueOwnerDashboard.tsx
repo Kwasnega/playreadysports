@@ -4,6 +4,7 @@ import {
   ArrowLeft, MapPin, Wallet, Calendar,
   TrendingUp, Clock, Building2, Plus, X, Upload, Shield,
   ChevronLeft, ChevronRight, Images, Phone, Users, DollarSign,
+  CheckCircle2, AlertTriangle, Zap, XCircle, BarChart3,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -53,7 +54,22 @@ interface TodayMatch {
   entry_fee: number;
   core_paid_count: number;
   status: string;
+  intelligent_status?: string;
+  max_core_players?: number;
+  auto_cancelled_at?: string | null;
+  cancelled_reason?: string | null;
+  organizer_id?: string;
+  organizer?: { full_name: string; username: string };
   venue_id: string;
+}
+
+interface CancellationReason {
+  id: string;
+  match_id: string;
+  action_type: string;
+  reason: string;
+  evidence: string | null;
+  created_at: string;
 }
 
 interface VenueEarning {
@@ -171,10 +187,12 @@ export default function VenueOwnerDashboard() {
   const [venues, setVenues] = useState<VenueRow[]>([]);
   const [venueBalance, setVenueBalance] = useState(0);
   const [todayMatches, setTodayMatches] = useState<TodayMatch[]>([]);
+  const [allMatches, setAllMatches] = useState<TodayMatch[]>([]);
   const [earnings, setEarnings] = useState<VenueEarning[]>([]);
   const [commissionRate, setCommissionRate] = useState(0.05);
   const [loading, setLoading] = useState(true);
   const [heatBuckets, setHeatBuckets] = useState<{ hour: string; count: number }[]>([]);
+  const [cancellationReasons, setCancellationReasons] = useState<Map<string, CancellationReason>>(new Map());
   const [selectedDate, setSelectedDate] = useState(() => {
     const d = new Date();
     return d.toISOString().split("T")[0];
@@ -331,15 +349,49 @@ export default function VenueOwnerDashboard() {
       const dayStart = startOfLocalDay(sel).toISOString();
       const dayEnd = endOfLocalDay(sel).toISOString();
 
+      // Fetch today's matches (upcoming, live, completed, cancelled)
       const { data: today } = await supabase
         .from("matches")
-        .select("id, join_code, match_date, format, entry_fee, core_paid_count, status, venue_id")
+        .select(`
+          id, join_code, match_date, format, entry_fee, core_paid_count, status,
+          intelligent_status, max_core_players, auto_cancelled_at, cancelled_reason,
+          venue_id, organizer_id, organizer:profiles(full_name, username)
+        `)
         .in("venue_id", venueIds)
-        .in("status", ["upcoming", "live", "full"])
         .gte("match_date", dayStart)
         .lte("match_date", dayEnd)
         .order("match_date", { ascending: true });
       setTodayMatches((today ?? []) as TodayMatch[]);
+
+      // Fetch all matches for stats (not just today)
+      const { data: allMatchesData } = await supabase
+        .from("matches")
+        .select(`
+          id, join_code, match_date, format, entry_fee, core_paid_count, status,
+          intelligent_status, max_core_players, venue_id
+        `)
+        .in("venue_id", venueIds)
+        .order("match_date", { ascending: false })
+        .limit(500);
+      setAllMatches((allMatchesData ?? []) as TodayMatch[]);
+
+      // Fetch cancellation reasons for cancelled matches
+      const cancelledMatches = (today ?? []).filter((m: any) => m.intelligent_status === "cancelled");
+      const reasonsMap = new Map<string, CancellationReason>();
+      if (cancelledMatches.length > 0) {
+        const { data: reasons } = await supabase
+          .from("admin_actions_audit")
+          .select("id, match_id, action_type, reason, evidence, created_at")
+          .in("match_id", cancelledMatches.map((m: any) => m.id))
+          .eq("action_type", "auto_cancel")
+          .order("created_at", { ascending: false });
+        if (reasons) {
+          (reasons as any[]).forEach((r) => {
+            reasonsMap.set(r.match_id, r);
+          });
+        }
+      }
+      setCancellationReasons(reasonsMap);
 
       const since = new Date();
       since.setDate(since.getDate() - 90);
@@ -794,6 +846,77 @@ export default function VenueOwnerDashboard() {
           </div>
         </section>
 
+        {/* 3.5. Match Statistics - Color-Coded Cards */}
+        {verifiedVenues.length > 0 && (
+          <section className="space-y-2">
+            <h3 className="font-display font-black text-sm uppercase tracking-widest flex items-center gap-2 ml-1">
+              <BarChart3 className="w-4 h-4 text-amber-500" /> Match Statistics
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {/* Completed Matches */}
+              <div className="bg-green-500/10 border-2 border-green-500/30 rounded-xl p-3">
+                <div className="flex items-start justify-between mb-1">
+                  <span className="text-[8px] font-black uppercase tracking-widest text-green-600 dark:text-green-400">Completed</span>
+                  <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+                </div>
+                <p className="font-display font-black text-xl">{allMatches.filter(m => m.intelligent_status === 'ended' || m.status === 'completed').length}</p>
+              </div>
+
+              {/* Live Matches */}
+              <div className="bg-blue-500/10 border-2 border-blue-500/30 rounded-xl p-3">
+                <div className="flex items-start justify-between mb-1">
+                  <span className="text-[8px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400">Live</span>
+                  <Zap className="w-3.5 h-3.5 text-blue-500 animate-pulse" />
+                </div>
+                <p className="font-display font-black text-xl">{allMatches.filter(m => m.intelligent_status === 'live_now').length}</p>
+              </div>
+
+              {/* Upcoming */}
+              <div className="bg-purple-500/10 border-2 border-purple-500/30 rounded-xl p-3">
+                <div className="flex items-start justify-between mb-1">
+                  <span className="text-[8px] font-black uppercase tracking-widest text-purple-600 dark:text-purple-400">Upcoming</span>
+                  <Calendar className="w-3.5 h-3.5 text-purple-500" />
+                </div>
+                <p className="font-display font-black text-xl">{allMatches.filter(m => ['upcoming', 'soon'].includes(m.intelligent_status!)).length}</p>
+              </div>
+
+              {/* Cancelled */}
+              <div className="bg-red-500/10 border-2 border-red-500/30 rounded-xl p-3">
+                <div className="flex items-start justify-between mb-1">
+                  <span className="text-[8px] font-black uppercase tracking-widest text-red-600 dark:text-red-400">Cancelled</span>
+                  <XCircle className="w-3.5 h-3.5 text-red-500" />
+                </div>
+                <p className="font-display font-black text-xl">{allMatches.filter(m => m.intelligent_status === 'cancelled' || m.status === 'cancelled').length}</p>
+              </div>
+
+              {/* Revenue */}
+              <div className="bg-amber-500/10 border-2 border-amber-500/30 rounded-xl p-3">
+                <div className="flex items-start justify-between mb-1">
+                  <span className="text-[8px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400">Revenue</span>
+                  <TrendingUp className="w-3.5 h-3.5 text-amber-500" />
+                </div>
+                <p className="font-display font-black text-lg">₵{allMatches.filter(m => m.intelligent_status === 'ended' || m.status === 'completed').reduce((sum, m) => sum + (m.entry_fee * m.core_paid_count), 0).toFixed(0)}</p>
+              </div>
+
+              {/* Avg Players */}
+              <div className="bg-cyan-500/10 border-2 border-cyan-500/30 rounded-xl p-3">
+                <div className="flex items-start justify-between mb-1">
+                  <span className="text-[8px] font-black uppercase tracking-widest text-cyan-600 dark:text-cyan-400">Avg/Match</span>
+                  <Users className="w-3.5 h-3.5 text-cyan-500" />
+                </div>
+                <p className="font-display font-black text-xl">
+                  {(() => {
+                    const completed = allMatches.filter(m => m.intelligent_status === 'ended' || m.status === 'completed');
+                    return completed.length > 0 
+                      ? (completed.reduce((sum, m) => sum + m.core_paid_count, 0) / completed.length).toFixed(0)
+                      : 0;
+                  })()}
+                </p>
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* 4. Venue details summary */}
         {verifiedVenues.length > 0 && (
           <section className="bg-card rounded-2xl border-2 border-border p-5 space-y-4 shadow-sm">
@@ -891,35 +1014,46 @@ export default function VenueOwnerDashboard() {
                     default: return <span className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-sm border border-border text-muted-foreground">{m.status}</span>;
                   }
                 };
+                const cancellationReason = cancellationReasons.get(m.id);
                 return (
-                  <div key={m.id} className="flex items-center gap-3 rounded-xl border-2 border-border p-3 bg-background hover:border-foreground/40 transition-colors relative overflow-hidden group">
-                    <div className="absolute left-[-6px] top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 border-border bg-background z-10" />
-                    <div className="w-12 h-12 rounded-lg border-2 border-border bg-secondary/30 flex items-center justify-center shrink-0 ml-1">
-                      <span className="text-sm font-display font-black uppercase">{m.join_code.slice(0, 2)}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-black uppercase tracking-widest truncate">{m.join_code}</p>
-                        {statusBadge()}
+                  <div key={m.id} className="space-y-2">
+                    <div className="flex items-center gap-3 rounded-xl border-2 border-border p-3 bg-background hover:border-foreground/40 transition-colors relative overflow-hidden group">
+                      <div className="absolute left-[-6px] top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 border-border bg-background z-10" />
+                      <div className="w-12 h-12 rounded-lg border-2 border-border bg-secondary/30 flex items-center justify-center shrink-0 ml-1">
+                        <span className="text-sm font-display font-black uppercase">{m.join_code.slice(0, 2)}</span>
                       </div>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">
-                        {getFormattedTime(m.match_date)} · {m.format} · <span className="text-foreground">{m.core_paid_count} PAID</span>
-                      </p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-black uppercase tracking-widest truncate">{m.join_code}</p>
+                          {statusBadge()}
+                        </div>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">
+                          {getFormattedTime(m.match_date)} · {m.format} · <span className="text-foreground">{m.core_paid_count} PAID</span>
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={() => openRoster(m)}
+                          className="text-[9px] font-black uppercase tracking-widest border-2 border-border rounded-lg px-3 py-2 hover:border-foreground transition-colors"
+                        >
+                          ROSTER
+                        </button>
+                        <button
+                          onClick={() => openQr(m)}
+                          className="text-[9px] font-black uppercase tracking-widest bg-foreground text-background border-2 border-foreground rounded-lg px-3 py-2 hover:bg-background hover:text-foreground transition-colors"
+                        >
+                          QR
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        onClick={() => openRoster(m)}
-                        className="text-[9px] font-black uppercase tracking-widest border-2 border-border rounded-lg px-3 py-2 hover:border-foreground transition-colors"
-                      >
-                        ROSTER
-                      </button>
-                      <button
-                        onClick={() => openQr(m)}
-                        className="text-[9px] font-black uppercase tracking-widest bg-foreground text-background border-2 border-foreground rounded-lg px-3 py-2 hover:bg-background hover:text-foreground transition-colors"
-                      >
-                        QR
-                      </button>
-                    </div>
+                    {m.intelligent_status === "cancelled" && cancellationReason && (
+                      <div className="text-[10px] bg-red-500/10 border-l-4 border-red-500 pl-3 py-2 mx-3 rounded">
+                        <p className="font-black text-red-600 dark:text-red-400">Cancelled: {cancellationReason.reason}</p>
+                        {cancellationReason.evidence && (
+                          <p className="text-muted-foreground mt-1">{cancellationReason.evidence}</p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}

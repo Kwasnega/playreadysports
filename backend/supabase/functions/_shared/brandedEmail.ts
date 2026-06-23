@@ -19,42 +19,88 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function shell(content: string, preheader: string): string {
+function shell(content: string, preheader: string, actionUrl?: string, actionText?: string): string {
   return `<!doctype html>
 <html>
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>${brand.appName}</title>
+    <style>
+      @media (max-width: 600px) {
+        .mobile-full { width: 100% !important; }
+        .mobile-hidden { display: none !important; }
+        .mobile-pad { padding: 16px !important; }
+      }
+    </style>
   </head>
-  <body style="margin:0;background:#08111f;color:#f8fafc;font-family:Inter,Arial,sans-serif;">
-    <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(preheader)}</div>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#08111f;padding:28px 14px;">
+  <body style="margin:0;background:#f5f5f5;color:#2c3e50;font-family:'Segoe UI',Arial,sans-serif;line-height:1.6;">
+    <!-- Header spacer -->
+    <div style="height:20px;background:#f5f5f5;"></div>
+    
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;">
       <tr>
-        <td align="center">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#0f172a;border:1px solid #243244;border-radius:28px;overflow:hidden;">
+        <td align="center" style="padding:0;">
+          <!-- Main container -->
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+            
+            <!-- Hero Section with Gradient -->
             <tr>
-              <td style="padding:28px 28px 18px;background:linear-gradient(135deg,#111827 0%,#052e2b 52%,#172554 100%);">
-                <div style="font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#a7f3d0;font-weight:800;">PlayReady</div>
-                <div style="font-size:34px;line-height:1.02;font-weight:900;color:#ffffff;margin-top:10px;">Your next match starts here.</div>
-                <div style="margin-top:18px;height:4px;width:88px;background:#22c55e;border-radius:999px;"></div>
+              <td style="background:linear-gradient(135deg,#0F766E 0%,#14919B 100%);padding:40px 30px;text-align:center;">
+                <div style="font-size:14px;letter-spacing:2px;text-transform:uppercase;color:#ffffff;font-weight:600;margin-bottom:8px;opacity:0.9;">PlayReady</div>
+                <div style="font-size:28px;font-weight:900;color:#ffffff;margin:0;line-height:1.2;">Sports</div>
+                <div style="font-size:12px;color:#ffffff;margin-top:8px;opacity:0.85;">Find Games • Build Teams • Manage Match Day</div>
               </td>
             </tr>
+            
+            <!-- Content section -->
             <tr>
-              <td style="padding:30px 28px 28px;">
+              <td style="padding:40px 30px;color:#2c3e50;">
                 ${content}
               </td>
             </tr>
+            
+            ${actionUrl && actionText ? `
+            <!-- CTA Button -->
             <tr>
-              <td style="padding:18px 28px 26px;border-top:1px solid #223044;color:#94a3b8;font-size:12px;line-height:1.6;">
-                Sent by PlayReady. Find games, invite players, and manage match day at
-                <a href="${brand.origin}" style="color:#86efac;text-decoration:none;font-weight:700;">joinplayready.com</a>.
+              <td style="padding:0 30px 30px;text-align:center;">
+                <a href="${actionUrl}" style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#0F766E 0%,#14919B 100%);color:#ffffff;text-decoration:none;border-radius:8px;font-weight:600;font-size:16px;transition:all 0.3s ease;box-shadow:0 4px 12px rgba(15,118,110,0.3);">${actionText}</a>
+              </td>
+            </tr>
+            ` : ''}
+            
+            <!-- Divider -->
+            <tr>
+              <td style="padding:20px 30px;border-top:1px solid #f0f0f0;">
+                <div style="height:1px;background:#e0e0e0;"></div>
+              </td>
+            </tr>
+            
+            <!-- Footer -->
+            <tr>
+              <td style="padding:30px;background:#f9f9f9;border-top:1px solid #f0f0f0;color:#666666;font-size:13px;line-height:1.8;">
+                <p style="margin:0 0 12px 0;">
+                  <strong style="color:#0F766E;">PlayReady Sports</strong><br>
+                  Find games, invite players, and manage match day in one place.
+                </p>
+                <p style="margin:12px 0;font-size:12px;color:#999999;">
+                  <a href="${brand.origin}" style="color:#0F766E;text-decoration:none;font-weight:500;">Visit PlayReady</a> • 
+                  <a href="${brand.origin}/about" style="color:#0F766E;text-decoration:none;font-weight:500;">About Us</a> • 
+                  <a href="${brand.origin}/contact" style="color:#0F766E;text-decoration:none;font-weight:500;">Contact</a>
+                </p>
+                <p style="margin:12px 0 0;font-size:11px;color:#999999;">
+                  You received this email because you signed up at PlayReady Sports.<br>
+                  © 2026 PlayReady Sports. All rights reserved.
+                </p>
               </td>
             </tr>
           </table>
         </td>
       </tr>
     </table>
+    
+    <!-- Footer spacer -->
+    <div style="height:20px;background:#f5f5f5;"></div>
   </body>
 </html>`;
 }
@@ -62,20 +108,25 @@ function shell(content: string, preheader: string): string {
 export function signupOtpEmail(to: string, fullName: string, otp: string): EmailPayload {
   const name = escapeHtml(fullName || "player");
   const html = shell(`
-    <p style="margin:0;color:#cbd5e1;font-size:16px;line-height:1.7;">Hi ${name},</p>
-    <p style="margin:14px 0 0;color:#cbd5e1;font-size:16px;line-height:1.7;">
-      Use this code to confirm your email and finish creating your PlayReady account.
+    <p style="margin:0 0 20px;color:#2c3e50;font-size:16px;line-height:1.8;"><strong>Hello ${name},</strong></p>
+    <p style="margin:0 0 24px;color:#555555;font-size:15px;line-height:1.7;">
+      Welcome to PlayReady! Use the verification code below to confirm your email address and complete your sign-up.
     </p>
-    <div style="margin:26px 0;padding:22px;border-radius:20px;background:#020617;border:1px solid #334155;text-align:center;">
-      <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#94a3b8;font-weight:800;">Verification code</div>
-      <div style="font-size:42px;letter-spacing:0.22em;color:#f8fafc;font-weight:900;margin-top:10px;">${otp}</div>
+    
+    <div style="margin:32px 0;padding:24px;border-radius:8px;background:#f0fdf4;border:2px solid #0F766E;text-align:center;">
+      <div style="font-size:12px;letter-spacing:3px;text-transform:uppercase;color:#0F766E;font-weight:700;margin-bottom:12px;">Verification Code</div>
+      <div style="font-size:48px;letter-spacing:8px;color:#0F766E;font-weight:900;font-family:monospace;font-variant:tabular-nums;">${otp}</div>
     </div>
-    <p style="margin:0;color:#94a3b8;font-size:14px;line-height:1.6;">This code expires in 10 minutes. If you did not request it, you can ignore this email.</p>
+    
+    <p style="margin:24px 0 0;color:#666666;font-size:14px;line-height:1.6;">
+      <strong>This code expires in 10 minutes.</strong><br>
+      If you didn't request this code, you can safely ignore this email.
+    </p>
   `, "Your PlayReady verification code is " + otp + ".");
 
   return {
     to,
-    subject: "Your PlayReady signup code",
+    subject: "Your PlayReady verification code",
     html,
     text: `Your PlayReady verification code is ${otp}. It expires in 10 minutes.`,
   };
@@ -84,19 +135,30 @@ export function signupOtpEmail(to: string, fullName: string, otp: string): Email
 export function welcomeEmail(to: string, fullName: string): EmailPayload {
   const name = escapeHtml(fullName || "player");
   const html = shell(`
-    <p style="margin:0;color:#cbd5e1;font-size:16px;line-height:1.7;">Welcome, ${name}.</p>
-    <p style="margin:14px 0 0;color:#cbd5e1;font-size:16px;line-height:1.7;">
-      Your PlayReady account is live. You can now join matches, share game links, track your wallet, and keep your football circle moving.
+    <p style="margin:0 0 20px;color:#2c3e50;font-size:16px;line-height:1.8;"><strong>Welcome to PlayReady, ${name}! 🎉</strong></p>
+    <p style="margin:0 0 20px;color:#555555;font-size:15px;line-height:1.7;">
+      Your account is ready to go. You can now join matches, invite friends, manage your wallet, and build your football circle.
     </p>
-    <a href="${brand.origin}" style="display:inline-block;margin-top:26px;background:#22c55e;color:#052e16;text-decoration:none;font-weight:900;padding:14px 20px;border-radius:16px;">Open PlayReady</a>
-    <div style="margin-top:28px;padding:18px;border-radius:18px;background:#111827;border:1px solid #334155;color:#cbd5e1;font-size:14px;line-height:1.7;">
-      Tip: use your match lobby to invite friends on WhatsApp and lock in your spot before the game fills.
+    
+    <div style="margin:28px 0;padding:20px;border-radius:8px;background:#f0fdf4;border-left:4px solid #0F766E;">
+      <div style="color:#0F766E;font-weight:700;margin-bottom:8px;">✓ What You Can Do Now:</div>
+      <ul style="margin:0;padding-left:20px;color:#555555;font-size:14px;">
+        <li style="margin:6px 0;">Browse & join football matches in your area</li>
+        <li style="margin:6px 0;">Invite friends via WhatsApp</li>
+        <li style="margin:6px 0;">Track your wallet & earnings</li>
+        <li style="margin:6px 0;">Rate players & build your reputation</li>
+        <li style="margin:6px 0;">Reserve your spot before matches fill</li>
+      </ul>
     </div>
-  `, "Welcome to PlayReady. Your account is ready.");
+    
+    <p style="margin:24px 0 0;color:#666666;font-size:14px;line-height:1.7;">
+      Got questions? Check out our help center or reach out to our support team.
+    </p>
+  `, "Welcome to PlayReady. Your account is ready.", `${brand.origin}`, "Go to PlayReady");
 
   return {
     to,
-    subject: "Welcome to PlayReady",
+    subject: "Welcome to PlayReady Sports! 🎉",
     html,
     text: `Welcome to PlayReady, ${fullName || "player"}. Your account is ready: ${brand.origin}`,
   };
@@ -104,7 +166,12 @@ export function welcomeEmail(to: string, fullName: string): EmailPayload {
 
 export async function sendBrandedEmail(payload: EmailPayload): Promise<{ error?: string }> {
   const apiKey = Deno.env.get("RESEND_API_KEY");
-  if (!apiKey) return { error: "RESEND_API_KEY is not configured" };
+  if (!apiKey) {
+    console.error("[email] RESEND_API_KEY is not configured in Supabase secrets");
+    return { error: "RESEND_API_KEY is not configured" };
+  }
+
+  console.log("[email] Sending email to:", payload.to, "subject:", payload.subject);
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -121,11 +188,12 @@ export async function sendBrandedEmail(payload: EmailPayload): Promise<{ error?:
     }),
   });
 
+  const body = await res.text();
   if (!res.ok) {
-    const body = await res.text();
     console.error("[email] Resend error:", res.status, body);
-    return { error: "Email failed to send" };
+    return { error: `Resend API error: ${res.status}` };
   }
 
+  console.log("[email] Email sent successfully to:", payload.to);
   return {};
 }

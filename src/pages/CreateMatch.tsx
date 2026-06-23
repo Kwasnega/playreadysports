@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { getDistanceKm, getFormattedTime, extractFormatNumber, getVenueHours, isVenueOpen, isVenueOpenForMatch } from "@/lib/matchHelpers";
 import { format } from "date-fns";
 import { ShareMatchCard, ShareMatchData } from "@/components/matches/ShareMatchCard";
+import { LoadingModal } from "@/components/LoadingModal";
 
 /* Tier-3 Create flow — wired to Supabase via Edge Function ----------------
    1. Setup   — type + mode + format
@@ -32,6 +33,32 @@ const DEFAULT_HOURS = Array.from({ length: 24 }, (_, i) => i);
 const MINUTES = [0, 15, 30, 45];
 
 const DURATIONS = [60, 90, 120];
+const GHANA_TIME_ZONE = "Africa/Accra";
+
+const getGhanaDateParts = (date: Date) => {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: GHANA_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+
+  return {
+    year: Number(parts.find((part) => part.type === "year")?.value ?? 0),
+    month: Number(parts.find((part) => part.type === "month")?.value ?? 0),
+    day: Number(parts.find((part) => part.type === "day")?.value ?? 0),
+  };
+};
+
+const formatGhanaDateInput = (date: Date) => {
+  const { year, month, day } = getGhanaDateParts(date);
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+};
+
+const buildGhanaDateTime = (dateString: string, hour: number, minute: number) => {
+  const [year, month, day] = dateString.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day, hour, minute, 0, 0));
+};
 
 const CreateMatch = () => {
   const navigate = useNavigate();
@@ -95,12 +122,6 @@ const CreateMatch = () => {
     return Number(price) * (duration / 60);
   }, [selectedVenue, duration]);
 
-  useEffect(() => {
-    if (step === 2 && basePerPlayer > 0) {
-      setEntryFeeEnabled(true);
-    }
-  }, [step, basePerPlayer]);
-
   // Auto-set maxCore from format/mode
   useEffect(() => {
     if (matchFormat) {
@@ -111,8 +132,9 @@ const CreateMatch = () => {
   }, [matchFormat, mode]);
 
   useEffect(() => {
-    if (basePerPlayer > 0) setEntryFee(basePerPlayer);
-  }, [basePerPlayer]);
+    if (entryFeeEnabled && basePerPlayer > 0) setEntryFee(basePerPlayer);
+    if (!entryFeeEnabled) setEntryFee(0);
+  }, [basePerPlayer, entryFeeEnabled]);
 
   const availableFormats = mode === "gala" ? GALA_FORMATS : TWO_TEAM_FORMATS;
 
@@ -145,8 +167,7 @@ const CreateMatch = () => {
       if (!title.trim() || !matchDate) return false;
       if (mode === "gala" && teamName.trim().length < 2) return false;
       // Parse date string as local timezone (YYYY-MM-DD format)
-      const [year, month, day] = matchDate.split("-").map(Number);
-      const d = new Date(year, month - 1, day, matchHour, matchMinute, 0, 0);
+    const d = buildGhanaDateTime(matchDate, matchHour, matchMinute);
       if (d.getTime() <= Date.now() + 30 * 60 * 1000) return false;
       if (selectedVenue) {
         const hoursCheck = isVenueOpenForMatch(selectedVenue, d, duration);
@@ -193,9 +214,7 @@ const CreateMatch = () => {
       newErrors.maxCore = "Max players cannot exceed 100";
     }
 
-    // Parse date string as local timezone (YYYY-MM-DD format)
-    const [year, month, day] = matchDate.split("-").map(Number);
-    const dateObj = new Date(year, month - 1, day, matchHour, matchMinute, 0, 0);
+    const dateObj = buildGhanaDateTime(matchDate, matchHour, matchMinute);
     if (dateObj.getTime() <= Date.now() + 30 * 60 * 1000) {
       newErrors.matchDate = "Match must be scheduled at least 30 minutes from now";
     }
@@ -218,9 +237,7 @@ const CreateMatch = () => {
     setErrors({});
     if (!validateForm()) return;
 
-    // Parse date string as local timezone (YYYY-MM-DD format)
-    const [year, month, day] = matchDate.split("-").map(Number);
-    const dateObj = new Date(year, month - 1, day, matchHour, matchMinute, 0, 0);
+    const dateObj = buildGhanaDateTime(matchDate, matchHour, matchMinute);
     const matchDateIso = dateObj.toISOString();
 
     const result = await createMatch({
@@ -511,7 +528,7 @@ const CreateMatch = () => {
                 <input
                   type="date"
                   value={matchDate}
-                  min={format(new Date(), "yyyy-MM-dd")}
+                  min={formatGhanaDateInput(new Date())}
                   onChange={(e) => setMatchDate(e.target.value)}
                   className="w-full bg-background border-2 border-border rounded-xl px-4 py-3 text-xs font-black uppercase tracking-widest focus:outline-none focus:border-foreground focus:ring-1 focus:ring-foreground transition-all shadow-sm text-foreground"
                 />
@@ -546,10 +563,10 @@ const CreateMatch = () => {
             {/* Quick Date Selectors */}
             <div className="flex flex-wrap gap-2">
               {[
-                { label: "Today", get: () => format(new Date(), "yyyy-MM-dd") },
-                { label: "Tomorrow", get: () => format(new Date(Date.now() + 86400000), "yyyy-MM-dd") },
-                { label: "+2 days", get: () => format(new Date(Date.now() + 2 * 86400000), "yyyy-MM-dd") },
-                { label: "+7 days", get: () => format(new Date(Date.now() + 7 * 86400000), "yyyy-MM-dd") },
+                { label: "Today", get: () => formatGhanaDateInput(new Date()) },
+                { label: "Tomorrow", get: () => formatGhanaDateInput(new Date(Date.now() + 86400000)) },
+                { label: "+2 days", get: () => formatGhanaDateInput(new Date(Date.now() + 2 * 86400000)) },
+                { label: "+7 days", get: () => formatGhanaDateInput(new Date(Date.now() + 7 * 86400000)) },
               ].map((btn) => (
                 <button
                   key={btn.label}
@@ -850,6 +867,13 @@ const CreateMatch = () => {
           </div>
         </div>
       )}
+      
+      {/* Loading Modal */}
+      <LoadingModal 
+        isOpen={creating} 
+        title="Creating Match" 
+        description="Hold tight while we set up your match..."
+      />
     </main>
   );
 };

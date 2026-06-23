@@ -14,6 +14,13 @@ if (!PAYSTACK_SECRET) {
 }
 
 /** Timing-safe hex-string comparison to prevent timing attacks. */
+const normalizeTeamSide = (team?: string | null): "reds" | "blues" | "unassigned" => {
+  const value = String(team ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (["reds", "red", "team_a", "a"].includes(value)) return "reds";
+  if (["blues", "blue", "team_b", "b"].includes(value)) return "blues";
+  return "unassigned";
+};
+
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
   let result = 0;
@@ -97,7 +104,7 @@ Deno.serve(async (req) => {
       const { data: rpcResult, error: rpcErr } = await adminSupabase.rpc("process_paid_join", {
         p_match_id: matchId,
         p_user_id: userId,
-        p_team: team,
+        p_team: normalizeTeamSide(team),
         p_payment_reference: reference,
         p_amount: entryFeeGhs,
         p_slot_type: "core",

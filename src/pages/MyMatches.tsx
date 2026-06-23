@@ -19,6 +19,8 @@ interface MyMatch {
   match_mode: string;
   entry_fee: number;
   status: string;
+  intelligent_status: 'upcoming' | 'soon' | 'live_now' | 'ended' | 'cancelled' | 'archived';
+  booking_duration_minutes: number;
   core_paid_count: number;
   max_core_players: number | null;
   venue: { name: string; city: string } | null;
@@ -34,18 +36,39 @@ const TAB_META: Record<Tab, { label: string; icon: any; empty: string }> = {
 const statusBadge = (status: string) => {
   switch (status) {
     case "upcoming":
-      return "border-foreground text-background bg-foreground";
+      return "border-amber-500/60 text-amber-600 dark:text-amber-400 bg-amber-500/10";
+    case "soon":
     case "full":
-      return "border-foreground text-foreground bg-transparent";
-    case "live":
-      return "border-foreground text-background bg-foreground animate-pulse";
-    case "completed":
-      return "border-border text-foreground bg-secondary/50";
+      return "border-amber-600 text-amber-700 dark:text-amber-300 bg-amber-500/20 animate-pulse";
+    case "live_now":
+      return "border-green-500/60 text-green-600 dark:text-green-400 bg-green-500/10 animate-pulse";
+    case "ended":
+      return "border-gray-400/60 text-gray-600 dark:text-gray-400 bg-gray-500/10";
     case "cancelled":
-      return "border-foreground text-foreground bg-background opacity-50";
+      return "border-red-500/60 text-red-600 dark:text-red-400 bg-red-500/10 line-through";
+    case "archived":
+      return "border-gray-400/60 text-gray-500 dark:text-gray-500 bg-gray-500/5";
     default:
       return "border-border text-muted-foreground bg-secondary/50";
   }
+};
+
+const getEffectiveStatus = (match: MyMatch): MyMatch["intelligent_status"] | "live" | "finished" | "canceled" => {
+  if (match.status === "cancelled" || match.intelligent_status === "cancelled") return "cancelled";
+  if (match.status === "completed" || match.intelligent_status === "ended") return "ended";
+
+  const kickoff = new Date(match.match_date).getTime();
+  const durationMs = (match.booking_duration_minutes || 90) * 60_000;
+  const endTime = kickoff + durationMs;
+  const now = Date.now();
+  const maxCore = match.max_core_players ?? 10;
+  const isFull = match.core_paid_count >= maxCore;
+
+  if (now >= endTime) return isFull ? "ended" : "cancelled";
+  if (now >= kickoff) return isFull ? "live_now" : "cancelled";
+  if (kickoff - now <= 60 * 60_000) return "soon";
+
+  return match.intelligent_status || "upcoming";
 };
 
 export default function MyMatches() {
@@ -63,7 +86,7 @@ export default function MyMatches() {
     const fetchOrganized = async () => {
       const { data, error } = await supabase
         .from("matches")
-        .select("id, join_code, match_date, format, match_mode, entry_fee, status, core_paid_count, max_core_players, venue:venues(name, city)")
+        .select("id, join_code, match_date, format, match_mode, entry_fee, status, intelligent_status, booking_duration_minutes, core_paid_count, max_core_players, venue:venues(name, city)")
         .eq("organizer_id", user.id)
         .order("match_date", { ascending: false });
       setMatches((data ?? []).map((row: any) => {
@@ -84,7 +107,7 @@ export default function MyMatches() {
       if (matchIds.length === 0) { setMatches([]); setLoading(false); return; }
       const { data, error } = await supabase
         .from("matches")
-        .select("id, join_code, match_date, format, match_mode, entry_fee, status, core_paid_count, max_core_players, venue:venues(name, city)")
+        .select("id, join_code, match_date, format, match_mode, entry_fee, status, intelligent_status, booking_duration_minutes, core_paid_count, max_core_players, venue:venues(name, city)")
         .in("id", matchIds)
         .order("match_date", { ascending: false });
       setMatches((data ?? []).map((row: any) => {
@@ -99,8 +122,19 @@ export default function MyMatches() {
   }, [user?.id, view]);
 
   const filtered = matches.filter((m) => {
-    const effectiveStatus = m.status === "full" ? "upcoming" : m.status;
-    return effectiveStatus === tab;
+    const status = getEffectiveStatus(m);
+    switch (tab) {
+      case 'upcoming':
+        return status === 'upcoming' || status === 'soon' || status === 'confirmed' || status === 'full';
+      case 'live':
+        return status === 'live_now' || status === 'live';
+      case 'completed':
+        return status === 'ended' || status === 'completed' || status === 'finished';
+      case 'cancelled':
+        return status === 'cancelled' || status === 'canceled';
+      default:
+        return false;
+    }
   });
 
   return (
@@ -191,6 +225,7 @@ export default function MyMatches() {
             {filtered.map((m) => {
               const max = m.max_core_players ?? 10;
               const isFull = m.core_paid_count >= max;
+              const effectiveStatus = getEffectiveStatus(m);
               return (
                 <button
                   key={m.id}
@@ -219,8 +254,8 @@ export default function MyMatches() {
                       <p className="text-sm font-bold text-foreground leading-tight truncate">
                         {m.venue?.name ?? "Venue"}
                       </p>
-                      <span className={`shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-sm border-[1.5px] text-[8px] font-black uppercase tracking-widest ${statusBadge(m.status)}`}>
-                        {m.status === "full" ? "FULL" : m.status}
+                      <span className={`shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-sm border-[1.5px] text-[8px] font-black uppercase tracking-widest ${statusBadge(effectiveStatus)}`}>
+                        {effectiveStatus === 'live_now' ? 'LIVE' : effectiveStatus === 'ended' ? 'DONE' : effectiveStatus === 'soon' ? 'SOON' : effectiveStatus.replace(/_/g, ' ')}
                       </span>
                     </div>
 
@@ -247,10 +282,15 @@ export default function MyMatches() {
                           Free
                         </span>
                       )}
-                      {m.status === "cancelled" ? (
-                        <span className="inline-flex items-center gap-1 rounded-sm border-[1.5px] border-foreground text-foreground px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest bg-background opacity-50">
+                      {effectiveStatus === "cancelled" ? (
+                        <span className="inline-flex items-center gap-1 rounded-sm border-[1.5px] border-red-500/60 text-red-600 dark:text-red-400 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest bg-red-500/10">
                           <AlertTriangle className="w-2.5 h-2.5" />
-                          Refunded
+                          Cancelled
+                        </span>
+                      ) : effectiveStatus === "ended" ? (
+                        <span className="inline-flex items-center gap-1 rounded-sm border-[1.5px] border-gray-400/60 text-gray-600 dark:text-gray-400 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest bg-gray-500/10">
+                          <CheckCircle2 className="w-2.5 h-2.5" />
+                          Completed
                         </span>
                       ) : (
                         <span className={`inline-flex items-center gap-1 rounded-sm border-[1.5px] px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest ${

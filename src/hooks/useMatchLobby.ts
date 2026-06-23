@@ -17,6 +17,20 @@ export type LobbyParticipant = {
   no_show?: boolean;
 };
 
+const normalizeTeamSide = (team?: string | null): "reds" | "blues" | "unassigned" => {
+  const value = String(team ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (["reds", "red", "team_a", "a"].includes(value)) return "reds";
+  if (["blues", "blue", "team_b", "b"].includes(value)) return "blues";
+  return "unassigned";
+};
+
+const normalizeParticipantStatus = (status?: string | null): string => {
+  const value = String(status ?? "").trim().toLowerCase();
+  if (value === "confirmed") return "active";
+  if (value === "waitlisted") return "waitlist";
+  return value;
+};
+
 export type LobbyMatch = {
   id: string;
   join_code: string;
@@ -64,6 +78,26 @@ export function useMatchLobby(joinCode: string) {
 
   const matchId = match?.id;
 
+  const normalizeMatch = useCallback((row: any, organizer: any = match?.organizer ?? null): LobbyMatch => ({
+    ...row,
+    venue: Array.isArray(row.venue) ? row.venue[0] ?? null : row.venue ?? null,
+    organizer,
+    team_color_a: row.team_color_a ?? null,
+    team_color_b: row.team_color_b ?? null,
+    winning_team: row.winning_team ?? null,
+  }) as LobbyMatch, [match?.organizer]);
+
+  const loadMatchById = useCallback(async (mid: string) => {
+    const { data } = await supabase
+      .from("matches")
+      .select("*, venue:venues(id, name, city, area, lat, lng, image_urls)")
+      .eq("id", mid)
+      .maybeSingle();
+
+    if (!data) return;
+    setMatch((prev) => normalizeMatch(data, prev?.organizer ?? null));
+  }, [normalizeMatch]);
+
   const loadParticipants = useCallback(async (mid: string) => {
     const { data, error: pErr } = await supabase
       .from("match_participants")
@@ -94,9 +128,9 @@ export function useMatchLobby(joinCode: string) {
         full_name: prof.full_name ?? null,
         avatar_url: prof.avatar_url ?? null,
         slot_type: row.slot_type,
-        team: row.team,
+        team: normalizeTeamSide(row.team),
         payment_status: row.payment_status,
-        status: row.status,
+        status: normalizeParticipantStatus(row.status),
         joined_at: row.joined_at,
         attendance_scanned: !!row.attendance_scanned,
         no_show: !!row.no_show,
@@ -107,8 +141,8 @@ export function useMatchLobby(joinCode: string) {
 
   const refresh = useCallback(async () => {
     if (!matchId) return;
-    await loadParticipants(matchId);
-  }, [matchId, loadParticipants]);
+    await Promise.all([loadMatchById(matchId), loadParticipants(matchId)]);
+  }, [matchId, loadMatchById, loadParticipants]);
 
   useEffect(() => {
     let cancelled = false;
@@ -140,14 +174,7 @@ export function useMatchLobby(joinCode: string) {
         organizer = org ?? null;
       }
 
-      const m = {
-        ...data,
-        venue: Array.isArray(data.venue) ? data.venue[0] ?? null : data.venue ?? null,
-        organizer,
-        team_color_a: (data as any).team_color_a ?? null,
-        team_color_b: (data as any).team_color_b ?? null,
-        winning_team: (data as any).winning_team ?? null,
-      } as unknown as LobbyMatch;
+      const m = normalizeMatch(data, organizer);
       setMatch(m);
 
       // Load participants
@@ -157,7 +184,7 @@ export function useMatchLobby(joinCode: string) {
 
     load();
     return () => { cancelled = true; };
-  }, [joinCode, loadParticipants]);
+  }, [joinCode, loadParticipants, normalizeMatch]);
 
   // Realtime subscription — incremental updates instead of full refetch
   useEffect(() => {
@@ -201,9 +228,9 @@ export function useMatchLobby(joinCode: string) {
                     full_name: prof?.full_name ?? null,
                     avatar_url: prof?.avatar_url ?? null,
                     slot_type: newRow.slot_type,
-                    team: newRow.team,
+                    team: normalizeTeamSide(newRow.team),
                     payment_status: newRow.payment_status,
-                    status: newRow.status,
+                    status: normalizeParticipantStatus(newRow.status),
                     joined_at: newRow.joined_at,
                     attendance_scanned: !!newRow.attendance_scanned,
                   } as LobbyParticipant];
@@ -222,9 +249,9 @@ export function useMatchLobby(joinCode: string) {
                   ? {
                       ...p,
                       slot_type: newRow.slot_type ?? p.slot_type,
-                      team: newRow.team ?? p.team,
+                      team: normalizeTeamSide(newRow.team ?? p.team),
                       payment_status: newRow.payment_status ?? p.payment_status,
-                      status: newRow.status ?? p.status,
+                      status: normalizeParticipantStatus(newRow.status ?? p.status),
                       attendance_scanned: !!newRow.attendance_scanned,
                     }
                   : p
@@ -261,7 +288,12 @@ export function useMatchLobby(joinCode: string) {
           if (!newRow) return;
           setMatch((prev) => {
             if (!prev) return prev;
-            return { ...prev, status: newRow.status ?? prev.status } as LobbyMatch;
+            return {
+              ...prev,
+              status: newRow.status ?? prev.status,
+              core_paid_count: newRow.core_paid_count ?? prev.core_paid_count,
+              winning_team: newRow.winning_team ?? prev.winning_team,
+            } as LobbyMatch;
           });
         }
       )

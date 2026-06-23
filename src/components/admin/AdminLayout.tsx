@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Link, useLocation, Outlet } from "react-router-dom";
 import { useAdmin } from "@/hooks/useAdmin";
+import { TestOrchestra } from "./TestOrchestra";
 import {
   LayoutDashboard, Users, Trophy, MapPin, CreditCard, Flag, Megaphone, ChevronLeft, ChevronRight, LogOut, Shield,
-  Radio, ArrowDownLeft, BarChart3, CalendarDays, Settings, UserPlus, AlertTriangle,
+  Radio, ArrowDownLeft, BarChart3, CalendarDays, Settings, UserPlus, AlertTriangle, Mail,
 } from "lucide-react";
 
 const links = [
@@ -20,6 +21,7 @@ const links = [
   { to: "/admin/calendar", icon: CalendarDays, label: "Calendar" },
   { to: "/admin/reports", icon: Flag, label: "Reports" },
   { to: "/admin/broadcast", icon: Megaphone, label: "Broadcast" },
+  { to: "/admin/email", icon: Mail, label: "Email Marketing" },
 ];
 
 export default function AdminLayout() {
@@ -118,6 +120,9 @@ export default function AdminLayout() {
           <Outlet />
         </div>
       </main>
+
+      {/* Test Orchestra */}
+      <TestOrchestra />
     </div>
   );
 }

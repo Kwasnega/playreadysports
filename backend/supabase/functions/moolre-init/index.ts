@@ -1,4 +1,4 @@
-import { createClient } from "jsr:@supabase/supabase-js@2";
+﻿import { createClient } from "jsr:@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { checkRateLimit } from "../_shared/rateLimiter.ts";
 import { getMoolreConfig, moolrePost } from "../_shared/moolre.ts";
@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
 
     const allowed = await checkRateLimit(supabase, user.id, "moolre_init", 10, 10);
     if (!allowed) {
-      return new Response(JSON.stringify({ error: "Rate limit exceeded — try again later" }), {
+      return new Response(JSON.stringify({ error: "Rate limit exceeded â€” try again later" }), {
         status: 429,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -56,26 +56,30 @@ Deno.serve(async (req) => {
 
     const config = getMoolreConfig();
     const reference = `moolre_wallet_${user.id.replace(/-/g, "").slice(0, 12)}_${Date.now()}`;
+    console.log("[moolre-init] Created reference:", reference, "for user:", user.id, "amount:", amountNumber);
+    
     const appUrl = Deno.env.get("APP_URL") || requestOrigin || "http://localhost:5173";
     const redirectBase = redirectUrl || `${appUrl}/wallet`;
     const redirectUrlObj = new URL(redirectBase);
     redirectUrlObj.searchParams.set("moolre_ref", reference);
     const redirect = redirectUrlObj.toString();
     const callback = `${supabaseUrl}/functions/v1/moolre-webhook`;
+    
+    console.log("[moolre-init] Callback URL:", callback);
 
+    // Insert wallet transaction with all necessary fields
+    // This creates a pending transaction that wallet-topup will verify
     const { error: pendingErr } = await svc.from("wallet_transactions").insert({
       user_id: user.id,
       amount: amountNumber,
       type: "deposit",
       status: "pending",
       reference,
-      description: "Wallet top-up via Moolre",
-      metadata: {
-        provider: "moolre",
-        email: user.email,
-      },
+      description: `Moolre wallet top-up - ${amountNumber} GHS`,
+      balance_after: 0, // Will be calculated when completed
     } as any);
 
+    console.log("[moolre-init] Insert transaction result - error:", pendingErr);
     if (pendingErr) {
       if (pendingErr.code === "23505") {
         return new Response(JSON.stringify({ error: "Duplicate payment reference" }), {
@@ -85,9 +89,12 @@ Deno.serve(async (req) => {
       }
       throw pendingErr;
     }
+    
+    console.log("[moolre-init] Calling Moolre /embed/link API with externalref:", reference);
 
     const moolreData = await moolrePost<any>("/embed/link", {
       type: 1,
+      idtype: 2, // 2 = email
       amount: amountNumber.toFixed(2),
       email: user.email || "player@joinplayready.com",
       externalref: reference,
@@ -97,17 +104,15 @@ Deno.serve(async (req) => {
       expiration_time: 30,
       currency: "GHS",
       accountnumber: config.accountNumber,
-      metadata: {
-        purpose: "wallet_topup",
-        user_id: user.id,
-        amount: amountNumber,
-      },
     });
 
+    console.log("[moolre-init] Moolre response - status:", moolreData?.status, " authorization_url:", !!moolreData?.data?.authorization_url);
+    
     if (Number(moolreData?.status) !== 1 || !moolreData?.data?.authorization_url) {
+      console.error("[moolre-init] Moolre failed - response:", moolreData);
       await svc
         .from("wallet_transactions")
-        .update({ status: "failed", reason: moolreData?.message || "Moolre link generation failed" } as any)
+        .update({ status: "failed" } as any)
         .eq("reference", reference);
 
       return new Response(JSON.stringify({ error: moolreData?.message || "Moolre payment link failed" }), {
@@ -116,6 +121,8 @@ Deno.serve(async (req) => {
       });
     }
 
+    console.log("[moolre-init] SUCCESS - Authorization URL generated for reference:", reference);
+    
     return new Response(JSON.stringify({
       success: true,
       authorizationUrl: moolreData.data.authorization_url,
@@ -125,10 +132,11 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err: any) {
-    console.error("moolre-init error:", err);
+    console.error("[moolre-init] Error:", err);
     return new Response(JSON.stringify({ error: err.message ?? "Internal error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
+

@@ -1,18 +1,21 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
 
-// CORS is handled via getCorsHeaders() from _shared/cors.ts
+// CORS is handled via corsHeaders from _shared/cors.ts
 
 Deno.serve(async (req) => {
+  const requestOrigin = req.headers.get("origin");
+  const corsHeaders = getCorsHeaders(requestOrigin);
+
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: getCorsHeaders() });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Missing authorization header" }), {
-        status: 401, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -25,7 +28,7 @@ Deno.serve(async (req) => {
     const { data: { user }, error: authErr } = await supabase.auth.getUser();
     if (authErr || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -33,7 +36,7 @@ Deno.serve(async (req) => {
     const { matchId, title, message, type = "broadcast" } = body;
     if (!matchId || !title || !message) {
       return new Response(JSON.stringify({ error: "Missing matchId, title or message" }), {
-        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -47,7 +50,7 @@ Deno.serve(async (req) => {
     const isAdmin = profile?.role === "admin" || profile?.role === "super_admin";
     if (!isAdmin) {
       return new Response(JSON.stringify({ error: "Admin only" }), {
-        status: 403, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -79,12 +82,12 @@ Deno.serve(async (req) => {
     }
 
     return new Response(JSON.stringify({ success: true, sent: notifs.length }), {
-      status: 200, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err: any) {
     console.error("broadcast-match error:", err);
     return new Response(JSON.stringify({ error: err.message ?? "Internal error" }), {
-      status: 500, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });

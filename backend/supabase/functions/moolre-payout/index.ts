@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Moolre Disbursement Payout Function
  * 
  * Sends money to venue owners via Moolre Bulk Disbursement API
@@ -190,7 +190,8 @@ Deno.serve(async (req) => {
     console.error("[moolre-payout] error:", err);
     return new Response(JSON.stringify({ error: err.message ?? "Internal error" }), {
       status: 500,
-      headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+      headers: { ...getCorsHeaders(requestOrigin), "Content-Type": "application/json" },
     });
   }
 });
+

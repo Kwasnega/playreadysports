@@ -6,6 +6,13 @@ import { checkRateLimit } from "../_shared/rateLimiter.ts";
 
 const PAYSTACK_SECRET = Deno.env.get("PAYSTACK_SECRET_KEY");
 
+const normalizeTeamSide = (team?: string | null): "reds" | "blues" | "unassigned" => {
+  const value = String(team ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (["reds", "red", "team_a", "a"].includes(value)) return "reds";
+  if (["blues", "blue", "team_b", "b"].includes(value)) return "blues";
+  return "unassigned";
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: getCorsHeaders() });
@@ -43,7 +50,7 @@ Deno.serve(async (req) => {
     // Load match
     const { data: match, error: matchErr } = await supabase
       .from("matches")
-      .select("id, join_code, match_date, entry_fee, organizer_id, status, core_paid_count")
+      .select("id, join_code, match_date, entry_fee, organizer_id, status, core_paid_count, max_core_players")
       .eq("id", matchId)
       .single();
 
@@ -62,10 +69,13 @@ Deno.serve(async (req) => {
     // Load participant
     const { data: participant } = await supabase
       .from("match_participants")
-      .select("id, payment_status, payment_reference, slot_type")
+      .select("id, payment_status, payment_reference, slot_type, status")
       .eq("match_id", matchId)
       .eq("user_id", user.id)
-      .single();
+      .in("status", ["active", "waitlist", "waitlisted"] as any)
+      .order("joined_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
     if (!participant) {
       return new Response(JSON.stringify({ error: "You are not in this match" }), {
@@ -94,7 +104,9 @@ Deno.serve(async (req) => {
         p_user_id: user.id,
         p_amount: refundAmount,
         p_type: 'refund',
-        p_reference: `refund_${matchId}_${Date.now()}`
+        p_reference: `refund_${matchId}_${Date.now()}`,
+        p_match_id: matchId,
+        p_description: `Refund for leaving match ${match.join_code}`,
       });
 
       if (refundErr) {
@@ -109,13 +121,6 @@ Deno.serve(async (req) => {
       .from("match_participants")
       .update({ status: "left" as any, payment_status: refunded ? "refunded" as any : participant.payment_status })
       .eq("id", participant.id);
-
-    // Free up the core slot if they were a paid core player
-    if (participant.slot_type === "core" && participant.payment_status === "paid") {
-      await supabaseService.from("matches").update({
-        core_paid_count: Math.max(0, (match.core_paid_count ?? 1) - 1)
-      }).eq("id", matchId);
-    }
 
     // Notify organizer
     const leaverName = user.user_metadata?.full_name || user.email?.split("@")[0] || "A player";
@@ -134,7 +139,7 @@ Deno.serve(async (req) => {
         .from("match_participants")
         .select("id, user_id, waitlist_position")
         .eq("match_id", matchId)
-        .eq("status", "waitlist")
+        .in("status", ["waitlist", "waitlisted"] as any)
         .order("waitlist_position", { ascending: true })
         .limit(1)
         .maybeSingle();
@@ -146,8 +151,8 @@ Deno.serve(async (req) => {
           .select("team_color_a, team_color_b")
           .eq("id", matchId)
           .single();
-        const teamA = (fullMatch?.team_color_a ?? "red").toLowerCase();
-        const teamB = (fullMatch?.team_color_b ?? "blue").toLowerCase();
+        const teamA = normalizeTeamSide(fullMatch?.team_color_a ?? "reds");
+        const teamB = normalizeTeamSide(fullMatch?.team_color_b ?? "blues");
         const { data: teamCounts } = await supabaseService
           .from("match_participants")
           .select("team")
@@ -162,9 +167,10 @@ Deno.serve(async (req) => {
           .from("match_participants")
           .update({
             status: "active" as any,
+            slot_type: "core" as any,
             team: assignedTeam as any,
             waitlist_position: null,
-            payment_status: (match.entry_fee === 0 ? "paid" : "unpaid") as any,
+            payment_status: (Number(match.entry_fee ?? 0) === 0 ? "paid" : "unpaid") as any,
           })
           .eq("id", nextWaiter.id);
 
@@ -178,6 +184,33 @@ Deno.serve(async (req) => {
 
         promoted = true;
       }
+    }
+
+    const { count: paidCoreCount } = await supabaseService
+      .from("match_participants")
+      .select("*", { count: "exact", head: true })
+      .eq("match_id", matchId)
+      .eq("status", "active")
+      .eq("slot_type", "core")
+      .eq("payment_status", "paid");
+
+    const maxCore = Number(match.max_core_players ?? 10);
+    const nextPaidCount = Math.min(Number(paidCoreCount ?? 0), maxCore);
+    const nextIsFull = nextPaidCount >= maxCore;
+    const nextStatus = nextIsFull ? "full" : "upcoming";
+    const nextEscrowStatus = Number(match.entry_fee ?? 0) > 0
+      ? (nextIsFull ? "holding" : "none")
+      : "none";
+
+    if (match.status !== "completed" && match.status !== "cancelled") {
+      await supabaseService
+        .from("matches")
+        .update({
+          core_paid_count: nextPaidCount,
+          status: nextStatus as any,
+          escrow_status: nextEscrowStatus as any,
+        })
+        .eq("id", matchId);
     }
 
     return new Response(JSON.stringify({

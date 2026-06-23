@@ -20,6 +20,8 @@ export type BrowseMatch = {
   match_date: string;
   entry_fee: number;
   status: string;
+  intelligent_status: 'upcoming' | 'soon' | 'live_now' | 'ended' | 'cancelled' | 'archived';
+  booking_duration_minutes: number;
   core_paid_count: number;
   max_spare_players: number;
   duration_minutes: number;
@@ -78,13 +80,14 @@ const BUCKET_ORDER: Record<DayBucket, number> = {
 function assignBucket(dateStr: string): DayBucket {
   const now = new Date();
   const d = new Date(dateStr);
+  const dateKey = (value: Date) => new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Accra",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(value);
 
-  const isToday =
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate();
-
-  if (isToday) return "tonight";
+  if (dateKey(d) === dateKey(now)) return "tonight";
 
   const dayOfWeek = d.getDay(); // 0=Sun, 5=Fri, 6=Sat
   const diffDays = Math.floor((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
@@ -118,7 +121,7 @@ export function useBrowseMatches(filters: BrowseFilters) {
       `
       )
       .eq("match_type", "public" as any)
-      .in("status", ["upcoming", "full"] as any)
+      .in("intelligent_status", ["upcoming", "soon", "live_now"] as any)
       .gte("match_date", now)
       .order("match_date", { ascending: true })
       .limit(50);
