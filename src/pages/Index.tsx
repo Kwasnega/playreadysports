@@ -268,15 +268,22 @@ function transformMatches(
   userId?: string,
   friendIds?: Set<string>
 ): Parameters<typeof NearYou>[0]["items"] {
-  const isJoined = (m: HomeMatch) =>
-    userId ? m.participants.some((p) => p.user_id === userId && p.status === "active") : false;
+  const isJoined = (m: any) =>
+    userId ? (m?.participants || []).some((p: any) => p.user_id === userId && p.status === "active") : false;
 
   const getFriendInfo = (m: HomeMatch) => {
     if (!friendIds) return { friendCount: 0, friendAvatars: [] };
-    const count = m.participants.filter(
+    const count = (m?.participants || []).filter(
       (p) => friendIds.has(p.user_id) && p.status === "active"
     ).length;
     return { friendCount: count, friendAvatars: [] };
+  };
+
+  const getCoreCount = (m: any) => {
+    const count = (m?.participants || []).filter(
+      (p: any) => p.status === "active" && p.slot_type === "core",
+    ).length;
+    return count;
   };
 
   return matches

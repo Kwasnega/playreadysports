@@ -5,14 +5,16 @@ import { HomeMatch } from "@/hooks/useHomeMatches";
    ------------------------------------------------------------ */
 
 /** Count active core participants for a match */
-export function getActiveCoreCount(match: HomeMatch): number {
+export function getActiveCoreCount(match: HomeMatch | any): number {
+  if (!match || !match.participants) return 0;
   return match.participants.filter(
-    (p) => p.status === "active" && p.slot_type === "core"
+    (p: any) => p.status === "active" && p.slot_type === "core"
   ).length;
 }
 
 /** Spots left = max_core_players minus active core count */
-export function getSpotsLeft(match: HomeMatch): number {
+export function getSpotsLeft(match: HomeMatch | any): number {
+  if (!match) return 0;
   const max = match.max_core_players ?? match.players_per_side ?? 10;
   return Math.max(0, max - getActiveCoreCount(match));
 }
@@ -116,11 +118,12 @@ export function extractFormatNumber(fmt: string): string {
 }
 
 /** Count distinct teams in a gala match (teams != 'unassigned') */
-export function getGalaTeamsIn(match: HomeMatch): number {
+export function getGalaTeamsIn(match: HomeMatch | any): number {
+  if (!match || !match.participants) return 0;
   const teams = new Set(
     match.participants
-      .filter((p) => p.status === "active" && p.team && p.team !== "unassigned")
-      .map((p) => p.team)
+      .filter((p: any) => p.status === "active" && p.team && p.team !== "unassigned")
+      .map((p: any) => p.team)
   );
   return teams.size;
 }
