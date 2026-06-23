@@ -24,7 +24,7 @@ export function useMySchedule(userId: string | undefined) {
   useEffect(() => {
     if (!userId) { setMatches([]); setLoading(false); return; }
 
-    let cancelled = false;
+    const cancelled = false;
     setLoading(true);
 
     const load = async () => {

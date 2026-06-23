@@ -31,7 +31,6 @@ export const FriendsSheet = ({ trigger }: Props) => {
     const loadSuggested = async () => {
       setSuggestedLoading(true);
       // Get friend ids
-      // @ts-ignore
       const { data: friendships } = await supabase
         .from("friendships")
         .select("requester_id, recipient_id, status")
@@ -113,7 +112,6 @@ export const FriendsSheet = ({ trigger }: Props) => {
 
   const handleSendRequest = async (recipientId: string) => {
     setSendingTo(recipientId);
-    // @ts-ignore
     const { error } = await supabase.from("friendships").insert({
       requester_id: user!.id,
       recipient_id: recipientId,

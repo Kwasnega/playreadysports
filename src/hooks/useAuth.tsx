@@ -46,7 +46,7 @@ const friendlyFunctionError = async (err: any): Promise<string> => {
       const body = await context.clone().json();
       if (body?.error) return String(body.error);
     }
-  } catch {}
+  } catch { /* ignore error parsing */ }
   return friendly(err);
 };
 
@@ -164,7 +164,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setPendingVerifyEmail(null);
           runPending();
         }
-      } catch {}
+      } catch { /* ignore polling errors */ }
     }, 3000);
     return () => window.clearInterval(id);
   }, [pendingVerifyEmail]);
@@ -344,7 +344,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         runPending();
         return true;
       }
-    } catch {}
+    } catch { /* ignore check error */ }
     return false;
   };
 

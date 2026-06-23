@@ -43,18 +43,17 @@ const createMockClient = (): any => ({
       callback('INITIAL_SESSION', null);
       return { data: { subscription: { unsubscribe: () => {} } } };
     },
-  },
-  realtime: {
-    params: {
-      eventsPerSecond: 10,
-    },
-    },
     signUp: async () => ({ data: null, error: { message: 'No Supabase configured' } }),
     signInWithPassword: async () => ({ data: null, error: { message: 'No Supabase configured' } }),
     signInWithOAuth: async () => ({ data: null, error: { message: 'No Supabase configured' } }),
     signOut: async () => ({ error: null }),
     resetPasswordForEmail: async () => ({ data: null, error: null }),
     verifyOtp: async () => ({ data: null, error: null }),
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10,
+    },
   },
 });
 

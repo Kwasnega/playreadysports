@@ -72,8 +72,8 @@ export default function AdminWithdrawals() {
       const rows = (data ?? []) as VenuePayout[];
       const ownerIds = [...new Set(rows.map((r) => r.owner_id))];
       const approverIds = [...new Set(rows.filter((r) => r.approved_by).map((r) => r.approved_by!))];
-      let ownerMap: Record<string, { full_name: string | null; username: string | null }> = {};
-      let approverMap: Record<string, { full_name: string | null; username: string | null }> = {};
+      const ownerMap: Record<string, { full_name: string | null; username: string | null }> = {};
+      const approverMap: Record<string, { full_name: string | null; username: string | null }> = {};
       if (ownerIds.length) {
         const { data: profiles } = await (supabase as any)
           .from("profiles")
@@ -143,7 +143,7 @@ export default function AdminWithdrawals() {
       const userIds = [...new Set(txs.map((t) => t.user_id))];
 
       // Fetch user profiles separately since no direct FK exists
-      let usersMap: Record<string, { full_name: string | null; username: string | null; email: string | null }> = {};
+      const usersMap: Record<string, { full_name: string | null; username: string | null; email: string | null }> = {};
       if (userIds.length > 0) {
         const { data: profiles } = await (supabase as any)
           .from("profiles")

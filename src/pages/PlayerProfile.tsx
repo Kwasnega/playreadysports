@@ -140,13 +140,12 @@ const PlayerProfile = () => {
       setFriendStatus(status);
     });
     // Also fetch the friendship ID for unfriend/cancel
-    // @ts-ignore — friendships table not in generated types yet
+    // friendships table not in generated types yet
     (supabase as any)
       .from("friendships")
       .select("id, requester_id, status")
       .or(`and(requester_id.eq.${user.id},recipient_id.eq.${profile.id}),and(requester_id.eq.${profile.id},recipient_id.eq.${user.id})`)
       .maybeSingle()
-      // @ts-ignore
       .then((res: any) => {
         if (cancelled) return;
         if (res.data) setFriendshipId(res.data.id);
