@@ -111,9 +111,6 @@ const Hero = ({ liveCount }: { liveCount: number }) => {
             PLAYREADYSPORTS<br/>
             <span className="italic font-display">Find your match.</span>
           </h1>
-          <p className="mt-3 max-w-[540px] text-sm sm:text-[15px] leading-6 text-muted-foreground">
-            Join pickup football matches, book real pitches, and discover local tournaments across Ghana with Play Ready Sports, Play Ready, and Play Ready Sports GH.
-          </p>
           <a
             href="#near-you"
             className="inline-flex items-center gap-2 mt-4 bg-primary/8 border border-primary/15 text-primary rounded-full pl-2.5 pr-3.5 py-1.5 text-[12px] font-semibold hover:bg-primary/15 transition-colors"
