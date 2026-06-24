@@ -7,23 +7,23 @@
   </url>
   <url>
     <loc>https://joinplayready.com/join</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.95</priority>
+    <changefreq>daily</changefreq>
+    <priority>0.98</priority>
   </url>
   <url>
     <loc>https://joinplayready.com/code</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.80</priority>
+    <priority>0.86</priority>
   </url>
   <url>
     <loc>https://joinplayready.com/create</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.90</priority>
+    <priority>0.94</priority>
   </url>
   <url>
     <loc>https://joinplayready.com/schedule</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.85</priority>
+    <priority>0.90</priority>
   </url>
   <url>
     <loc>https://joinplayready.com/terms</loc>

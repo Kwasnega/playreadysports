@@ -118,7 +118,13 @@ export function Seo({
 }: SeoProps) {
   const location = useLocation();
   const routeMeta = getSeoData(location.pathname);
-  const resolvedTitle = title ? `${title} | PLAYREADYSPORTS` : routeMeta.title.includes("PLAYREADYSPORTS") ? routeMeta.title : `${routeMeta.title} | PLAYREADYSPORTS`;
+  const resolvedTitle = title
+    ? title.includes("PLAYREADYSPORTS")
+      ? title
+      : `PLAYREADYSPORTS | ${title}`
+    : routeMeta.title.includes("PLAYREADYSPORTS")
+      ? routeMeta.title
+      : `PLAYREADYSPORTS | ${routeMeta.title}`;
   const resolvedDescription = description ?? routeMeta.description;
   const resolvedKeywords = keywords ?? routeMeta.keywords;
   const resolvedCanonical = `${SITE_URL}${canonicalPath ?? location.pathname}`;

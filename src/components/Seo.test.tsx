@@ -10,7 +10,7 @@ describe("Seo", () => {
       </MemoryRouter>
     );
 
-    expect(document.title).toContain("PLAYREADYSPORTS");
+    expect(document.title).toMatch(/^PLAYREADYSPORTS \|/i);
     expect(document.title).toContain("Join Football Matches Near You");
     expect(document.querySelector('meta[name="description"]')?.getAttribute("content")).toContain("Browse open football matches");
     expect(document.querySelector('meta[property="og:title"]')?.getAttribute("content")).toContain("PLAYREADYSPORTS");
