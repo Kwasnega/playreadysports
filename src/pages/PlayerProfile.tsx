@@ -158,6 +158,7 @@ const PlayerProfile = () => {
     const result = await sendRequest(profile.id);
     if (!result.error) {
       setFriendStatus("pending_sent");
+      toast.success(`Friend request sent to ${profile.full_name ?? profile.username ?? "this player"}! 🤝`);
     } else {
       toast.error(result.error);
     }
@@ -261,9 +262,9 @@ const PlayerProfile = () => {
                       <button
                         onClick={handleAddFriend}
                         disabled={friendLoading}
-                        className="inline-flex items-center gap-2 text-sm font-bold bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-600 hover:via-sky-600 hover:to-blue-700 text-white rounded-full px-4 py-2.5 shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 transition-all duration-200 disabled:opacity-60 disabled:shadow-none"
+                        className="inline-flex items-center gap-2.5 text-sm font-black tracking-wide bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:via-sky-500 hover:to-blue-500 text-white rounded-full px-6 py-3 shadow-xl shadow-cyan-500/40 hover:shadow-cyan-500/60 hover:scale-[1.04] active:scale-[0.97] transition-all duration-200 disabled:opacity-60 disabled:shadow-none disabled:scale-100 ring-2 ring-cyan-400/30 hover:ring-cyan-400/60"
                       >
-                        {friendLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+                        {friendLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-[18px] h-[18px]" />}
                         Add Friend
                       </button>
                     )}
