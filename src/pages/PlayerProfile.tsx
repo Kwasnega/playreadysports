@@ -145,11 +145,15 @@ const PlayerProfile = () => {
 
   const handleAddFriend = async () => {
     if (!profile?.id) return;
-    if (!user) {
+    
+    // Explicit session check to ensure the user is genuinely logged in
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
       toast.info("You're not logged in. Please log in to send friend requests.");
       openAuth("signin");
       return;
     }
+    
     setFriendLoading(true);
     const result = await sendRequest(profile.id);
     if (!result.error) {
