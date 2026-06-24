@@ -12,7 +12,6 @@ type SettingRow = {
 };
 
 const KEYS = [
-  { key: "commission_rate", label: "Platform commission (decimal)", hint: "Enter as decimal (e.g. 0.15 for 15%)" },
   { key: "organizer_incentive_amount", label: "Organizer incentive (GHS)", hint: "Flat Play wallet credit per completed match" },
   { key: "cancel_cutoff_minutes", label: "Cancel cutoff (minutes)", hint: "Organizer cannot cancel within this window before kickoff" },
   { key: "auto_cancel_window_minutes", label: "Auto-cancel window (minutes)", hint: "Match auto-cancels if not enough players pay within this window" },
@@ -39,8 +38,7 @@ export default function AdminSettings() {
     KEYS.forEach((k) => {
       if (map[k.key] === undefined) {
         map[k.key] =
-          k.key === "commission_rate" ? "0.05"
-          : k.key === "cancel_cutoff_minutes" ? "60"
+          k.key === "cancel_cutoff_minutes" ? "60"
           : k.key === "auto_cancel_window_minutes" ? "20"
           : k.key === "auto_cancel_min_paid_pct" ? "1.0"
           : "5.00";
@@ -62,10 +60,6 @@ export default function AdminSettings() {
     if (isNaN(num) || num < 0) return `${key} must be a positive number`;
 
     switch (key) {
-      case "commission_rate": {
-        if (num > 1) return "Commission rate must be between 0 and 1";
-        return null;
-      }
       case "organizer_incentive_amount": {
         if (num > 10000) return "Organizer incentive must be ≤ 10,000";
         return null;
@@ -92,14 +86,7 @@ export default function AdminSettings() {
   }, []);
 
   const updateRow = (key: string, raw: string) => {
-    let value = raw;
-    // Auto-convert commission_rate if user enters whole-number percent
-    if (key === "commission_rate") {
-      const num = parseFloat(value);
-      if (!isNaN(num) && num > 1) {
-        value = (num / 100).toString();
-      }
-    }
+    const value = raw;
     setRows((prev) => ({ ...prev, [key]: value }));
     setErrors((prev) => ({ ...prev, [key]: validate(key, value) }));
   };
@@ -176,8 +163,6 @@ export default function AdminSettings() {
               />
               {errors[k.key] ? (
                 <p className="text-[11px] text-red-400 mt-1">{errors[k.key]}</p>
-              ) : k.key === "commission_rate" && parseFloat(rows[k.key] || "0") > 0.5 ? (
-                <p className="text-[11px] text-amber-400 mt-1">High commission rate — are you sure?</p>
               ) : (
                 <p className="text-[11px] text-slate-500 mt-1">{k.hint}</p>
               )}
@@ -200,8 +185,7 @@ export default function AdminSettings() {
         <p className="font-semibold text-slate-300 mb-2">Escrow release formula</p>
         <p>
           Gross = entry fee times paid core players. Organizer receives the incentive as Play wallet credits.
-          Platform fee = gross times commission rate. Venue owner receives gross minus incentive minus platform fee
-          into withdrawable venue balance.
+          Venue owner receives gross minus incentive into their withdrawable balance.
         </p>
       </div>
     </div>

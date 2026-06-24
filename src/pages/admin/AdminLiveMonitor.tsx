@@ -279,7 +279,15 @@ export default function AdminLiveMonitor() {
       // Compute stats client-side from matches
       const liveMatches = normalized.filter((m) => m.status === "live");
       const playersOnPitch = liveMatches.reduce((sum, m) => sum + m.participants.filter((p: any) => p.status === "active").length, 0);
-      const totalEscrow = normalized.reduce((sum, m) => sum + (Number(m.entry_fee ?? 0) * Number(m.core_paid_count ?? 0)), 0);
+      
+      // Escrow: sum of entry fees for confirmed paid core spots
+      const totalEscrow = normalized
+        .filter((m: any) => (Number(m.entry_fee ?? 0) > 0))
+        .reduce((sum, m: any) => {
+          const paidCoreCount = Number(m.core_paid_count ?? 0);
+          return sum + (Number(m.entry_fee ?? 0) * paidCoreCount);
+        }, 0);
+      
       setStats({ live_matches: liveMatches.length, players_on_pitch: playersOnPitch, total_escrow: totalEscrow, active_users: 0 });
       setInterventions([]);
       setLastRefresh(new Date());

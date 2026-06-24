@@ -158,7 +158,7 @@ const PlayerProfile = () => {
       toast.error(result.error);
     }
     setFriendLoading(false);
-  };"},{
+  };
 
   const handleAccept = async () => {
     if (!friendshipId) return;
@@ -246,15 +246,15 @@ const PlayerProfile = () => {
                       <button
                         onClick={handleAddFriend}
                         disabled={friendLoading}
-                        className="inline-flex items-center gap-1.5 text-[11px] font-semibold bg-primary/8 border border-primary/15 text-primary hover:bg-primary/20 rounded-full px-3 py-1.5 disabled:opacity-50"
+                        className="inline-flex items-center gap-2 text-sm font-bold bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-600 hover:via-sky-600 hover:to-blue-700 text-white rounded-full px-4 py-2.5 shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 transition-all duration-200 disabled:opacity-60 disabled:shadow-none"
                       >
-                        {friendLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserPlus className="w-3 h-3" />}
-                        Add friend
+                        {friendLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+                        Add Friend
                       </button>
                     )}
                     {friendStatus === "pending_sent" && (
-                      <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold bg-secondary text-muted-foreground rounded-full px-3 py-1.5">
-                        <Loader2 className="w-3 h-3" /> Request sent
+                      <span className="inline-flex items-center gap-2 text-sm font-bold border border-amber-500/30 bg-amber-500/10 text-amber-600 rounded-full px-4 py-2.5 shadow-sm">
+                        <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" /> Request Sent
                       </span>
                     )}
                     {friendStatus === "pending_received" && (

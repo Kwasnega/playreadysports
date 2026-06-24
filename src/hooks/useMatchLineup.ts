@@ -52,7 +52,7 @@ export function useMatchLineup(matchId: string | null, teamSide: TeamSide | null
         .eq("team_side", teamSide)
         .order("is_starting_player", { ascending: false })
         .order("jersey_number", { ascending: true, nullsFirst: false })
-        .order("updated_at", { ascending: true });
+        .order("updated_at", { ascending: false });
 
       if (err) throw err;
 
@@ -164,6 +164,82 @@ export function useMatchLineup(matchId: string | null, teamSide: TeamSide | null
 
           if (insertErr) throw insertErr;
         }
+
+        // Optimistic local update so UI reflects change immediately
+        setLineups((prev) => {
+          try {
+            const idx = prev.findIndex((p) => p.player_id === playerId);
+            const updatedAt = new Date().toISOString();
+            if (idx !== -1) {
+              const copy = [...prev];
+              copy[idx] = {
+                ...copy[idx],
+                assigned_position: position,
+                x_position: x,
+                y_position: y,
+                updated_at: updatedAt,
+                updated_by: user.id,
+              } as any;
+              return copy;
+            }
+            return [
+              ...prev,
+              ({
+                id: `temp-${playerId}`,
+                match_id: matchId,
+                team_side: teamSide,
+                player_id: playerId,
+                assigned_position: position,
+                x_position: x,
+                y_position: y,
+                formation: currentFormation || "4-3-3",
+                is_starting_player: true,
+                updated_at: updatedAt,
+                updated_by: user.id,
+              } as any),
+            ];
+          } catch (e) {
+            return prev;
+          }
+        });
+
+        setLineups((prev) => {
+          try {
+            const idx = prev.findIndex((p) => p.player_id === playerId);
+            const updatedAt = new Date().toISOString();
+            if (idx !== -1) {
+              const copy = [...prev];
+              copy[idx] = {
+                ...copy[idx],
+                assigned_position: position,
+                x_position: x,
+                y_position: y,
+                updated_at: updatedAt,
+                updated_by: user.id,
+              } as any;
+              return copy;
+            }
+
+            return [
+              ...prev,
+              ({
+                id: `temp-${playerId}`,
+                match_id: matchId,
+                team_side: teamSide,
+                player_id: playerId,
+                assigned_position: position,
+                x_position: x,
+                y_position: y,
+                formation: currentFormation || "4-3-3",
+                is_starting_player: true,
+                updated_at: updatedAt,
+                updated_by: user.id,
+              } as any),
+            ];
+          } catch (e) {
+            return prev;
+          }
+        });
 
         toast.success("Position updated");
         await fetchLineups();
