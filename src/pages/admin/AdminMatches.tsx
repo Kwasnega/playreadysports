@@ -33,11 +33,15 @@ export default function AdminMatches() {
   const [dateTo, setDateTo] = useState("");
 
   const load = async () => {
-    let q = supabase.from("matches").select("id, join_code, match_date, format, players_per_side, entry_fee, organizer_venue_fee, status, escrow_status, venue:venues(name, city), organizer:profiles(full_name, username)").order("created_at", { ascending: false });
+    let q = supabase.from("matches").select("id, join_code, match_date, format, players_per_side, entry_fee, organizer_venue_fee, status, escrow_status, venue:venues(name, city), organizer:profiles!matches_organizer_id_fkey(full_name, username)").order("created_at", { ascending: false });
     if (statusFilter !== "all") q = q.eq("status", statusFilter as any);
     if (dateFrom) q = q.gte("match_date", dateFrom);
     if (dateTo) q = q.lte("match_date", dateTo + "T23:59:59");
-    const { data } = await q;
+    const { data, error } = await q;
+    if (error) {
+      console.error("AdminMatches fetch error:", error);
+      toast.error(error.message);
+    }
     setMatches((data ?? []) as any);
   };
 
