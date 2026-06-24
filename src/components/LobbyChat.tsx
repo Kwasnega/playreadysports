@@ -240,27 +240,37 @@ export const LobbyChat = ({ matchCode, matchId, isOrganizer = true, teamColorA, 
                     onTouchEnd={cancelLongPress}
                     onContextMenu={(e) => { if (isOrganizer) { e.preventDefault(); setActionFor(m.id); } }}
                     className={`max-w-[78%] rounded-xl px-3.5 py-2 select-none backdrop-blur-sm ${
-                      mine
-                        ? "bg-primary text-primary-foreground rounded-br-md shadow-sm"
-                        : "bg-card/90 text-foreground rounded-bl-md border border-border"
+                      m.is_admin_broadcast
+                        ? "bg-cyan-500/20 border border-cyan-500/30 text-white rounded-md shadow-md"
+                        : mine
+                          ? "bg-primary text-primary-foreground rounded-br-md shadow-sm"
+                          : "bg-card/90 text-foreground rounded-bl-md border border-border"
                     } ${m.id === pinnedId ? "ring-1 ring-primary" : ""}`}
                   >
-                    {!mine && (
+                    {(!mine || m.is_admin_broadcast) && (
                       <div className="flex items-center gap-1.5 mb-0.5">
-                        <p
-                          className={`text-[11px] font-bold ${nameColor ?? ""}`}
-                          style={teamHex ? { color: teamHex } : undefined}
-                        >
-                          {m.sender_name}
-                        </p>
-                        {isTurfOwner && (
-                          <span className="inline-flex items-center rounded-full bg-amber-500/15 text-amber-600 px-1 py-0 text-[9px] font-bold tracking-wider uppercase">
-                            Turf Owner
-                          </span>
+                        {m.is_admin_broadcast ? (
+                           <span className="inline-flex items-center rounded-full bg-cyan-500/20 text-cyan-300 px-1.5 py-0.5 text-[10px] font-bold tracking-wider uppercase border border-cyan-500/30">
+                             📢 Admin
+                           </span>
+                        ) : (
+                          <>
+                            <p
+                              className={`text-[11px] font-bold ${nameColor ?? ""}`}
+                              style={teamHex ? { color: teamHex } : undefined}
+                            >
+                              {m.sender_name}
+                            </p>
+                            {isTurfOwner && (
+                              <span className="inline-flex items-center rounded-full bg-amber-500/15 text-amber-600 px-1 py-0 text-[9px] font-bold tracking-wider uppercase">
+                                Turf Owner
+                              </span>
+                            )}
+                          </>
                         )}
                       </div>
                     )}
-                    <p className="text-sm leading-snug whitespace-pre-wrap break-words">{m.content}</p>
+                    <p className={`text-sm leading-snug whitespace-pre-wrap break-words ${m.is_admin_broadcast ? "font-bold text-cyan-50" : ""}`}>{m.content}</p>
                     {actionFor === m.id && isOrganizer && (
                       <div className="mt-2 -mx-1 pt-2 border-t border-border/40 flex gap-2">
                         <button

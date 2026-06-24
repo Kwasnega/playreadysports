@@ -5,6 +5,7 @@ import {
   ChevronRight, Plus, Minus, MapPin, Star, Search, Wallet, Lightbulb, Zap, Sunrise, Info
 } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { useVenues } from "@/hooks/useVenues";
 import { useUserLocation } from "@/hooks/useUserLocation";
 import { useCreateMatch } from "@/hooks/useCreateMatch";
@@ -223,6 +224,31 @@ const CreateMatch = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  const checkVenueConflict = async (venueId: string, startDate: Date, durationMinutes: number) => {
+    const requestedStart = startDate.getTime();
+    const requestedEnd = requestedStart + durationMinutes * 60_000;
+    const requestedEndIso = new Date(requestedEnd).toISOString();
+
+    const { data, error } = await supabase
+      .from("matches")
+      .select("id, match_date, duration_minutes")
+      .eq("venue_id", venueId)
+      .not("status", "in", "(cancelled,completed)")
+      .lt("match_date", requestedEndIso)
+      .order("match_date", { ascending: false })
+      .limit(20);
+
+    if (error) {
+      throw new Error("Failed to verify turf availability. Please try again.");
+    }
+
+    return (data ?? []).some((existing: any) => {
+      const existingStart = new Date(existing.match_date).getTime();
+      const existingEnd = existingStart + ((existing.duration_minutes ?? 60) * 60_000);
+      return existingStart < requestedEnd && existingEnd > requestedStart;
+    });
+  };
+
   const next = async () => {
     if (step === 1 && matchFormat && !availableFormats.includes(matchFormat)) setMatchFormat(null);
     if (step < STEP_LABELS.length - 1) {
@@ -239,6 +265,17 @@ const CreateMatch = () => {
 
     const dateObj = buildGhanaDateTime(matchDate, matchHour, matchMinute);
     const matchDateIso = dateObj.toISOString();
+
+    try {
+      const venueConflict = await checkVenueConflict(venueId, dateObj, duration);
+      if (venueConflict) {
+        toast.error("This turf is already booked for that time. Please choose a different time or turf.");
+        return;
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to verify turf availability. Please try again.");
+      return;
+    }
 
     const result = await createMatch({
       title: title.trim(),

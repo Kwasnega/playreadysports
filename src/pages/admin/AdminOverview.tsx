@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { callAdminSettings } from "@/lib/adminSettingsFn";
+import { fetchCommissionRate } from "@/lib/platformSettings";
 import {
   Users, Trophy, CreditCard, PiggyBank, TrendingUp, ArrowUpRight,
   Trash2, AlertTriangle, X, Settings, Percent,
@@ -141,14 +142,14 @@ export default function AdminOverview() {
     (async () => {
       setLoading(true);
       try {
-        const [{ count: players }, , { data: matchRows }, { data: walletTx }, { data: chart }, { data: recent }, { data: setting }, { data: maintenanceSetting }] = await Promise.all([
+        const [{ count: players }, , { data: matchRows }, { data: walletTx }, { data: chart }, { data: recent }, commissionRate, { data: maintenanceSetting }] = await Promise.all([
           supabase.from("profiles").select("*", { count: "exact", head: true }),
           supabase.from("matches").select("*", { count: "exact", head: true }),
           (supabase as any).from("matches").select("entry_fee, core_paid_count, status"),
           (supabase as any).from("wallet_transactions").select("amount, type, status").in("type", ["spend", "entry_fee", "refund"]),
           (supabase as any).rpc("matches_per_day", { days: 14 }),
           (supabase as any).from("wallet_transactions").select("id, amount, type, status, created_at, user_id, match:matches(join_code)").not("type", "in", "(venue_cut,organizer_profit)").order("created_at", { ascending: false }).limit(10),
-          (supabase as any).from("platform_settings").select("value").eq("key", "commission_rate").single(),
+          fetchCommissionRate(),
           (supabase as any).from("platform_settings").select("value").eq("key", "maintenance_mode").single(),
         ]);
 
@@ -167,8 +168,7 @@ export default function AdminOverview() {
           }
         }
 
-        const rate = parseFloat(setting?.value ?? "0.05");
-        setCommissionRate(isNaN(rate) ? 0.05 : rate);
+        setCommissionRate(isNaN(commissionRate) ? 0.05 : commissionRate);
         setMaintenanceMode(maintenanceSetting?.value === "true");
         const transactionGross = (walletTx ?? [])
           .filter((t: any) => ["spend", "entry_fee"].includes(t.type) && ["completed", "paid", null, undefined].includes(t.status))

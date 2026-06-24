@@ -10,6 +10,7 @@ import {
   ArrowLeft, BarChart3, MapPin, Calendar, Users, TrendingUp,
   AlertTriangle, CheckCircle2, XCircle, Clock, Zap,
 } from "lucide-react";
+import { NotificationsBell } from "@/components/NotificationsBell";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { getFormattedTime, getDistanceKm } from "@/lib/matchHelpers";
@@ -358,7 +359,7 @@ export default function TurfOwnerDashboard() {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <h1 className="font-display font-black text-xl uppercase flex-1">Turf Owner</h1>
-          <BarChart3 className="w-5 h-5 text-amber-500" />
+          <NotificationsBell />
         </div>
       </header>
 

@@ -576,11 +576,12 @@ const Lobby = () => {
   /* ---- Contextual CTA ---- */
   const cta = useMemo(() => {
     if (!match) return null;
+    const isFreeMatch = Number(match.entry_fee ?? 0) === 0;
     if (match.status === 'completed') return { label: "Match Over", icon: Flag, disabled: true, onClick: () => {}, tone: "neutral" as const };
     if (match.status === 'cancelled') return { label: "Match Cancelled", icon: X, disabled: true, onClick: () => {}, tone: "neutral" as const };
     if (isOrganizer) {
       if (allPaid) return { label: "Match confirmed", icon: Check, disabled: true, onClick: () => {}, tone: "success" as const };
-      if (corePaidCount === maxCore - 1) return { label: `Cover last slot · ₵${sharePerPlayer}`, icon: Wallet, disabled: paying, onClick: handleJoinPaid, tone: "primary" as const };
+      if (!isFreeMatch && corePaidCount === maxCore - 1) return { label: `Cover last slot · ₵${sharePerPlayer}`, icon: Wallet, disabled: paying, onClick: handleJoinPaid, tone: "primary" as const };
       return { label: `${corePaidCount}/${maxCore} paid · waiting`, icon: Hourglass, disabled: true, onClick: () => {}, tone: "neutral" as const };
     }
     if (!userParticipant) {
@@ -595,7 +596,7 @@ const Lobby = () => {
         };
       }
       return {
-        label: isPaid ? `Join · ₵${sharePerPlayer}` : "Join match",
+        label: isPaid ? `Join · ₵${sharePerPlayer}` : "Join match · FREE",
         icon: UserCheck,
         disabled: paying,
         tone: "primary" as const,

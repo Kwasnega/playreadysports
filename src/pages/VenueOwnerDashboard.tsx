@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getFormattedTime } from "@/lib/matchHelpers";
+import playreadyLogo from "@/assets/playready-logo.jpg";
 import VenueOwnerCalendar from "@/components/venues/VenueOwnerCalendar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationsBell } from "@/components/NotificationsBell";
@@ -141,43 +142,56 @@ function VenueOwnerLoginGate({ onSuccess }: { onSuccess: () => void }) {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-5">
-      <div className="w-full max-w-sm space-y-6">
-        <div className="text-center">
-          <div className="w-14 h-14 rounded-full border-2 border-foreground bg-background flex items-center justify-center mx-auto mb-4">
-            <Building2 className="w-7 h-7 text-foreground" />
+    <div className="min-h-screen bg-background flex items-center justify-center px-5 py-10">
+      <div className="w-full max-w-md">
+        <div className="bg-card border border-border shadow-xl shadow-black/5 rounded-[2rem] p-6 sm:p-8">
+          <div className="flex flex-col items-center text-center">
+            <img
+              src={playreadyLogo}
+              alt="PlayReady Sports"
+              className="h-16 w-auto rounded-3xl shadow-sm mb-5"
+            />
+            <h1 className="font-display font-black text-2xl sm:text-3xl tracking-tight uppercase">
+              Turf Owner Portal
+            </h1>
+            <p className="mt-3 text-sm sm:text-base text-muted-foreground max-w-[30rem] leading-6">
+              Manage your turf, track bookings, and monitor revenue — all in one place.
+            </p>
           </div>
-          <h1 className="font-display font-black text-2xl tracking-tight uppercase">Turf Owner Login</h1>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">Sign in to manage your venues and earnings.</p>
+
+          <form onSubmit={handleLogin} className="space-y-4 mt-8">
+            <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full h-12 rounded-2xl border-2 border-border bg-background px-4 py-3 text-sm font-semibold outline-none focus:border-primary transition-colors"
+              required
+            />
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full h-12 rounded-2xl border-2 border-border bg-background px-4 py-3 text-sm font-semibold outline-none focus:border-primary transition-colors"
+              required
+            />
+            <button
+              type="submit"
+              disabled={busy}
+              className="w-full h-12 rounded-full bg-primary text-primary-foreground text-sm font-black uppercase tracking-widest disabled:opacity-40 active:scale-[0.98] transition-all shadow-sm"
+            >
+              {busy ? "SIGNING IN…" : "SIGN IN"}
+            </button>
+          </form>
+
+          <p className="text-xs text-muted-foreground text-center mt-4">
+            Need an account? Contact your admin.
+          </p>
+          <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground text-center mt-6">
+            Powered by PlayReady Sports
+          </p>
         </div>
-        <form onSubmit={handleLogin} className="space-y-3">
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full h-12 rounded-xl border-2 border-border bg-background px-4 py-3 text-sm font-bold outline-none focus:border-foreground transition-colors"
-            required
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full h-12 rounded-xl border-2 border-border bg-background px-4 py-3 text-sm font-bold outline-none focus:border-foreground transition-colors"
-            required
-          />
-          <button
-            type="submit"
-            disabled={busy}
-            className="w-full h-12 rounded-full bg-foreground text-background text-[11px] font-black uppercase tracking-widest disabled:opacity-40 active:scale-[0.98] transition-all shadow-sm"
-          >
-            {busy ? "SIGNING IN…" : "SIGN IN"}
-          </button>
-        </form>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground text-center">
-          Need an account? Contact your admin.
-        </p>
       </div>
     </div>
   );

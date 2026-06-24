@@ -302,7 +302,12 @@ const FeedRow = ({ m, user, onTap }: { m: BrowseMatch; user: any; onTap: () => v
             })()}
           </div>
           <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 truncate">
-            {area} <span className="text-[8px]">•</span> <span className="text-foreground">₵{Number(m.entry_fee)}</span>
+            {area} <span className="text-[8px]">•</span>
+            {Number(m.entry_fee) === 0 ? (
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[9px] font-black uppercase tracking-widest">FREE</span>
+            ) : (
+              <span className="text-foreground">₵{Number(m.entry_fee)}</span>
+            )}
           </p>
           
           <div className="flex items-center gap-1.5 mt-2">
@@ -425,7 +430,13 @@ const JoinSheet = ({
               <div className="grid grid-cols-2 gap-y-2 text-xs text-muted-foreground mt-1">
                 <div className="inline-flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {getFormattedTime(match.match_date)}</div>
                 <div className="inline-flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> {match.venue?.area ?? match.venue?.city ?? ""}</div>
-                <div className="inline-flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> ₵{Number(match.entry_fee)}/player</div>
+                <div className="inline-flex items-center gap-1.5"><Users className="w-3.5 h-3.5" />
+                  {Number(match.entry_fee) === 0 ? (
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[9px] font-black uppercase tracking-widest">FREE</span>
+                  ) : (
+                    <span>₵{Number(match.entry_fee)}/player</span>
+                  )}
+                </div>
               </div>
             </SheetHeader>
 
@@ -568,7 +579,7 @@ const JoinSheet = ({
                       </div>
                     </div>
                     <p className="text-sm text-muted-foreground mb-4">
-                      This match is currently full. Join as a substitute and you'll be notified if a spot opens up. You'll only be charged ₵{Number(match.entry_fee)} if you get added to the match.
+                      This match is currently full. Join as a substitute and you'll be notified if a spot opens up.{Number(match.entry_fee) > 0 ? ` You'll only be charged ₵${Number(match.entry_fee)} if you get added to the match.` : " This match is free — no charge to join."}
                     </p>
                     <div className="flex gap-3">
                       <button

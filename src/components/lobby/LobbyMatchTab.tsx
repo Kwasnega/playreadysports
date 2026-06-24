@@ -127,7 +127,16 @@ export const LobbyMatchTab = (props: LobbyMatchTabProps) => {
           <FactRow icon={MapPin} label="Venue" value={`${venue?.name ?? "Venue"} · ${venue?.city ?? ""}`} />
           <FactRow icon={Clock} label="Kickoff" value={match ? getFormattedTime(match.match_date) : "—"} />
           <FactRow icon={Users} label="Format" value={`${matchMode === "gala" ? "Gala" : "Two-team"} · ${match?.format ?? "?"}`} />
-          <FactRow icon={Wallet} label="Cost" value={`₵${venueCost} total`} />
+          {Number(match?.entry_fee ?? 0) === 0 ? (
+            <div className="flex items-center gap-3 py-1">
+              <Wallet className="w-4 h-4 text-muted-foreground shrink-0" />
+              <span className="text-[10px] uppercase tracking-widest font-black text-muted-foreground w-20 shrink-0">Entry</span>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-widest">FREE</span>
+              <span className="text-[10px] font-bold text-muted-foreground">· organizer covers turf</span>
+            </div>
+          ) : (
+            <FactRow icon={Wallet} label="Cost" value={`₵${venueCost} total`} />
+          )}
           <FactRow icon={Trophy} label="Code" value={matchCode} mono />
         </div>
       </div>

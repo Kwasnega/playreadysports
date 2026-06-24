@@ -11,6 +11,7 @@ import { SplashScreen } from "@/components/SplashScreen";
 import { ConfirmProvider } from "@/components/ui/ConfirmProvider";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { MaintenanceScreen } from "@/components/MaintenanceScreen";
+import { OrganizerIncentiveModal } from "@/components/OrganizerIncentiveModal";
 import { Seo } from "@/components/Seo";
 import { usePlatformSettings } from "@/hooks/usePlatformSettings";
 import { useEffect, useRef, useState, ReactNode, lazy, Suspense } from "react";
@@ -167,6 +168,7 @@ const App = () => {
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <AuthProvider>
             <AuthModal />
+            <OrganizerIncentiveModal />
             <ConfirmProvider>
               <ErrorBoundary>
               <Suspense fallback={<PageSpinner />}>

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { fetchCommissionRate } from "@/lib/platformSettings";
 import {
   BarChart3, TrendingUp, TrendingDown, Wallet, PiggyBank,
-  RefreshCw, Loader2,
+  RefreshCw, Loader2, Download,
 } from "lucide-react";
 import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
@@ -21,10 +22,26 @@ const RANGE_DAYS: Record<string, number> = {
   "90d": 90,
 };
 
+const TYPE_LABELS: Record<string, string> = {
+  all: "All types",
+  entry_fee: "Entry fee",
+  refund: "Refund",
+  spend: "Spend",
+  venue_cut: "Venue cut",
+  organizer_profit: "Organizer profit",
+  turf_booking_payment: "Turf booking payment",
+};
+
 export default function AdminRevenue() {
   const [range, setRange] = useState<"7d" | "30d" | "90d">("30d");
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState<DayRevenue[]>([]);
+  const [transactionType, setTransactionType] = useState<"all" | "entry_fee" | "refund" | "spend" | "venue_cut" | "organizer_profit" | "turf_booking_payment">("all");
+  const [txnRows, setTxnRows] = useState<any[]>([]);
+  const [txnPage, setTxnPage] = useState(0);
+  const [txnCount, setTxnCount] = useState(0);
+  const [txnLoading, setTxnLoading] = useState(false);
+  const TXN_PAGE_SIZE = 12;
 
   const load = async () => {
     setLoading(true);
@@ -50,14 +67,7 @@ export default function AdminRevenue() {
       if (matchErr) throw matchErr;
       if (txErr) throw txErr;
 
-      // Get commission rate from admin settings
-      const { data: settingsData } = await (supabase as any)
-        .from("admin_auto_settings")
-        .select("commission_rate_percent")
-        .single();
-      const commissionPercent = settingsData?.commission_rate_percent ?? 5; // Default 5%
-      const commissionRate = commissionPercent / 100;
-
+      const commissionRate = await fetchCommissionRate();
       const map: Record<string, DayRevenue> = {};
 
       // Process transactions - prefer actual wallet movement when present
@@ -103,9 +113,46 @@ export default function AdminRevenue() {
     }
   };
 
+  const loadTransactions = async () => {
+    setTxnLoading(true);
+    try {
+      const start = new Date();
+      start.setDate(start.getDate() - RANGE_DAYS[range]);
+      const startStr = start.toISOString();
+
+      let q = (supabase as any)
+        .from("wallet_transactions")
+        .select("id, amount, type, status, created_at, user:profiles(full_name, username), match:matches(join_code)", { count: "exact" })
+        .gte("created_at", startStr)
+        .order("created_at", { ascending: false })
+        .range(txnPage * TXN_PAGE_SIZE, txnPage * TXN_PAGE_SIZE + TXN_PAGE_SIZE - 1);
+
+      if (transactionType !== "all") {
+        q = q.eq("type", transactionType as any);
+      }
+
+      const { data, count, error } = await q;
+      if (error) throw error;
+      setTxnRows((data ?? []) as any[]);
+      setTxnCount(count ?? 0);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to load transactions");
+    } finally {
+      setTxnLoading(false);
+    }
+  };
+
   useEffect(() => {
     load();
   }, [range]);
+
+  useEffect(() => {
+    setTxnPage(0);
+  }, [range, transactionType]);
+
+  useEffect(() => {
+    loadTransactions();
+  }, [range, transactionType, txnPage]);
 
   const totals = useMemo(() => {
     const gross = days.reduce((s, d) => s + d.gross, 0);
@@ -125,8 +172,8 @@ export default function AdminRevenue() {
     <div>
       <header className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-display font-bold text-white">Revenue</h2>
-          <p className="text-slate-400 text-sm mt-1">Platform commission from completed matches</p>
+          <h2 className="text-2xl font-display font-bold text-white">Platform Revenue</h2>
+          <p className="text-slate-400 text-sm mt-1">Gross volume, commission, and refunds from entry fee payments</p>
         </div>
         <div className="flex items-center gap-2">
           {(["7d", "30d", "90d"] as const).map((r) => (
@@ -155,26 +202,26 @@ export default function AdminRevenue() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-[#0B1120] border border-white/[0.06] rounded-xl p-4">
           <div className="flex items-center gap-2 text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
-            <PiggyBank className="w-3.5 h-3.5" /> Platform Fees
+            <BarChart3 className="w-3.5 h-3.5" /> Total Gross Volume
+          </div>
+          <p className="text-2xl font-display font-bold text-white">₵{totals.gross.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+        </div>
+        <div className="bg-[#0B1120] border border-white/[0.06] rounded-xl p-4">
+          <div className="flex items-center gap-2 text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
+            <Wallet className="w-3.5 h-3.5" /> Platform Revenue
           </div>
           <p className="text-2xl font-display font-bold text-emerald-400">₵{totals.fees.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
         </div>
         <div className="bg-[#0B1120] border border-white/[0.06] rounded-xl p-4">
           <div className="flex items-center gap-2 text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
-            <Wallet className="w-3.5 h-3.5" /> Refunds Issued
+            <PiggyBank className="w-3.5 h-3.5" /> Refunds Issued
           </div>
           <p className="text-2xl font-display font-bold text-red-400">₵{totals.refunds.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
         </div>
         <div className="bg-[#0B1120] border border-white/[0.06] rounded-xl p-4">
           <div className="flex items-center gap-2 text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
-            <BarChart3 className="w-3.5 h-3.5" /> Net Platform Income
-          </div>
-          <p className="text-2xl font-display font-bold text-white">₵{totals.net.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-        </div>
-        <div className="bg-[#0B1120] border border-white/[0.06] rounded-xl p-4">
-          <div className="flex items-center gap-2 text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
             {totals.trend >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-            Trend
+            Net Platform Income
           </div>
           <p className={`text-2xl font-display font-bold ${totals.trend >= 0 ? "text-emerald-400" : "text-red-400"}`}>
             {totals.trend >= 0 ? "+" : ""}{Number(totals.trend || 0).toFixed(1)}%
@@ -221,6 +268,128 @@ export default function AdminRevenue() {
             </ResponsiveContainer>
           </div>
         )}
+      </div>
+
+      <div className="mt-8 space-y-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-white">Transaction History</h3>
+            <p className="text-sm text-slate-400">View entry fee and refund activity that feeds platform revenue.</p>
+          </div>
+
+          <div className="flex flex-wrap gap-3 items-center">
+            <select
+              value={transactionType}
+              onChange={(e) => setTransactionType(e.target.value as any)}
+              className="h-10 px-4 rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-slate-300 outline-none focus:border-white/20 appearance-none cursor-pointer"
+            >
+              {Object.entries(TYPE_LABELS).map(([key, label]) => (
+                <option key={key} value={key} className="bg-[#0B1120]">{label}</option>
+              ))}
+            </select>
+            <button
+              onClick={() => {
+                const headers = ["date", "type", "user", "match", "amount", "status"];
+                const rows = txnRows.map((t) => {
+                  const user = Array.isArray(t.user) ? t.user[0] : t.user;
+                  const match = Array.isArray(t.match) ? t.match[0] : t.match;
+                  return {
+                    date: new Date(t.created_at).toISOString(),
+                    type: t.type,
+                    user: user?.full_name || user?.username || "—",
+                    match: match?.join_code || "—",
+                    amount: t.amount,
+                    status: t.status,
+                  };
+                });
+                const csv = [headers.join(","), ...rows.map((row) => headers.map((h) => `"${(row as any)[h]}"`).join(","))].join("\n");
+                const blob = new Blob([csv], { type: "text/csv" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `revenue-transactions-${new Date().toISOString().slice(0, 10)}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-slate-300 text-xs font-semibold hover:bg-white/[0.08] hover:border-white/15 transition-all"
+            >
+              <Download className="w-3.5 h-3.5" /> Export CSV
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-3 text-xs text-slate-400">
+          <span>{txnCount.toLocaleString()} records</span>
+          <span>{txnRows.length.toLocaleString()} transactions shown</span>
+          {transactionType !== "all" && <span>Filter: {TYPE_LABELS[transactionType]}</span>}
+        </div>
+
+        <div className="bg-[#0B1120] border border-white/[0.06] rounded-xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/[0.06]">
+                  <th className="text-left px-5 py-3.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Date</th>
+                  <th className="text-left px-5 py-3.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Type</th>
+                  <th className="text-left px-5 py-3.5 text-xs font-medium text-slate-500 uppercase tracking-wider">User</th>
+                  <th className="text-left px-5 py-3.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Match</th>
+                  <th className="text-right px-5 py-3.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Amount</th>
+                  <th className="text-left px-5 py-3.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {txnRows.map((t) => {
+                  const user = Array.isArray(t.user) ? t.user[0] : t.user;
+                  const match = Array.isArray(t.match) ? t.match[0] : t.match;
+                  return (
+                    <tr key={t.id} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">
+                      <td className="px-5 py-3.5 text-slate-300">{new Date(t.created_at).toLocaleString()}</td>
+                      <td className="px-5 py-3.5">
+                        <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-slate-500/10 text-slate-300">{t.type.replace(/_/g, " ")}</span>
+                      </td>
+                      <td className="px-5 py-3.5 text-slate-300">{user?.full_name || user?.username || "—"}</td>
+                      <td className="px-5 py-3.5 font-mono text-xs text-slate-400">{match?.join_code || "—"}</td>
+                      <td className="px-5 py-3.5 text-right font-mono text-white">₵{Number(t.amount).toFixed(2)}</td>
+                      <td className="px-5 py-3.5 text-slate-300">{t.status || "—"}</td>
+                    </tr>
+                  );
+                })}
+                {txnLoading && (
+                  <tr>
+                    <td colSpan={6} className="px-5 py-10 text-center text-slate-500">Loading transactions…</td>
+                  </tr>
+                )}
+                {!txnLoading && txnRows.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-5 py-10 text-center text-slate-500">No transactions found for this date range.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex flex-col gap-3 justify-between px-4 py-3 text-xs text-slate-400 sm:flex-row">
+            <div>
+              Page {txnPage + 1} of {Math.max(1, Math.ceil(txnCount / TXN_PAGE_SIZE))}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                disabled={txnPage === 0}
+                onClick={() => setTxnPage((current) => Math.max(0, current - 1))}
+                className="px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-slate-300 text-xs disabled:opacity-40"
+              >
+                Previous
+              </button>
+              <button
+                disabled={(txnPage + 1) * TXN_PAGE_SIZE >= txnCount}
+                onClick={() => setTxnPage((current) => current + 1)}
+                className="px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-slate-300 text-xs disabled:opacity-40"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

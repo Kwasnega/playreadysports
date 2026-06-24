@@ -302,6 +302,41 @@ Deno.serve(async (req) => {
       }
     }
 
+    const requestedStart = kickoff.toISOString();
+    const requestedEnd = blockoutMatchEnd.toISOString();
+    const { data: overlappingMatches, error: overlapErr } = await svc
+      .from("matches")
+      .select("id, match_date, duration_minutes")
+      .eq("venue_id", venueId)
+      .not("status", "in", "(cancelled,completed)")
+      .lt("match_date", requestedEnd)
+      .order("match_date", { ascending: false })
+      .limit(20);
+
+    if (overlapErr) {
+      return new Response(JSON.stringify({ error: "Failed to verify turf availability. Please try again." }), {
+        status: 500,
+        headers: { ...getCorsHeaders(requestOrigin), "Content-Type": "application/json" },
+      });
+    }
+
+    if (overlappingMatches?.length > 0) {
+      const conflict = overlappingMatches.find((existing: any) => {
+        const existingStart = new Date(existing.match_date).getTime();
+        const existingEnd = existingStart + ((existing.duration_minutes ?? 60) * 60_000);
+        return existingStart < new Date(requestedEnd).getTime() && existingEnd > new Date(requestedStart).getTime();
+      });
+
+      if (conflict) {
+        return new Response(JSON.stringify({
+          error: "This turf is already booked for that time. Please choose a different time or turf."
+        }), {
+          status: 409,
+          headers: { ...getCorsHeaders(requestOrigin), "Content-Type": "application/json" },
+        });
+      }
+    }
+
     const cityPrefixMap: Record<string, string> = {
       accra: "ACC",
       kumasi: "KSI",
@@ -528,10 +563,10 @@ Deno.serve(async (req) => {
         const { error: txErr } = await svc.rpc("process_wallet_transaction", {
           p_user_id: user.id,
           p_amount: -organizerVenueFee,
-          p_type: "spend",
+          p_type: "turf_booking_payment",
           p_reference: ref,
           p_match_id: match.id,
-          p_description: `Venue cost for free match: ${match.title}`,
+          p_description: `Turf booking payment for free match: ${match.title} (₵${organizerVenueFee.toFixed(2)} covers ${durationMinutes ?? 60}min at ${venue.name})`,
         });
 
         if (txErr) {

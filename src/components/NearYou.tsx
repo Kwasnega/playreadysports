@@ -7,9 +7,17 @@ const copyJoinLink = (e: React.MouseEvent, code: string, venue: string, fee: num
   const url = `${window.location.origin}/lobby/${code}`;
   const msg = fee > 0
     ? `Join my football match at ${venue}! Use code: ${code} or link: ${url} (₵${fee} entry)`
-    : `Join my free football match at ${venue}! Use code: ${code} or link: ${url}`;
+    : `Join my FREE football match at ${venue}! No entry fee! Use code: ${code} or link: ${url}`;
   navigator.clipboard?.writeText(msg).then(() => toast.success("Join link copied!")).catch(() => toast.error("Copy failed"));
 };
+
+// Renders a price display: bold pill for "FREE" or "₵{amount}" for paid
+const PriceTag = ({ price }: { price: number }) =>
+  price === 0 ? (
+    <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[9px] font-black uppercase tracking-widest">FREE</span>
+  ) : (
+    <span className="font-bold text-foreground">₵{price}</span>
+  );
 
 type GalaOpening = {
   kind: "gala";
@@ -328,7 +336,7 @@ const GalaRow = ({ s }: { s: GalaOpening }) => {
           </div>
         </div>
         <p className="text-xs text-muted-foreground font-medium flex items-center gap-1.5 truncate">
-          {s.area} <span className="text-[8px]">•</span> {s.km.toFixed(1)} km <span className="text-[8px]">•</span> <span className="font-bold text-foreground">₵{s.pricePerPlayer}</span>
+          {s.area} <span className="text-[8px]">•</span> {s.km.toFixed(1)} km <span className="text-[8px]">•</span> <PriceTag price={s.pricePerPlayer} />
         </p>
         <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
           <Chip><Repeat className="w-2.5 h-2.5" /> Gala {s.format}v{s.format}</Chip>
@@ -362,7 +370,7 @@ const TwoTeamRow = ({ s }: { s: TwoTeamOpening }) => {
           </div>
         </div>
         <p className="text-xs text-muted-foreground font-medium flex items-center gap-1.5 truncate">
-          {s.area} <span className="text-[8px]">•</span> {s.km.toFixed(1)} km <span className="text-[8px]">•</span> <span className="font-bold text-foreground">₵{s.pricePerPlayer}</span>
+          {s.area} <span className="text-[8px]">•</span> {s.km.toFixed(1)} km <span className="text-[8px]">•</span> <PriceTag price={s.pricePerPlayer} />
         </p>
         <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
           <Chip><UsersIcon className="w-2.5 h-2.5" /> {s.format}</Chip>

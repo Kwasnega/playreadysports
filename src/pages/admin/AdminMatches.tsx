@@ -15,6 +15,7 @@ interface MatchRow {
   format: string;
   players_per_side: number;
   entry_fee: number;
+  organizer_venue_fee: number;
   status: string;
   escrow_status: string;
 }
@@ -32,7 +33,7 @@ export default function AdminMatches() {
   const [dateTo, setDateTo] = useState("");
 
   const load = async () => {
-    let q = supabase.from("matches").select("id, join_code, match_date, format, players_per_side, entry_fee, status, escrow_status, venue:venues(name, city), organizer:profiles(full_name, username)").order("created_at", { ascending: false });
+    let q = supabase.from("matches").select("id, join_code, match_date, format, players_per_side, entry_fee, organizer_venue_fee, status, escrow_status, venue:venues(name, city), organizer:profiles(full_name, username)").order("created_at", { ascending: false });
     if (statusFilter !== "all") q = q.eq("status", statusFilter as any);
     if (dateFrom) q = q.gte("match_date", dateFrom);
     if (dateTo) q = q.lte("match_date", dateTo + "T23:59:59");
@@ -188,7 +189,14 @@ export default function AdminMatches() {
                         <td className="px-5 py-3.5 text-slate-300">{org?.full_name || org?.username || "—"}</td>
                         <td className="px-5 py-3.5 text-xs text-slate-400">{new Date(m.match_date).toLocaleDateString()}</td>
                         <td className="px-5 py-3.5 text-slate-300">{m.format} · {m.players_per_side}v{m.players_per_side}</td>
-                        <td className="px-5 py-3.5 text-slate-300 font-mono">{m.entry_fee > 0 ? `₵${m.entry_fee}` : "Free"}</td>
+                        <td className="px-5 py-3.5 text-slate-300 font-mono">
+                          {m.entry_fee > 0
+                            ? `₵${m.entry_fee}/player`
+                            : m.organizer_venue_fee > 0
+                            ? <span title={`Organizer pre-paid ₵${m.organizer_venue_fee} turf cost`} className="cursor-help">FREE <span className="text-emerald-400">(turf: ₵{m.organizer_venue_fee})</span></span>
+                            : "FREE"
+                          }
+                        </td>
                         <td className="px-5 py-3.5">
                           <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${statusBadge(m.status)}`}>
                             {m.status}

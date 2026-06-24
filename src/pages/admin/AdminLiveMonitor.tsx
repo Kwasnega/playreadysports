@@ -253,8 +253,10 @@ export default function AdminLiveMonitor() {
         .from("matches")
         .select(`
           id, join_code, title, match_date, status, match_mode, format, entry_fee,
-          max_core_players, core_paid_count, escrow_status, duration_minutes,
+          max_core_players, core_paid_count, escrow_status, duration_minutes, payments_frozen,
           venue:venues(name, city, lat, lng),
+          organizer:profiles!matches_organizer_id_fkey(full_name, username, id),
+          wallet_transactions(amount, type),
           participants:match_participants(
             id, user_id, status, payment_status, slot_type, team, joined_at, attendance_scanned,
             profiles(full_name, username)
@@ -263,16 +265,24 @@ export default function AdminLiveMonitor() {
         .in("status", ["upcoming", "live", "full"] as any)
         .order("match_date", { ascending: true });
 
-      const normalized = (matchesRaw ?? []).map((m: any) => ({
-        ...m,
-        payments_frozen: false,
-        venue: Array.isArray(m.venue) ? m.venue[0] ?? null : m.venue ?? null,
-        organizer: null,
-        participants: (m.participants ?? []).map((p: any) => ({
-          ...p,
-          profiles: Array.isArray(p.profiles) ? p.profiles[0] ?? null : p.profiles ?? null,
-        })),
-      })) as LiveMatch[];
+      const normalized = (matchesRaw ?? []).map((m: any) => {
+        // Calculate escrow by summing entry_fee transactions for this match
+        const actualEscrow = (m.wallet_transactions ?? [])
+          .filter((t: any) => t.type === 'entry_fee' || t.type === 'turf_booking_payment')
+          .reduce((sum: number, t: any) => sum + Math.abs(Number(t.amount)), 0);
+
+        return {
+          ...m,
+          actual_escrow_amount: actualEscrow,
+          payments_frozen: m.payments_frozen || false,
+          venue: Array.isArray(m.venue) ? m.venue[0] ?? null : m.venue ?? null,
+          organizer: Array.isArray(m.organizer) ? m.organizer[0] ?? null : m.organizer ?? null,
+          participants: (m.participants ?? []).map((p: any) => ({
+            ...p,
+            profiles: Array.isArray(p.profiles) ? p.profiles[0] ?? null : p.profiles ?? null,
+          })),
+        };
+      }) as (LiveMatch & { actual_escrow_amount: number })[];
 
       setMatches(normalized);
 
@@ -762,10 +772,10 @@ export default function AdminLiveMonitor() {
                               {m.entry_fee > 0 ? `₵${m.entry_fee}` : "Free"}
                             </span>
                             <span className="inline-flex items-center gap-1">
-                              Organizer: {m.organizer?.full_name || m.organizer?.username || "—"}
+                              Organizer: {m.organizer?.full_name || m.organizer?.username || "Unknown"}
                             </span>
                             <span className="inline-flex items-center gap-1">
-                              Escrow: {m.escrow_status || "none"}
+                              Escrow: {(m as any).actual_escrow_amount > 0 ? `₵${(m as any).actual_escrow_amount.toFixed(2)}` : "₵0.00"}
                             </span>
                           </div>
                         </div>

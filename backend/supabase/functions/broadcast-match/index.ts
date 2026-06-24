@@ -81,6 +81,18 @@ Deno.serve(async (req) => {
       if (error) throw error;
     }
 
+    // Insert broadcast message into match chat (Issue 7C)
+    const { error: msgErr } = await supabase.from("messages").insert({
+      match_id: matchId,
+      content: message,
+      sender_type: "admin",
+      sender_name: "PlayReady Admin",
+      is_admin_broadcast: true,
+      message_type: "text"
+    });
+    
+    if (msgErr) throw msgErr;
+
     return new Response(JSON.stringify({ success: true, sent: notifs.length }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
