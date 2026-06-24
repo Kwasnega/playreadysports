@@ -11,6 +11,7 @@ import { SplashScreen } from "@/components/SplashScreen";
 import { ConfirmProvider } from "@/components/ui/ConfirmProvider";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { MaintenanceScreen } from "@/components/MaintenanceScreen";
+import { Seo } from "@/components/Seo";
 import { usePlatformSettings } from "@/hooks/usePlatformSettings";
 import { useEffect, useRef, useState, ReactNode, lazy, Suspense } from "react";
 
@@ -169,6 +170,7 @@ const App = () => {
             <ConfirmProvider>
               <ErrorBoundary>
               <Suspense fallback={<PageSpinner />}>
+              <Seo />
               <RouteFade>
               <AppRoutes />
               </RouteFade>

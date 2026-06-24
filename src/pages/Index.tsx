@@ -55,7 +55,7 @@ const Nav = () => {
         <Link to="/" className="flex items-center gap-2.5">
           <img src={logoLight} alt="" className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl object-cover dark:hidden" />
           <img src={logoDark} alt="" className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl object-cover hidden dark:block" />
-          <span className="font-display font-extrabold text-[15px] sm:text-[17px] tracking-tight">PlayReady</span>
+          <span className="font-display font-extrabold text-[15px] sm:text-[17px] tracking-tight">PLAYREADYSPORTS</span>
         </Link>
         <div className="flex items-center gap-1">
           <ThemeToggle />
@@ -108,9 +108,12 @@ const Hero = ({ liveCount }: { liveCount: number }) => {
       <div ref={ref} className="relative max-w-[680px] mx-auto flex items-start justify-between gap-4">
         <div>
           <h1 className="display-xl text-[40px] sm:text-[44px] md:text-[52px] mt-2 leading-[0.95]">
-            Find your<br/>
-            <span className="italic font-display">match.</span>
+            PLAYREADYSPORTS<br/>
+            <span className="italic font-display">Find your match.</span>
           </h1>
+          <p className="mt-3 max-w-[540px] text-sm sm:text-[15px] leading-6 text-muted-foreground">
+            Join pickup football matches, book real pitches, and discover local tournaments across Ghana with Play Ready Sports, Play Ready, and Play Ready Sports GH.
+          </p>
           <a
             href="#near-you"
             className="inline-flex items-center gap-2 mt-4 bg-primary/8 border border-primary/15 text-primary rounded-full pl-2.5 pr-3.5 py-1.5 text-[12px] font-semibold hover:bg-primary/15 transition-colors"
