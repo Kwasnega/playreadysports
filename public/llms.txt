@@ -22,3 +22,7 @@ PLAYREADYSPORTS is a football match platform in Ghana for finding pickup matches
 
 ## Summary
 PLAYREADYSPORTS helps footballers in Ghana find matches, join sessions, book pitches, and build community through local football events.
+
+## Team
+- Founder: William Cosmas-Gonzalves
+- Lead Developer: Kwarteng Kwame Acheampong - Built the platform, web app, and core features.
