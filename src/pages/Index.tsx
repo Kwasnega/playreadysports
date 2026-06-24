@@ -108,7 +108,6 @@ const Hero = ({ liveCount }: { liveCount: number }) => {
       <div ref={ref} className="relative max-w-[680px] mx-auto flex items-start justify-between gap-4">
         <div>
           <h1 className="display-xl text-[40px] sm:text-[44px] md:text-[52px] mt-2 leading-[0.95]">
-            PLAYREADYSPORTS<br/>
             <span className="italic font-display">Find your match.</span>
           </h1>
           <a
