@@ -118,8 +118,8 @@ Deno.serve(async (req) => {
           user_id: uid,
           title: "Match auto-cancelled",
           body: isOrganizer
-            ? `Your match ${match.join_code} at ${venueName} was auto-cancelled — the lobby was not full. All fees have been refunded.`
-            : `Match ${match.join_code} at ${venueName} was cancelled (lobby not full). Your entry fee has been refunded to your wallet.`,
+            ? `Your match ${match.join_code} at ${venueName} was auto-cancelled — the lobby was not full. Any entry fees collected have been refunded to participants.`
+            : `Match ${match.join_code} at ${venueName} was cancelled (lobby not full). Your entry fee of GHS ${entryFee.toFixed(2)} has been refunded to your PlayReady wallet.`,
           type: "match_cancel",
           data: { match_id: match.id, join_code: match.join_code, auto: true },
         };

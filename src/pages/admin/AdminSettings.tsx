@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { callAdminSettings } from "@/lib/adminSettingsFn";
-import { Settings, Save } from "lucide-react";
+import { Settings, Save, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 type SettingRow = {
@@ -12,16 +12,20 @@ type SettingRow = {
 };
 
 const KEYS = [
+  { key: "commission_rate", label: "Platform commission rate", hint: "Decimal value between 0.0 and 1.0 (e.g. 0.05 for 5%)" },
   { key: "organizer_incentive_amount", label: "Organizer incentive (GHS)", hint: "Flat Play wallet credit per completed match" },
   { key: "cancel_cutoff_minutes", label: "Cancel cutoff (minutes)", hint: "Organizer cannot cancel within this window before kickoff" },
   { key: "auto_cancel_window_minutes", label: "Auto-cancel window (minutes)", hint: "Match auto-cancels if not enough players pay within this window" },
   { key: "auto_cancel_min_paid_pct", label: "Auto-cancel min paid %", hint: "Minimum % of players that must pay before match auto-cancels" },
 ] as const;
 
+const MAINTENANCE_KEY = "maintenance_mode";
+
 export default function AdminSettings() {
   const { user } = useAuth();
   const [rows, setRows] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string | null>>({});
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -38,12 +42,14 @@ export default function AdminSettings() {
     KEYS.forEach((k) => {
       if (map[k.key] === undefined) {
         map[k.key] =
-          k.key === "cancel_cutoff_minutes" ? "60"
+          k.key === "commission_rate" ? "0.05"
+          : k.key === "cancel_cutoff_minutes" ? "60"
           : k.key === "auto_cancel_window_minutes" ? "20"
           : k.key === "auto_cancel_min_paid_pct" ? "1.0"
           : "5.00";
       }
     });
+    setMaintenanceMode(map[MAINTENANCE_KEY] === "true");
     setRows(map);
     setLoading(false);
   }, []);
@@ -62,6 +68,10 @@ export default function AdminSettings() {
     switch (key) {
       case "organizer_incentive_amount": {
         if (num > 10000) return "Organizer incentive must be ≤ 10,000";
+        return null;
+      }
+      case "commission_rate": {
+        if (num > 1) return "Commission rate must be between 0 and 1";
         return null;
       }
       case "cancel_cutoff_minutes": {
@@ -109,12 +119,17 @@ export default function AdminSettings() {
     setSaving(true);
     try {
       const results = await Promise.allSettled(
-        KEYS.map((k) => {
-          const value = rows[k.key]?.trim() ?? "";
-          return callAdminSettings("POST", { key: k.key, value }).then((res) => {
-            if (res.error) throw new Error(`${k.label}: ${res.error}`);
-          });
-        })
+        [
+          ...KEYS.map((k) => {
+            const value = rows[k.key]?.trim() ?? "";
+            return callAdminSettings("POST", { key: k.key, value }).then((res) => {
+              if (res.error) throw new Error(`${k.label}: ${res.error}`);
+            });
+          }),
+          callAdminSettings("POST", { key: MAINTENANCE_KEY, value: maintenanceMode ? "true" : "false" }).then((res) => {
+            if (res.error) throw new Error(`Maintenance mode: ${res.error}`);
+          }),
+        ]
       );
 
       const failures = results
@@ -151,23 +166,63 @@ export default function AdminSettings() {
         {loading ? (
           <div className="h-32 animate-pulse bg-white/5 rounded-xl" />
         ) : (
-          KEYS.map((k) => (
-            <div key={k.key}>
-              <label className="block text-sm font-semibold text-slate-200 mb-1">{k.label}</label>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={rows[k.key] ?? ""}
-                onChange={(e) => updateRow(k.key, e.target.value)}
-                className={`w-full rounded-xl bg-white/[0.04] border px-3 py-2.5 text-sm text-white outline-none ${errors[k.key] ? "border-red-500/60 focus:border-red-500" : "border-white/[0.08] focus:border-emerald-500/40"}`}
-              />
-              {errors[k.key] ? (
-                <p className="text-[11px] text-red-400 mt-1">{errors[k.key]}</p>
-              ) : (
-                <p className="text-[11px] text-slate-500 mt-1">{k.hint}</p>
-              )}
+          <>
+            {KEYS.map((k) => (
+              <div key={k.key}>
+                <label className="block text-sm font-semibold text-slate-200 mb-1">{k.label}</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={rows[k.key] ?? ""}
+                  onChange={(e) => updateRow(k.key, e.target.value)}
+                  className={`w-full rounded-xl bg-white/[0.04] border px-3 py-2.5 text-sm text-white outline-none ${errors[k.key] ? "border-red-500/60 focus:border-red-500" : "border-white/[0.08] focus:border-emerald-500/40"}`}
+                />
+                {errors[k.key] ? (
+                  <p className="text-[11px] text-red-400 mt-1">{errors[k.key]}</p>
+                ) : (
+                  <p className="text-[11px] text-slate-500 mt-1">{k.hint}</p>
+                )}
+              </div>
+            ))}
+
+            {/* Maintenance Mode Toggle */}
+            <div className="border-t border-white/[0.06] pt-5">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className={`w-4 h-4 ${maintenanceMode ? "text-red-400" : "text-slate-500"}`} />
+                    <label className={`text-sm font-semibold ${maintenanceMode ? "text-red-300" : "text-slate-200"}`}>
+                      Maintenance mode
+                    </label>
+                    {maintenanceMode && (
+                      <span className="text-[10px] font-black uppercase tracking-widest bg-red-500/20 text-red-400 border border-red-500/30 rounded-full px-2 py-0.5">
+                        ACTIVE
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-1 ml-6">
+                    When enabled, the platform is locked for all non-admin users.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMaintenanceMode((v) => !v)}
+                  className={`relative w-12 h-6 rounded-full border-2 transition-all duration-200 flex items-center ${
+                    maintenanceMode
+                      ? "bg-red-500/80 border-red-400/60"
+                      : "bg-white/10 border-white/20"
+                  }`}
+                  aria-label="Toggle maintenance mode"
+                >
+                  <span
+                    className={`absolute w-4 h-4 rounded-full bg-white shadow transition-all duration-200 ${
+                      maintenanceMode ? "left-[26px]" : "left-[2px]"
+                    }`}
+                  />
+                </button>
+              </div>
             </div>
-          ))
+          </>
         )}
 
         <button

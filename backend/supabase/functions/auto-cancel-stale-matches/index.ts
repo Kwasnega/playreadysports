@@ -69,9 +69,10 @@ Deno.serve(async (req) => {
         for (const p of participants ?? []) {
           if (p.payment_status === "paid") {
             const ref = `auto_cancel_stale_${match.id}_${p.user_id}`;
+            const feeAmount = Number(p.entry_fee) || 0;
             await svc.rpc("process_wallet_transaction", {
               p_user_id: p.user_id,
-              p_amount: p.entry_fee || 0,
+              p_amount: feeAmount,
               p_type: "refund",
               p_reference: ref,
               p_match_id: match.id,
@@ -82,7 +83,7 @@ Deno.serve(async (req) => {
             await svc.from("notifications").insert({
               user_id: p.user_id,
               title: "Match Auto-Cancelled",
-              body: `Match ${match.join_code} was automatically cancelled as it passed the scheduled time without starting. Your entry fee has been refunded.`,
+              body: `The match ${match.join_code} was automatically cancelled because not enough players joined before kickoff. Your entry fee of GHS ${feeAmount.toFixed(2)} has been refunded to your PlayReady wallet.`,
               type: "match_cancel" as any,
               data: {
                 original_type: "match_cancel",
@@ -97,7 +98,7 @@ Deno.serve(async (req) => {
         await svc.from("notifications").insert({
           user_id: match.organizer_id,
           title: "Match Auto-Cancelled",
-          body: `Your match ${match.join_code} was automatically cancelled because it passed the scheduled start time.`,
+          body: `Your match ${match.join_code} was automatically cancelled — the minimum number of players wasn't reached before kickoff. Any entry fees collected have been refunded to participants.`,
           type: "match_cancel" as any,
           data: {
             original_type: "match_cancel",
