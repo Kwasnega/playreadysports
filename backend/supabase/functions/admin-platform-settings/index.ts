@@ -8,6 +8,7 @@ const ALLOWED_KEYS = new Set([
   "cancel_cutoff_minutes",
   "auto_cancel_window_minutes",
   "auto_cancel_min_paid_pct",
+  "maintenance_mode",
 ]);
 
 // Per-key value validation
@@ -37,6 +38,10 @@ function validateValue(key: string, value: string): string | null {
     }
     case "auto_cancel_min_paid_pct": {
       if (num > 1) return "auto_cancel_min_paid_pct must be between 0 and 1";
+      return null;
+    }
+    case "maintenance_mode": {
+      if (value !== "true" && value !== "false") return "maintenance_mode must be true or false";
       return null;
     }
     default:

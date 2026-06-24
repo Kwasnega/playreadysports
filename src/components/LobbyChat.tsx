@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { Send, MessageCircle, Pin, X, Share2, UserPlus } from "lucide-react";
+import { Send, MessageCircle, Pin, X, Share2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useFriends } from "@/hooks/useFriends";
 import { useLobbyChat } from "@/hooks/useLobbyChat";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const TEAM_HEX: Record<string, string> = {
@@ -36,27 +38,49 @@ export const LobbyChat = ({ matchCode, matchId, isOrganizer = true, teamColorA, 
   turfOwners?: Set<string>;
 }) => {
   const { user } = useAuth();
+  const { friends, loading: friendsLoading } = useFriends();
   const { messages, loading, loadingMore, hasMore, loadMore, sendMessage, scrollRef } = useLobbyChat(matchId);
   const [text, setText] = useState("");
   const [open, setOpen] = useState(true);
   const [pinnedId, setPinnedId] = useState<string | null>(null);
   const [actionFor, setActionFor] = useState<string | null>(null);
   const [showInvite, setShowInvite] = useState(false);
+  const [sendingTo, setSendingTo] = useState<string | null>(null);
   const pressTimer = useRef<number | null>(null);
 
   const lobbyUrl = `${window.location.origin}/lobby/${matchCode}`;
 
-  const sendInvite = async () => {
-    if (!user) return;
-    const content = `Join this match! Code: ${matchCode} — ${lobbyUrl}`;
-    await sendMessage(content, user.id);
+  const copyInviteLink = () => {
+    navigator.clipboard.writeText(lobbyUrl);
+    toast.success("Invite link copied");
     setShowInvite(false);
-    toast.success("Invite sent to chat");
   };
 
-  const copyInvite = () => {
-    navigator.clipboard.writeText(lobbyUrl);
-    toast.success("Lobby link copied");
+  const sendPrivateInvite = async (friendId: string) => {
+    if (!user || !matchId) return;
+    setSendingTo(friendId);
+    const senderName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Someone";
+    const body = `Join this match: ${matchCode} · ${lobbyUrl}`;
+    const { error } = await supabase.from("notifications").insert({
+      user_id: friendId,
+      title: `Match invite from ${senderName}`,
+      body,
+      type: "match_share",
+      data: { join_code: matchCode, match_id: matchId, sender_id: user.id, sender_name: senderName, link: lobbyUrl },
+      is_read: false,
+    });
+    if (error) {
+      toast.error("Invite failed");
+    } else {
+      toast.success("Invite sent");
+    }
+    setSendingTo(null);
+  };
+
+  const copyJoinCode = () => {
+    navigator.clipboard.writeText(matchCode);
+    toast.success(`Join code ${matchCode} copied`);
+    setShowInvite(false);
   };
 
   useEffect(() => {
@@ -101,7 +125,7 @@ export const LobbyChat = ({ matchCode, matchId, isOrganizer = true, teamColorA, 
         <button onClick={() => setOpen(o => !o)} className="flex items-center gap-2 flex-1 text-left">
           <MessageCircle className="w-4 h-4 text-primary" />
           <span className="font-display font-bold text-base tracking-tight">Match chat</span>
-          <span className="text-[10px] text-muted-foreground">· use for match updates and invites only</span>
+          <span className="text-[10px] text-muted-foreground">· use for match updates and coordination</span>
         </button>
         <div className="flex items-center gap-1">
           <button
@@ -109,26 +133,57 @@ export const LobbyChat = ({ matchCode, matchId, isOrganizer = true, teamColorA, 
             className="p-2 rounded-full hover:bg-secondary"
             aria-label="Invite to match"
           >
-            <UserPlus className="w-4 h-4" />
+            <Share2 className="w-4 h-4" />
           </button>
           <span className="text-xs text-muted-foreground font-semibold">{messages.length}</span>
         </div>
       </div>
       {showInvite && (
-        <div className="px-4 pb-3 pt-1 bg-card border-b border-border space-y-2">
-          <p className="text-[11px] font-semibold text-muted-foreground">Invite others to this match</p>
-          <div className="flex gap-2">
-            <code className="flex-1 text-[11px] bg-secondary rounded-xl px-3 py-2 truncate">{lobbyUrl}</code>
-            <button onClick={copyInvite} className="shrink-0 text-[11px] font-semibold bg-secondary rounded-xl px-3 py-2 flex items-center gap-1 hover:bg-secondary/80">
-              <Share2 className="w-3.5 h-3.5" /> Copy
+        <div className="px-4 pb-3 pt-1 bg-card border-b border-border space-y-3">
+          <p className="text-[11px] font-semibold text-muted-foreground">Invite friends privately</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <button
+              onClick={copyInviteLink}
+              className="w-full text-[11px] font-semibold bg-secondary rounded-xl px-3 py-2 hover:bg-secondary/80"
+            >
+              Copy match link
+            </button>
+            <button
+              onClick={copyJoinCode}
+              className="w-full text-[11px] font-semibold bg-secondary rounded-xl px-3 py-2 hover:bg-secondary/80"
+            >
+              Copy join code
             </button>
           </div>
-          <button
-            onClick={sendInvite}
-            className="w-full text-[11px] font-semibold bg-primary/8 border border-primary/15 text-primary rounded-xl py-2 flex items-center justify-center gap-1.5"
-          >
-            <MessageCircle className="w-3.5 h-3.5" /> Post invite link to chat
-          </button>
+          <div className="rounded-xl border border-border bg-secondary/70 p-3 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[11px] font-semibold text-muted-foreground">Send to a friend</p>
+              <span className="text-[10px] text-muted-foreground">Private inbox invite</span>
+            </div>
+            {friendsLoading ? (
+              <div className="py-3 text-center text-[11px] text-muted-foreground">Loading friends…</div>
+            ) : friends.length === 0 ? (
+              <p className="text-[11px] text-muted-foreground">No friends yet. Add friends on the Player page to send private invites.</p>
+            ) : (
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {friends.map((f) => (
+                  <div key={f.id} className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm truncate font-medium">{f.full_name || f.username || "Friend"}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">@{f.username ?? "user"}</p>
+                    </div>
+                    <button
+                      onClick={() => sendPrivateInvite(f.id)}
+                      disabled={sendingTo === f.id}
+                      className="shrink-0 px-3 py-2 rounded-full bg-primary/10 text-primary font-semibold disabled:opacity-50"
+                    >
+                      {sendingTo === f.id ? "Sending…" : "Send"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -236,7 +291,7 @@ export const LobbyChat = ({ matchCode, matchId, isOrganizer = true, teamColorA, 
               className="flex-1 bg-secondary rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
             <div className="flex items-center justify-between gap-2">
-              <p className="text-[10px] text-muted-foreground">Chat is for match updates, invites, and logistics only.</p>
+              <p className="text-[10px] text-muted-foreground">Chat is for match updates, invites, and coordination.</p>
               <button
                 type="submit"
                 disabled={!text.trim() || !user}
