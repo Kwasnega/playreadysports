@@ -122,7 +122,7 @@ export default function AdminRevenue() {
 
       let q = (supabase as any)
         .from("wallet_transactions")
-        .select("id, amount, type, status, created_at, user:profiles(full_name, username), match:matches(join_code)", { count: "exact" })
+        .select("id, amount, type, status, created_at, user_id, match_id", { count: "exact" })
         .gte("created_at", startStr)
         .order("created_at", { ascending: false })
         .range(txnPage * TXN_PAGE_SIZE, txnPage * TXN_PAGE_SIZE + TXN_PAGE_SIZE - 1);
@@ -133,7 +133,40 @@ export default function AdminRevenue() {
 
       const { data, count, error } = await q;
       if (error) throw error;
-      setTxnRows((data ?? []) as any[]);
+
+      const rows = (data ?? []) as any[];
+      const userIds = [...new Set(rows.map((t) => t.user_id).filter(Boolean))];
+      const matchIds = [...new Set(rows.map((t) => t.match_id).filter(Boolean))];
+
+      const profileMap = new Map<string, any>();
+      if (userIds.length > 0) {
+        const { data: profiles, error: profileErr } = await supabase
+          .from("profiles")
+          .select("id, full_name, username")
+          .in("id", userIds);
+        if (!profileErr && profiles) {
+          profiles.forEach((profile: any) => profileMap.set(profile.id, profile));
+        }
+      }
+
+      const matchMap = new Map<string, any>();
+      if (matchIds.length > 0) {
+        const { data: matches, error: matchErr } = await supabase
+          .from("matches")
+          .select("id, join_code")
+          .in("id", matchIds);
+        if (!matchErr && matches) {
+          matches.forEach((match: any) => matchMap.set(match.id, match));
+        }
+      }
+
+      const enrichedRows = rows.map((row) => ({
+        ...row,
+        user: profileMap.get(row.user_id) || null,
+        match: matchMap.get(row.match_id) || null,
+      }));
+
+      setTxnRows(enrichedRows);
       setTxnCount(count ?? 0);
     } catch (err: any) {
       toast.error(err.message || "Failed to load transactions");

@@ -179,7 +179,7 @@ export default function AdminOverview() {
           .reduce((s: number, t: any) => s + Math.abs(Number(t.amount) || 0), 0);
         const revenue = Math.max(transactionGross, matchGross) - refunds;
         const activeMatches = (matchRows ?? []).filter((m: any) => ["upcoming", "full", "live"].includes(m.status)).length;
-        const fees = revenue * rate;
+        const fees = revenue * commissionRate;
         setMetrics({ players: players ?? 0, matches: activeMatches, revenue, fees: Math.round(fees * 100) / 100 });
         const chartPoints = (chart ?? []).map((d: any) => ({ day: d.day.slice(5), count: Number(d.count) }));
         setChartData(chartPoints);
