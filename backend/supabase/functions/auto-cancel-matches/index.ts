@@ -18,12 +18,13 @@ Deno.serve(async (req) => {
     const svc = createClient(supabaseUrl, serviceKey);
 
     // Prefer SQL function when available (also scheduled via pg_cron)
-    const { data: sqlCount, error: sqlErr } = await svc.rpc("auto_cancel_underfilled_matches");
-    if (!sqlErr && typeof sqlCount === "number") {
-      return new Response(JSON.stringify({ cancelled: sqlCount, source: "sql" }), {
-        headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
-      });
-    }
+    // Disabled SQL RPC temporarily to ensure TS loop runs for Turf Owner Notifications (Issue 14)
+    // const { data: sqlCount, error: sqlErr } = await svc.rpc("auto_cancel_underfilled_matches");
+    // if (!sqlErr && typeof sqlCount === "number") {
+    //   return new Response(JSON.stringify({ cancelled: sqlCount, source: "sql" }), {
+    //     headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+    //   });
+    // }
 
     const { data: settings } = await svc
       .from("platform_settings")
@@ -41,7 +42,7 @@ Deno.serve(async (req) => {
 
     const { data: candidates } = await svc
       .from("matches")
-      .select("id, join_code, match_date, organizer_id, entry_fee, max_core_players, core_paid_count, venue:venues(name, id)")
+      .select("id, join_code, match_date, organizer_id, entry_fee, max_core_players, core_paid_count, venue_id, venue:venues(name, owner_id)")
       .in("status", ["upcoming", "full"])
       .gt("entry_fee", 0)
       .or(`and(match_date.lte.${windowEnd.toISOString()},match_date.gt.${now.toISOString()}),match_date.lt.${now.toISOString()}`);
@@ -125,6 +126,21 @@ Deno.serve(async (req) => {
       });
 
       if (notifications.length) {
+        // Turf Owner Notification (Issue 14)
+        const turfOwnerId = Array.isArray(match.venue) ? match.venue[0]?.owner_id : (match.venue as any)?.owner_id;
+        if (turfOwnerId) {
+          const matchTimeStr = match.match_date ? new Date(match.match_date).toLocaleString('en-US', { 
+            timeZone: 'Africa/Accra', dateStyle: 'medium', timeStyle: 'short'
+          }) : "the scheduled time";
+
+          notifications.push({
+            user_id: turfOwnerId,
+            title: "Match Auto-Cancelled",
+            body: `A match scheduled at ${venueName} on ${matchTimeStr} was auto-cancelled — player minimum not met.`,
+            type: "turf_event" as any,
+            data: { match_id: match.id, venue_id: match.venue_id, auto: true }
+          });
+        }
         await svc.from("notifications").insert(notifications as any);
       }
 

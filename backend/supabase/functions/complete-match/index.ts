@@ -76,11 +76,13 @@ Deno.serve(async (req) => {
     try {
       const { data: match } = await svc
         .from("matches")
-        .select("join_code, organizer_id")
+        .select("join_code, organizer_id, venue_id, venue:venues(name, owner_id)")
         .eq("id", matchId)
         .single();
       const joinCode = match?.join_code ?? "";
       const organizerId = match?.organizer_id;
+      const venueName = Array.isArray(match?.venue) ? match?.venue[0]?.name : (match?.venue as any)?.name ?? "your turf";
+      const turfOwnerId = result?.venueOwnerId || (Array.isArray(match?.venue) ? match?.venue[0]?.owner_id : (match?.venue as any)?.owner_id);
 
       const winLabel = winningTeam
         ? `${winningTeam.charAt(0).toUpperCase() + winningTeam.slice(1)} won!`
@@ -125,20 +127,30 @@ Deno.serve(async (req) => {
         }
       }
 
-      if (result?.venueOwnerId && result?.venueCut > 0) {
-        const { error: venueNotifErr } = await svc.from("notifications").insert({
-          user_id: result.venueOwnerId,
-          title: "Match earnings credited",
-          body: `₵${Number(result.venueCut).toFixed(2)} from ${joinCode} was added to your venue balance.`,
-          type: "payment_received",
-          data: { match_id: matchId, join_code: joinCode },
-        } as any);
-        if (venueNotifErr) {
-          console.error("complete-match: venue owner notification failed", {
-            error: venueNotifErr.message,
-            matchId,
-            venueOwnerId: result.venueOwnerId,
-          });
+      // Turf Owner Notifications (Issue 14)
+      if (turfOwnerId) {
+        // 1. Match Completed
+        const matchCompletedNotif = {
+          user_id: turfOwnerId,
+          title: "Match Completed",
+          body: `Match at ${venueName} completed. ${participants?.length || 0} players participated. Revenue: GHS ${Number(result?.venueCut || 0).toFixed(2)}.`,
+          type: "turf_event" as any,
+          data: { match_id: matchId, join_code: joinCode, venue_id: match?.venue_id }
+        };
+        
+        // 2. Escrow Released (only if they made money)
+        if (result?.venueCut > 0) {
+          const escrowReleasedNotif = {
+            user_id: turfOwnerId,
+            title: "Payment Released",
+            body: `GHS ${Number(result.venueCut).toFixed(2)} has been released to your wallet for Match ${joinCode}.`,
+            type: "payment_received" as any,
+            data: { match_id: matchId, join_code: joinCode, venue_id: match?.venue_id }
+          };
+          
+          await svc.from("notifications").insert([matchCompletedNotif, escrowReleasedNotif] as any);
+        } else {
+          await svc.from("notifications").insert(matchCompletedNotif as any);
         }
       }
     } catch (notifErr: any) {

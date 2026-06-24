@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
 
     const { data: match, error: matchErr } = await supabase
       .from("matches")
-      .select("id, organizer_id, join_code, entry_fee, core_paid_count, match_date, status, venue:venues(name)")
+      .select("id, organizer_id, join_code, entry_fee, core_paid_count, match_date, status, venue_id, venue:venues(name, owner_id)")
       .eq("id", matchId)
       .single();
 
@@ -220,6 +220,22 @@ Deno.serve(async (req) => {
         body: `Match ${match.join_code} at ${venueName} was cancelled.`,
         type: "match_cancel",
         data: { match_id: matchId, join_code: match.join_code },
+      });
+    }
+
+    // Turf Owner Notification (Issue 14)
+    const turfOwnerId = Array.isArray(match.venue) ? match.venue[0]?.owner_id : (match.venue as any)?.owner_id;
+    if (turfOwnerId && !notifByUser.has(turfOwnerId)) {
+      const matchTimeStr = match.match_date ? new Date(match.match_date).toLocaleString('en-US', { 
+        timeZone: 'Africa/Accra', dateStyle: 'medium', timeStyle: 'short'
+      }) : "an unknown time";
+      
+      notifByUser.set(turfOwnerId, {
+        user_id: turfOwnerId,
+        title: "Match Cancelled",
+        body: `A match at ${venueName} on ${matchTimeStr} was cancelled by the organizer. The slot is now free.`,
+        type: "turf_event",
+        data: { match_id: matchId, venue_id: match.venue_id }
       });
     }
 

@@ -53,6 +53,38 @@ export function useMatchReviews(matchId: string | undefined, reviewerId: string 
       const ratings = (allReviews ?? []).map((r: any) => r.rating ?? 0).filter((r: number) => r > 0);
       const avg = ratings.length > 0 ? ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length : 5.0;
       await supabase.from("profiles").update({ reputation_score: Math.round(avg * 10) / 10 } as any).eq("id", reviewedUserId);
+      // Turf Owner Notification (Issue 14)
+      try {
+        // Check if the reviewed user owns the venue for this match
+        const { data: matchData } = await supabase
+          .from("matches")
+          .select("venue:venues(name, owner_id)")
+          .eq("id", matchId)
+          .single();
+          
+        const venueName = Array.isArray(matchData?.venue) ? matchData?.venue[0]?.name : (matchData?.venue as any)?.name;
+        const ownerId = Array.isArray(matchData?.venue) ? matchData?.venue[0]?.owner_id : (matchData?.venue as any)?.owner_id;
+        
+        if (ownerId === reviewedUserId) {
+          const { data: reviewerProfile } = await supabase
+            .from("profiles")
+            .select("full_name, username")
+            .eq("id", reviewerId)
+            .single();
+            
+          const reviewerName = reviewerProfile?.full_name || reviewerProfile?.username || "A player";
+          
+          await supabase.from("notifications").insert({
+            user_id: ownerId,
+            title: "New Review",
+            body: `${reviewerName} left a ${rating}-star review for ${venueName || 'your turf'}.`,
+            type: "turf_event"
+          });
+        }
+      } catch (e) {
+        console.error("Failed to send review notification", e);
+      }
+
       await load();
       return true;
     },

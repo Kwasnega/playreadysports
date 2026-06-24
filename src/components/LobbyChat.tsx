@@ -101,7 +101,7 @@ export const LobbyChat = ({ matchCode, matchId, isOrganizer = true, teamColorA, 
         <button onClick={() => setOpen(o => !o)} className="flex items-center gap-2 flex-1 text-left">
           <MessageCircle className="w-4 h-4 text-primary" />
           <span className="font-display font-bold text-base tracking-tight">Match chat</span>
-          <span className="text-[10px] text-muted-foreground">· dissolved when match ends</span>
+          <span className="text-[10px] text-muted-foreground">· use for match updates and invites only</span>
         </button>
         <div className="flex items-center gap-1">
           <button
@@ -227,22 +227,25 @@ export const LobbyChat = ({ matchCode, matchId, isOrganizer = true, teamColorA, 
               );
             })}
           </div>
-          <form onSubmit={send} className="flex items-center gap-2 px-3 py-2 border-t border-border bg-card">
+          <form onSubmit={send} className="flex flex-col gap-2 px-3 py-2 border-t border-border bg-card">
             <input
               value={text}
               onChange={e => setText(e.target.value)}
               maxLength={500}
-              placeholder="Message the squad…"
+              placeholder="Share match updates…"
               className="flex-1 bg-secondary rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
-            <button
-              type="submit"
-              disabled={!text.trim() || !user}
-              className="w-9 h-9 rounded-lg bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-40"
-              aria-label="Send"
-            >
-              <Send className="w-4 h-4" />
-            </button>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[10px] text-muted-foreground">Chat is for match updates, invites, and logistics only.</p>
+              <button
+                type="submit"
+                disabled={!text.trim() || !user}
+                className="w-9 h-9 rounded-lg bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-40"
+                aria-label="Send"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </div>
           </form>
           {isOrganizer && (
             <p className="px-3 pb-2 text-[10px] text-muted-foreground bg-card">Tip: long-press any message to pin it.</p>

@@ -195,7 +195,7 @@ Deno.serve(async (req) => {
     // ------------------------------------------------------------------
     const { data: venue, error: venueErr } = await supabase
       .from("venues")
-      .select("city, owner_id, owner_email, open_time, close_time, price_per_hour")
+      .select("name, city, owner_id, owner_email, open_time, close_time, price_per_hour")
       .eq("id", venueId)
       .single();
 
@@ -579,6 +579,24 @@ Deno.serve(async (req) => {
         team: "unassigned" as any,
         status: "active" as any,
         payment_status: "paid" as any,
+      });
+    }
+
+    // 8d. Turf Owner Notification (Issue 14)
+    if (turfOwnerId) {
+      const matchTimeStr = new Date(matchDate).toLocaleString('en-US', { 
+        timeZone: 'Africa/Accra',
+        dateStyle: 'medium',
+        timeStyle: 'short'
+      });
+      const organizerName = user.user_metadata?.full_name || "Someone";
+      
+      await svc.from("notifications").insert({
+        user_id: turfOwnerId,
+        title: "Match Booked",
+        body: `A match has been booked at ${venue.name || 'your turf'} on ${matchTimeStr} by ${organizerName}.`,
+        type: "turf_event",
+        data: { match_id: match.id, venue_id: venueId }
       });
     }
 

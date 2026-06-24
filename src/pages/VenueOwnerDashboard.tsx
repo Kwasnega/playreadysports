@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { getFormattedTime } from "@/lib/matchHelpers";
 import VenueOwnerCalendar from "@/components/venues/VenueOwnerCalendar";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { NotificationsBell } from "@/components/NotificationsBell";
 import {
   Dialog,
   DialogContent,
@@ -724,6 +725,7 @@ export default function VenueOwnerDashboard() {
           </Link>
           <h1 className="font-display font-black uppercase tracking-tight text-xl flex-1">Owner hub</h1>
           <ThemeToggle />
+          <NotificationsBell />
           <button type="button" onClick={() => signOut()} className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground">
             OUT
           </button>

@@ -81,6 +81,12 @@ export default function AdminMatches() {
     load();
   };
 
+  const filteredMatches = useMemo(() => {
+    if (statusFilter === "all") return matches;
+    if (statusFilter === "upcoming") return matches.filter(m => m.status === "upcoming" || m.status === "full");
+    return matches.filter(m => m.status === statusFilter);
+  }, [matches, statusFilter]);
+
   const stats = useMemo(() => ({
     total: matches.length,
     upcoming: matches.filter(m => m.status === "upcoming" || m.status === "full").length,
@@ -88,6 +94,12 @@ export default function AdminMatches() {
     completed: matches.filter(m => m.status === "completed").length,
     cancelled: matches.filter(m => m.status === "cancelled").length,
   }), [matches]);
+
+  const groupedMatches = useMemo(() => ({
+    upcoming: filteredMatches.filter(m => m.status === "upcoming" || m.status === "full"),
+    live: filteredMatches.filter(m => m.status === "live"),
+    past: filteredMatches.filter(m => m.status === "completed" || m.status === "cancelled"),
+  }), [filteredMatches]);
 
   const statusBadge = (status: string) => {
     switch(status) {
@@ -140,59 +152,74 @@ export default function AdminMatches() {
         <span className="text-xs text-slate-500 ml-auto">{matches.length} results</span>
       </div>
 
-      <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.06] rounded-xl overflow-hidden hover:border-white/[0.12] transition-all">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-white/[0.06]">
-                <th className="text-left px-5 py-3.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Code</th>
-                <th className="text-left px-5 py-3.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Venue</th>
-                <th className="text-left px-5 py-3.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Organizer</th>
-                <th className="text-left px-5 py-3.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Date</th>
-                <th className="text-left px-5 py-3.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Format</th>
-                <th className="text-left px-5 py-3.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Fee</th>
-                <th className="text-left px-5 py-3.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
-                <th className="text-left px-5 py-3.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Escrow</th>
-                <th className="text-right px-5 py-3.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {matches.map((m) => {
-                const venue = Array.isArray(m.venue) ? m.venue[0] : m.venue;
-                const org = Array.isArray(m.organizer) ? m.organizer[0] : m.organizer;
-                return (
-                  <tr key={m.id} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">
-                    <td className="px-5 py-3.5 font-mono text-xs text-slate-300">{m.join_code}</td>
-                    <td className="px-5 py-3.5 text-slate-300">{venue?.name || "—"} <span className="text-slate-500">· {venue?.city || "—"}</span></td>
-                    <td className="px-5 py-3.5 text-slate-300">{org?.full_name || org?.username || "—"}</td>
-                    <td className="px-5 py-3.5 text-xs text-slate-400">{new Date(m.match_date).toLocaleDateString()}</td>
-                    <td className="px-5 py-3.5 text-slate-300">{m.format} · {m.players_per_side}v{m.players_per_side}</td>
-                    <td className="px-5 py-3.5 text-slate-300 font-mono">{m.entry_fee > 0 ? `₵${m.entry_fee}` : "Free"}</td>
-                    <td className="px-5 py-3.5">
-                      <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${statusBadge(m.status)}`}>
-                        {m.status}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5 text-slate-400 capitalize">{m.escrow_status}</td>
-                    <td className="px-5 py-3.5 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Link to={`/lobby/${m.join_code}`} className="p-2 rounded-lg hover:bg-white/[0.06] transition-colors" title="View Lobby"><ExternalLink className="w-3.5 h-3.5 text-slate-400" /></Link>
-                        {m.status !== "cancelled" && m.status !== "completed" && (
-                          <button onClick={() => forceCancel(m)} className="p-2 rounded-lg hover:bg-white/[0.06] transition-colors" title="Force Cancel"><X className="w-3.5 h-3.5 text-rose-400" /></button>
-                        )}
-                        {m.escrow_status === "holding" && (
-                          <button onClick={() => forceRelease(m)} className="p-2 rounded-lg hover:bg-white/[0.06] transition-colors" title="Force Release"><Unlock className="w-3.5 h-3.5 text-amber-400" /></button>
-                        )}
-                      </div>
-                    </td>
+      {Object.entries(groupedMatches).map(([groupKey, groupMatches]) => {
+        const groupLabel = groupKey === "upcoming" ? "Upcoming & Full" : groupKey === "live" ? "Live" : "Past";
+        return (
+          <div key={groupKey} className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.06] rounded-xl overflow-hidden hover:border-white/[0.12] transition-all">
+            <div className="px-5 py-4 border-b border-white/[0.06] flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-white">{groupLabel}</p>
+                <p className="text-xs text-slate-500 mt-1">{groupMatches.length} {groupMatches.length === 1 ? "match" : "matches"}</p>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-white/[0.06]">
+                    <th className="text-left px-5 py-3.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Code</th>
+                    <th className="text-left px-5 py-3.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Venue</th>
+                    <th className="text-left px-5 py-3.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Organizer</th>
+                    <th className="text-left px-5 py-3.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Date</th>
+                    <th className="text-left px-5 py-3.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Format</th>
+                    <th className="text-left px-5 py-3.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Fee</th>
+                    <th className="text-left px-5 py-3.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+                    <th className="text-left px-5 py-3.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Escrow</th>
+                    <th className="text-right px-5 py-3.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
                   </tr>
-                );
-              })}
-              {matches.length === 0 && <tr><td colSpan={9} className="px-5 py-10 text-center text-slate-500 text-sm">No matches found</td></tr>}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                </thead>
+                <tbody>
+                  {groupMatches.map((m) => {
+                    const venue = Array.isArray(m.venue) ? m.venue[0] : m.venue;
+                    const org = Array.isArray(m.organizer) ? m.organizer[0] : m.organizer;
+                    return (
+                      <tr key={m.id} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">
+                        <td className="px-5 py-3.5 font-mono text-xs text-slate-300">{m.join_code}</td>
+                        <td className="px-5 py-3.5 text-slate-300">{venue?.name || "—"} <span className="text-slate-500">· {venue?.city || "—"}</span></td>
+                        <td className="px-5 py-3.5 text-slate-300">{org?.full_name || org?.username || "—"}</td>
+                        <td className="px-5 py-3.5 text-xs text-slate-400">{new Date(m.match_date).toLocaleDateString()}</td>
+                        <td className="px-5 py-3.5 text-slate-300">{m.format} · {m.players_per_side}v{m.players_per_side}</td>
+                        <td className="px-5 py-3.5 text-slate-300 font-mono">{m.entry_fee > 0 ? `₵${m.entry_fee}` : "Free"}</td>
+                        <td className="px-5 py-3.5">
+                          <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${statusBadge(m.status)}`}>
+                            {m.status}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3.5 text-slate-400 capitalize">{m.escrow_status}</td>
+                        <td className="px-5 py-3.5 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Link to={`/lobby/${m.join_code}`} className="p-2 rounded-lg hover:bg-white/[0.06] transition-colors" title="View Lobby"><ExternalLink className="w-3.5 h-3.5 text-slate-400" /></Link>
+                            {m.status !== "cancelled" && m.status !== "completed" && (
+                              <button onClick={() => forceCancel(m)} className="p-2 rounded-lg hover:bg-white/[0.06] transition-colors" title="Force Cancel"><X className="w-3.5 h-3.5 text-rose-400" /></button>
+                            )}
+                            {m.escrow_status === "holding" && (
+                              <button onClick={() => forceRelease(m)} className="p-2 rounded-lg hover:bg-white/[0.06] transition-colors" title="Force Release"><Unlock className="w-3.5 h-3.5 text-amber-400" /></button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {groupMatches.length === 0 && (
+                    <tr>
+                      <td colSpan={9} className="px-5 py-10 text-center text-slate-500 text-sm">No matches in this section</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

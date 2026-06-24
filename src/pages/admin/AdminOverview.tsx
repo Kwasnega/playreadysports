@@ -141,7 +141,7 @@ export default function AdminOverview() {
     (async () => {
       setLoading(true);
       try {
-        const [{ count: players }, { count: matches }, { data: matchRows }, { data: walletTx }, { data: chart }, { data: recent }, { data: setting }, { data: maintenanceSetting }] = await Promise.all([
+        const [{ count: players }, , { data: matchRows }, { data: walletTx }, { data: chart }, { data: recent }, { data: setting }, { data: maintenanceSetting }] = await Promise.all([
           supabase.from("profiles").select("*", { count: "exact", head: true }),
           supabase.from("matches").select("*", { count: "exact", head: true }),
           (supabase as any).from("matches").select("entry_fee, core_paid_count, status"),
@@ -178,8 +178,9 @@ export default function AdminOverview() {
           .filter((t: any) => t.type === "refund")
           .reduce((s: number, t: any) => s + Math.abs(Number(t.amount) || 0), 0);
         const revenue = Math.max(transactionGross, matchGross) - refunds;
+        const activeMatches = (matchRows ?? []).filter((m: any) => ["upcoming", "full", "live"].includes(m.status)).length;
         const fees = revenue * rate;
-        setMetrics({ players: players ?? 0, matches: matches ?? 0, revenue, fees: Math.round(fees * 100) / 100 });
+        setMetrics({ players: players ?? 0, matches: activeMatches, revenue, fees: Math.round(fees * 100) / 100 });
         const chartPoints = (chart ?? []).map((d: any) => ({ day: d.day.slice(5), count: Number(d.count) }));
         setChartData(chartPoints);
         // Compute match trend: last 7 days vs prior 7 days from chart data

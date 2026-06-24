@@ -160,6 +160,30 @@ export function SubmitMatchResult({
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
+      // Turf Owner Notification (Issue 14)
+      try {
+        const { data: matchData } = await supabase
+          .from("matches")
+          .select("match_date, venue:venues(name, owner_id)")
+          .eq("id", matchId)
+          .single();
+          
+        const turfOwnerId = Array.isArray(matchData?.venue) ? matchData?.venue[0]?.owner_id : (matchData?.venue as any)?.owner_id;
+        const venueName = Array.isArray(matchData?.venue) ? matchData?.venue[0]?.name : (matchData?.venue as any)?.name ?? "your turf";
+        
+        if (turfOwnerId) {
+          const matchDateStr = matchData?.match_date ? new Date(matchData.match_date).toLocaleDateString() : "the match date";
+          await supabase.from("notifications").insert({
+            user_id: turfOwnerId,
+            title: "Dispute Filed",
+            body: `A dispute has been filed for a match at ${venueName} on ${matchDateStr}. Admin has been notified.`,
+            type: "turf_event"
+          });
+        }
+      } catch (e) {
+        console.error("Failed to notify turf owner of dispute", e);
+      }
+
       toast.success("Dispute raised. An admin will review it shortly.");
       setDisputeRaised(true);
       setShowDisputeForm(false);

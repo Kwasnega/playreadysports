@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   ArrowLeft, Star, MapPin, ShieldAlert, Calendar, Trophy,
-  Swords, MessageSquare, User, Flag, UserPlus, UserCheck, UserX, Loader2, Send
+  Swords, MessageSquare, Share2, User, Flag, UserPlus, UserCheck, UserX, Loader2, Send
 } from "lucide-react";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/hooks/useAuth";
@@ -181,6 +181,17 @@ const PlayerProfile = () => {
     setFriendLoading(false);
   };
 
+  const handleShareProfile = async () => {
+    if (!profile?.username) return;
+    const url = `${window.location.origin}/player/${profile.username}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Profile link copied");
+    } catch {
+      toast.error("Unable to copy profile link");
+    }
+  };
+
   return (
     <main className="min-h-screen bg-background pb-10">
       <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b border-border">
@@ -257,7 +268,7 @@ const PlayerProfile = () => {
                       </button>
                     )}
                     {friendStatus === "pending_sent" && (
-                      <span className="inline-flex items-center gap-2 text-sm font-bold border border-amber-500/30 bg-amber-500/10 text-amber-600 rounded-full px-4 py-2.5 shadow-sm">
+                      <span className="inline-flex items-center gap-2 text-sm font-bold border border-amber-500/30 bg-amber-500/10 text-amber-600 rounded-full px-4 py-2.5 shadow-sm animate-pulse">
                         <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" /> Request Sent
                       </span>
                     )}
@@ -282,16 +293,10 @@ const PlayerProfile = () => {
                       </button>
                     )}
                     <button
-                      onClick={() => toast.info("Messaging coming soon")}
+                      onClick={handleShareProfile}
                       className="inline-flex items-center gap-1.5 text-[11px] font-semibold bg-secondary text-muted-foreground hover:bg-secondary/80 rounded-full px-3 py-1.5"
                     >
-                      <MessageSquare className="w-3 h-3" /> Message
-                    </button>
-                    <button
-                      onClick={() => toast.info("Invite feature coming soon")}
-                      className="inline-flex items-center gap-1.5 text-[11px] font-semibold bg-secondary text-muted-foreground hover:bg-secondary/80 rounded-full px-3 py-1.5"
-                    >
-                      <Send className="w-3 h-3" /> Invite
+                      <Share2 className="w-3 h-3" /> Share profile
                     </button>
                     <button
                       onClick={() => setReportOpen(true)}

@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
     // Find all matches that are past their scheduled time but still upcoming
     const { data: staleMatches, error: queryErr } = await svc
       .from("matches")
-      .select("id, join_code, match_date, organizer_id, status, intelligent_status")
+      .select("id, join_code, match_date, organizer_id, status, intelligent_status, venue_id, venue:venues(name, owner_id)")
       .lt("match_date", now.toISOString())
       .in("status", ["upcoming", "full"]);
 
@@ -105,6 +105,23 @@ Deno.serve(async (req) => {
           },
           is_read: false,
         });
+
+        // Turf Owner Notification (Issue 14)
+        const turfOwnerId = Array.isArray(match.venue) ? match.venue[0]?.owner_id : (match.venue as any)?.owner_id;
+        if (turfOwnerId) {
+          const venueName = Array.isArray(match.venue) ? match.venue[0]?.name : (match.venue as any)?.name ?? "your turf";
+          const matchTimeStr = match.match_date ? new Date(match.match_date).toLocaleString('en-US', { 
+            timeZone: 'Africa/Accra', dateStyle: 'medium', timeStyle: 'short'
+          }) : "the scheduled time";
+          
+          await svc.from("notifications").insert({
+            user_id: turfOwnerId,
+            title: "Match Auto-Cancelled",
+            body: `A match scheduled at ${venueName} on ${matchTimeStr} was auto-cancelled — player minimum not met.`,
+            type: "turf_event" as any,
+            data: { match_id: match.id, venue_id: match.venue_id }
+          });
+        }
       }
     }
 

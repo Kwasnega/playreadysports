@@ -465,7 +465,18 @@ export default function AdminLiveMonitor() {
 
   const toggleFreezePayments = async (m: LiveMatch) => {
     const newVal = !m.payments_frozen;
-    await supabase.from("matches").update({ payments_frozen: newVal }).eq("id", m.id);
+    const { data, error } = await supabase
+      .from("matches")
+      .update({ payments_frozen: newVal } as any)
+      .eq("id", m.id)
+      .select()
+      .single();
+
+    if (error || !data) {
+      toast.error(error?.message || "Failed to update freeze status");
+      return;
+    }
+
     toast.success(newVal ? "Payments frozen for this match" : "Payments unfrozen");
     load();
   };
