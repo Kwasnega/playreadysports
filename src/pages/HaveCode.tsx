@@ -98,7 +98,11 @@ const HaveCode = () => {
   const navigate = useNavigate();
   const { user, openAuth } = useAuth(); // FIX: Issue 1 - needed for pre-join auth guard
   const [code, setCode] = useState("");
-  const [status, setStatus] = useState<"idle" | "loading" | "found" | "notfound">("idle");
+  // FIX: Issue 3 - Expanded status to capture specific error states so we can show
+  // distinct messages instead of the single generic "Code not found. Try again."
+  const [status, setStatus] = useState<
+    "idle" | "loading" | "found" | "notfound" | "cancelled" | "completed" | "full" | "already_joined"
+  >("idle");
   const [match, setMatch] = useState<FoundMatch | null>(null);
   const [participants, setParticipants] = useState<ParticipantRow[]>([]);
   const [pickedTeam, setPickedTeam] = useState<string | null>(null);
@@ -106,15 +110,24 @@ const HaveCode = () => {
   const codeReady = code.replace(/\s/g, "").length === 6;
 
   const lookup = async () => {
-    if (!codeReady) return;
+    // FIX: Issue 3 - Pre-call validation: show a message instead of silently doing nothing
+    if (!codeReady) {
+      toast.warning("Please enter the full 6-character match code.");
+      return;
+    }
     setStatus("loading");
     setPickedTeam(null);
     setMatch(null);
     setParticipants([]);
 
     const joinCode = normalizeCode(code);
+    // FIX: Issue 3 - Try both formats: with-dash (ABC-123) and without (ABC123).
+    // Depending on how the organizer app generates join_codes, the DB may store
+    // either format, so a single-format query caused silent lookup failures.
+    const withDash = joinCode.includes("-") ? joinCode : joinCode.slice(0, 3) + "-" + joinCode.slice(3);
+    const withoutDash = joinCode.replace("-", "");
 
-    // Fetch match with venue and organizer
+    // Fetch match with venue and organizer — try both code formats
     const { data: matchData, error: matchErr } = await supabase
       .from("matches")
       .select(`
@@ -123,7 +136,7 @@ const HaveCode = () => {
         venue:venues(name, city, area),
         organizer:profiles(full_name, username)
       `)
-      .eq("join_code", joinCode)
+      .or(`join_code.eq.${withDash},join_code.eq.${withoutDash}`)
       .maybeSingle();
 
     if (matchErr || !matchData) {
@@ -136,6 +149,17 @@ const HaveCode = () => {
       venue: Array.isArray(matchData.venue) ? matchData.venue[0] ?? null : matchData.venue ?? null,
       organizer: Array.isArray(matchData.organizer) ? matchData.organizer[0] ?? null : matchData.organizer ?? null,
     } as FoundMatch;
+
+    // FIX: Issue 3 - Check match status BEFORE showing the join UI, with specific
+    // error messages for each state so users aren't confused by a blank screen.
+    if (m.status === "cancelled") {
+      setStatus("cancelled");
+      return;
+    }
+    if (m.status === "completed") {
+      setStatus("completed");
+      return;
+    }
 
     // Fetch participants for team counts
     const { data: partsData } = await supabase
@@ -152,6 +176,23 @@ const HaveCode = () => {
       return { ...row, profile: prof } as ParticipantRow;
     });
 
+    // FIX: Issue 3 - Check if the logged-in user is already a participant
+    if (user && normalized.some((p) => p.user_id === user.id)) {
+      // Already joined — navigate directly to lobby instead of showing the join form
+      toast.info(`You're already in this match! Taking you to the lobby…`);
+      navigate(`/lobby/${m.join_code}`);
+      return;
+    }
+
+    // FIX: Issue 3 - Check if the match is full (all slots taken)
+    const totalCap = m.max_core_players ?? (m.players_per_side ?? 5) * 2;
+    const totalFilled = normalized.length;
+    if (totalFilled >= totalCap) {
+      setMatch(m); // keep match data so we can show the venue name in the error
+      setStatus("full");
+      return;
+    }
+
     setMatch(m);
     setParticipants(normalized);
     setStatus("found");
@@ -165,8 +206,8 @@ const HaveCode = () => {
     setPickedTeam(null);
   };
 
-  // FIX: Issue 1 - Guard auth before navigating to lobby; previously an unauthenticated
-  // user could reach the lobby and trigger a raw RLS error from Supabase.
+  // FIX: Issue 1 - Guard auth before navigating to lobby
+  // FIX: Issue 3 - Show a success toast with match/venue name before navigating
   const confirm = () => {
     if (!match || !pickedTeam) return;
     if (!user) {
@@ -174,6 +215,8 @@ const HaveCode = () => {
       openAuth("signin");
       return;
     }
+    const venueName = match.venue?.name ?? match.join_code;
+    toast.success(`✅ Match found! Taking you to ${venueName}…`);
     navigate(`/lobby/${match.join_code}?team=${encodeURIComponent(pickedTeam)}`);
   };
 
@@ -214,10 +257,29 @@ const HaveCode = () => {
             </p>
             <CodeBoxes value={code} onChange={setCode} />
 
+            {/* FIX: Issue 3 - Specific error messages per failure type, not one generic message */}
             {status === "notfound" && (
               <div className="mt-5 inline-flex items-center gap-1.5 px-3 py-2 border-2 border-foreground bg-background rounded-lg text-[10px] font-black uppercase tracking-widest text-foreground">
                 <AlertCircle className="w-3.5 h-3.5" />
-                Code not found. Try again.
+                Code not found. Check and try again.
+              </div>
+            )}
+            {status === "cancelled" && (
+              <div className="mt-5 inline-flex items-center gap-1.5 px-3 py-2 border-2 border-foreground bg-background rounded-lg text-[10px] font-black uppercase tracking-widest text-foreground">
+                <AlertCircle className="w-3.5 h-3.5" />
+                This match has been cancelled.
+              </div>
+            )}
+            {status === "completed" && (
+              <div className="mt-5 inline-flex items-center gap-1.5 px-3 py-2 border-2 border-foreground bg-background rounded-lg text-[10px] font-black uppercase tracking-widest text-foreground">
+                <AlertCircle className="w-3.5 h-3.5" />
+                This match has already finished.
+              </div>
+            )}
+            {status === "full" && (
+              <div className="mt-5 inline-flex items-center gap-1.5 px-3 py-2 border-2 border-foreground bg-background rounded-lg text-[10px] font-black uppercase tracking-widest text-foreground">
+                <AlertCircle className="w-3.5 h-3.5" />
+                Match is full — no slots available.
               </div>
             )}
 
