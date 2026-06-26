@@ -63,6 +63,7 @@ interface TodayMatch {
   organizer_id?: string;
   organizer?: { full_name: string; username: string };
   venue_id: string;
+  organizer_venue_fee?: number | null;
 }
 
 interface CancellationReason {
@@ -85,6 +86,7 @@ interface VenueEarning {
     entry_fee: number;
     core_paid_count: number;
     gross: number;
+    organizer_venue_fee?: number | null;
   }[];
   totalGross: number;
 }
@@ -362,19 +364,17 @@ export default function VenueOwnerDashboard() {
 
       const sel = new Date(selectedDate);
       const dayStart = startOfLocalDay(sel).toISOString();
-      const dayEnd = endOfLocalDay(sel).toISOString();
 
-      // Fetch today's matches (upcoming, live, completed, cancelled)
+      // Fetch upcoming and today's matches (upcoming, live, completed, cancelled)
       const { data: today } = await supabase
         .from("matches")
         .select(`
           id, join_code, match_date, format, entry_fee, core_paid_count, status,
           intelligent_status, max_core_players, auto_cancelled_at, cancelled_reason,
-          venue_id, organizer_id, organizer:profiles(full_name, username)
+          venue_id, organizer_id, organizer:profiles(full_name, username), organizer_venue_fee
         `)
         .in("venue_id", venueIds)
         .gte("match_date", dayStart)
-        .lte("match_date", dayEnd)
         .order("match_date", { ascending: true });
       setTodayMatches((today ?? []) as TodayMatch[]);
 
@@ -383,7 +383,7 @@ export default function VenueOwnerDashboard() {
         .from("matches")
         .select(`
           id, join_code, match_date, format, entry_fee, core_paid_count, status,
-          intelligent_status, max_core_players, venue_id
+          intelligent_status, max_core_players, venue_id, organizer_venue_fee
         `)
         .in("venue_id", venueIds)
         .order("match_date", { ascending: false })
@@ -412,7 +412,7 @@ export default function VenueOwnerDashboard() {
       since.setDate(since.getDate() - 90);
       const { data: completed } = await supabase
         .from("matches")
-        .select("id, join_code, match_date, format, entry_fee, core_paid_count, venue_id, status")
+        .select("id, join_code, match_date, format, entry_fee, core_paid_count, venue_id, status, organizer_venue_fee")
         .in("venue_id", venueIds)
         .eq("status", "completed")
         .gte("match_date", since.toISOString())
@@ -426,7 +426,10 @@ export default function VenueOwnerDashboard() {
           format: m.format,
           entry_fee: Number(m.entry_fee) || 0,
           core_paid_count: Number(m.core_paid_count) || 0,
-          gross: (Number(m.entry_fee) || 0) * (Number(m.core_paid_count) || 0),
+          organizer_venue_fee: Number(m.organizer_venue_fee) || 0,
+          gross: Number(m.entry_fee) > 0
+            ? (Number(m.entry_fee) || 0) * (Number(m.core_paid_count) || 0)
+            : (Number(m.organizer_venue_fee) || 0),
         }));
         return {
           venueId: v.id,
@@ -920,7 +923,14 @@ export default function VenueOwnerDashboard() {
                   <span className="text-[8px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400">Revenue</span>
                   <TrendingUp className="w-3.5 h-3.5 text-amber-500" />
                 </div>
-                <p className="font-display font-black text-lg">₵{allMatches.filter(m => m.intelligent_status === 'ended' || m.status === 'completed').reduce((sum, m) => sum + (m.entry_fee * m.core_paid_count), 0).toFixed(0)}</p>
+                <p className="font-display font-black text-lg">
+                  ₵{allMatches.filter(m => m.intelligent_status === 'ended' || m.status === 'completed').reduce((sum, m) => {
+                    const matchGross = Number(m.entry_fee) > 0
+                      ? (Number(m.entry_fee) * Number(m.core_paid_count))
+                      : (Number(m.organizer_venue_fee) || 0);
+                    return sum + matchGross;
+                  }, 0).toFixed(0)}
+                </p>
               </div>
 
               {/* Avg Players */}
@@ -1018,14 +1028,14 @@ export default function VenueOwnerDashboard() {
           </section>
         )}
 
-        {/* 6. Today's matches */}
+        {/* 6. Upcoming matches */}
         <section className="bg-card rounded-2xl border-2 border-border p-5 shadow-sm">
           <h2 className="font-display font-black text-sm uppercase tracking-widest mb-4 flex items-center gap-2">
-            <Calendar className="w-4 h-4" /> Today at your venue
+            <Calendar className="w-4 h-4" /> Upcoming matches at your venue
           </h2>
           {todayMatches.length === 0 ? (
             <div className="text-center py-6 border-2 border-dashed border-border rounded-xl bg-secondary/20">
-              <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">No matches scheduled today.</p>
+              <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">No upcoming matches scheduled.</p>
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">Your pitch is free — time to promote it.</p>
             </div>
           ) : (
@@ -1055,6 +1065,24 @@ export default function VenueOwnerDashboard() {
                         <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">
                           {getFormattedTime(m.match_date)} · {m.format} · <span className="text-foreground">{m.core_paid_count} PAID</span>
                         </p>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                          {Number(m.entry_fee) > 0 ? (
+                            <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                              Paid Match · ₵{Number(m.entry_fee).toFixed(2)} / player
+                            </span>
+                          ) : (
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 border border-blue-500/20">
+                                FREE MATCH
+                              </span>
+                              {m.organizer_venue_fee && Number(m.organizer_venue_fee) > 0 && (
+                                <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 border border-amber-500/20">
+                                  Turf Fee Paid: ₵{Number(m.organizer_venue_fee).toFixed(2)}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <button
