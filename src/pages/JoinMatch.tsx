@@ -7,6 +7,7 @@ import {
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useWallet } from "@/hooks/useWallet";
 import { useBrowseMatches, useBrowseFilters } from "@/hooks/useBrowseMatches";
@@ -384,12 +385,16 @@ const JoinSheet = ({
     setPicked(teamName);
   };
 
+  // FIX: Issue 1 - Check auth BEFORE checking picked; previously if user had no team
+  // picked, the !picked guard would fire first, silently doing nothing instead of
+  // prompting the unauthenticated user to sign in.
   const handleJoin = () => {
-    if (!picked) return;
     if (!user) {
+      toast.error("Please log in to join a match");
       openAuth("signin");
       return;
     }
+    if (!picked) return;
     if (isFull) {
       setShowSubstituteConfirm(true);
     } else {
@@ -535,7 +540,14 @@ const JoinSheet = ({
               ) : (
                 <button
                   onClick={() => {
-                    if (!user) { openAuth(); return; }
+                    // FIX: Issue 1 - Auth check fires first; previously openAuth() was
+                    // called with no user feedback, so the user had no context for why
+                    // the login modal appeared. Now a toast explains the requirement.
+                    if (!user) {
+                      toast.error("Please log in to join a match");
+                      openAuth();
+                      return;
+                    }
                     setBusy(true);
                     if (match.match_mode === "gala" || match.match_type === "private") {
                       if (!picked) { setBusy(false); return; }

@@ -103,11 +103,18 @@ export default {
         "accordion-down": { from: { height: "0" }, to: { height: "var(--radix-accordion-content-height)" } },
         "accordion-up": { from: { height: "var(--radix-accordion-content-height)" }, to: { height: "0" } },
         "fade-up": { "0%": { opacity: "0", transform: "translateY(16px)" }, "100%": { opacity: "1", transform: "translateY(0)" } },
+        // FIX: Issue 2 - Scan line animation for QR scanner frame
+        "scan-line": { "0%": { top: "0%", opacity: "1" }, "90%": { top: "100%", opacity: "1" }, "100%": { top: "100%", opacity: "0" } },
+        // FIX: Issue 2 - One-shot ping for successful QR scan feedback
+        "ping-once": { "0%": { transform: "scale(1)", opacity: "1" }, "100%": { transform: "scale(1.6)", opacity: "0" } },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "fade-up": "fade-up 0.7s cubic-bezier(0.25, 1, 0.5, 1) both",
+        // FIX: Issue 2 - QR scanner animations
+        "scan-line": "scan-line 2s linear infinite",
+        "ping-once": "ping-once 0.5s ease-out forwards",
       },
     },
   },

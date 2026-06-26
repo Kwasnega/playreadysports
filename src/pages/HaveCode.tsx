@@ -5,6 +5,8 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getFormattedTime } from "@/lib/matchHelpers";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 /* Stand-alone "Have a code?" flow — wired to Supabase.
    1) User enters a 6-char match code.
@@ -94,6 +96,7 @@ const CodeBoxes = ({ value, onChange }: { value: string; onChange: (s: string) =
 
 const HaveCode = () => {
   const navigate = useNavigate();
+  const { user, openAuth } = useAuth(); // FIX: Issue 1 - needed for pre-join auth guard
   const [code, setCode] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "found" | "notfound">("idle");
   const [match, setMatch] = useState<FoundMatch | null>(null);
@@ -162,8 +165,15 @@ const HaveCode = () => {
     setPickedTeam(null);
   };
 
+  // FIX: Issue 1 - Guard auth before navigating to lobby; previously an unauthenticated
+  // user could reach the lobby and trigger a raw RLS error from Supabase.
   const confirm = () => {
     if (!match || !pickedTeam) return;
+    if (!user) {
+      toast.error("Please log in to join a match");
+      openAuth("signin");
+      return;
+    }
     navigate(`/lobby/${match.join_code}?team=${encodeURIComponent(pickedTeam)}`);
   };
 

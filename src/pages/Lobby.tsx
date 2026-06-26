@@ -55,17 +55,10 @@ const Lobby = () => {
   const { user, openAuth } = useAuth();
   const [checkInCode, setCheckInCode] = useState("");
   const [checkInBusy, setCheckInBusy] = useState(false);
-  const [scanning, setScanning] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const scanIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const scanningRef = useRef(false);
+  // FIX: Issue 2 - Removed: scanning state, videoRef, scanIntervalRef, scanningRef
+  // and the broken startScan/stopScan functions. Camera scanning is now handled by
+  // QRScannerModal which owns its own refs and lifecycle entirely.
 
-  useEffect(() => () => {
-    if (scanIntervalRef.current) clearInterval(scanIntervalRef.current);
-    if (videoRef.current?.srcObject) {
-      (videoRef.current.srcObject as MediaStream).getTracks().forEach((t) => t.stop());
-    }
-  }, []);
 
   const {
     match,
@@ -354,50 +347,9 @@ const Lobby = () => {
   const hoursUntilMatch = matchTimeMs ? (matchTimeMs - nowMs) / (1000 * 60 * 60) : Infinity;
   const showCheckIn = match?.status !== 'completed' && match?.status !== 'cancelled' && hoursUntilMatch <= 1.5 && hoursUntilMatch >= -2;
 
-  /* ─── QR Scanner helpers ─── */
-  const startScan = async () => {
-    if (!videoRef.current) return;
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-      videoRef.current.srcObject = stream;
-      await videoRef.current.play();
-      scanningRef.current = true;
-      setScanning(true);
-
-      const detect = async () => {
-        if (!videoRef.current || !scanningRef.current) return;
-        const hasDetector = "BarcodeDetector" in window;
-        if (hasDetector) {
-          try {
-            const detector = new (window as any).BarcodeDetector({ formats: ["qr_code"] });
-            const results = await detector.detect(videoRef.current);
-            if (results.length > 0) {
-              const raw = results[0].rawValue;
-              stopScan();
-              await submitCheckIn(raw);
-              return;
-            }
-          } catch {}
-        }
-      };
-      scanIntervalRef.current = setInterval(detect, 600);
-    } catch {
-      toast.error("Camera access denied or unavailable.");
-    }
-  };
-
-  const stopScan = () => {
-    scanningRef.current = false;
-    if (scanIntervalRef.current) {
-      clearInterval(scanIntervalRef.current);
-      scanIntervalRef.current = null;
-    }
-    if (videoRef.current?.srcObject) {
-      (videoRef.current.srcObject as MediaStream).getTracks().forEach((t) => t.stop());
-      videoRef.current.srcObject = null;
-    }
-    setScanning(false);
-  };
+  /* ─── QR Scanner helpers (delegated to QRScannerModal) ─── */
+  // FIX: Issue 2 - startScan/stopScan removed; QRScannerModal manages its own camera
+  // stream internally so these functions are no longer needed in Lobby.tsx.
 
   const submitCheckIn = async (token: string) => {
     if (!token || !match?.id) return;
@@ -462,7 +414,15 @@ const Lobby = () => {
     setPaymentModalOpen(true);
   }, [match?.id]);
 
+  // FIX: Issue 1 - Guard auth before any Supabase call; previously an unauthenticated
+  // user reaching the lobby via direct URL could trigger an RLS-blocked edge-function
+  // call and receive a raw error in the UI.
   const handleJoinSubstitute = useCallback(async () => {
+    if (!user) {
+      toast.error("Please log in to join a match");
+      openAuth();
+      return;
+    }
     if (!match?.id) return;
     try {
       const { data, error } = await supabase.functions.invoke("join-match", {
@@ -478,7 +438,7 @@ const Lobby = () => {
     } catch (err: any) {
       toast.error(err.message || "Failed to join as substitute");
     }
-  }, [match?.id, refresh]);
+  }, [match?.id, openAuth, refresh, user]);
 
   const handleWalletPay = async () => {
     if (!match?.id) return;
@@ -501,7 +461,13 @@ const Lobby = () => {
     }
   };
 
+  // FIX: Issue 1 - Guard auth before any Supabase call; same reason as handleJoinSubstitute.
   const handleJoinFree = useCallback(async () => {
+    if (!user) {
+      toast.error("Please log in to join a match");
+      openAuth();
+      return;
+    }
     if (!match?.id) return;
     try {
       const { data, error } = await supabase.functions.invoke("join-free-match", {
@@ -517,7 +483,7 @@ const Lobby = () => {
     } catch (err: any) {
       toast.error(err.message || "Failed to join");
     }
-  }, [match?.id, refresh, resolvedTeam]);
+  }, [match?.id, openAuth, refresh, resolvedTeam, user]);
 
   useEffect(() => {
     if (joinIntentHandledRef.current || loading || !match?.id || userParticipant) return;
@@ -728,10 +694,8 @@ const Lobby = () => {
             checkInCode={checkInCode}
             setCheckInCode={setCheckInCode}
             checkInBusy={checkInBusy}
-            scanning={scanning}
-            videoRef={videoRef}
-            startScan={startScan}
-            stopScan={stopScan}
+            // FIX: Issue 2 - scanning, videoRef, startScan, stopScan removed;
+            // QRScannerModal now owns all scanner state internally.
             submitCheckIn={submitCheckIn}
             endMatch={endMatch}
             cancelMatch={cancelMatch}

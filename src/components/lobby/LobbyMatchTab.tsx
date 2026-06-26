@@ -1,4 +1,4 @@
-import { useEffect, useState, type RefObject } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Check, Clock, MapPin, Wallet, Trophy, Calendar, QrCode, Camera, X,
@@ -10,6 +10,8 @@ import { getFormattedTime } from "@/lib/matchHelpers";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { LobbyParticipant } from "./LobbyShared";
+// FIX: Issue 2 - Import the new self-contained scanner that properly manages its own DOM lifecycle
+import { QRScannerModal } from "./QRScannerModal";
 
 interface LobbyMatchTabProps {
   match: any;
@@ -31,10 +33,9 @@ interface LobbyMatchTabProps {
   checkInCode: string;
   setCheckInCode: (v: string) => void;
   checkInBusy: boolean;
-  scanning: boolean;
-  videoRef: RefObject<HTMLVideoElement>;
-  startScan: () => void;
-  stopScan: () => void;
+  // FIX: Issue 2 - Removed: scanning, videoRef, startScan, stopScan — these were the
+  // broken props that caused the camera-never-opens bug. The scanner is now fully
+  // self-contained inside QRScannerModal.
   submitCheckIn: (token: string) => void;
   endMatch: () => void;
   cancelMatch: () => void;
@@ -53,11 +54,14 @@ export const LobbyMatchTab = (props: LobbyMatchTabProps) => {
     match, venue, organizer, weather, isOrganizer, userParticipant, user,
     countdownMain, countdownSub, isLive,
     venueCost, sharePerPlayer, allPaid, corePaidCount, maxCore,
-    showCheckIn, checkInCode, setCheckInCode, checkInBusy, scanning, videoRef,
-    startScan, stopScan, submitCheckIn,
+    showCheckIn, checkInCode, setCheckInCode, checkInBusy,
+    submitCheckIn,
     endMatch, cancelMatch, ending,
     onLeaveMatch, openProfile, activeParticipants, myReviews, submitReview, matchCode,
   } = props;
+
+  // FIX: Issue 2 - Local state controls the QRScannerModal; no ref/stream plumbing needed
+  const [scannerOpen, setScannerOpen] = useState(false);
 
   // Smart validation: Check if match can be completed
   const canCompleteMatch = () => {
@@ -215,19 +219,17 @@ export const LobbyMatchTab = (props: LobbyMatchTabProps) => {
             <div className="bg-secondary p-4 rounded-xl border border-border">
               <p className="text-sm font-bold flex items-center gap-2"><Check className="w-4 h-4" /> Checked in</p>
             </div>
-          ) : scanning ? (
-            <div className="space-y-4">
-              <div className="relative aspect-square rounded-xl overflow-hidden border-2 border-border bg-black">
-                <video ref={videoRef} className="w-full h-full object-cover grayscale" playsInline muted autoPlay />
-                <div className="absolute inset-0 border-4 border-dashed border-white/50 rounded-xl m-8" />
-              </div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground text-center">Point camera at venue QR</p>
-              <button type="button" onClick={stopScan} className="w-full py-3 rounded-full border-2 border-border font-black text-[11px] uppercase tracking-widest">Cancel Scan</button>
-            </div>
           ) : (
             <>
+              {/* FIX: Issue 2 - QR scanner button now opens the self-contained modal;
+                  no videoRef plumbing required. */}
               <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground leading-relaxed">Tap camera to scan venue QR code</p>
-              <button type="button" onClick={startScan} disabled={checkInBusy} className="w-full flex items-center justify-center gap-2 bg-foreground text-background px-4 py-3.5 rounded-full text-[11px] font-black uppercase tracking-widest disabled:opacity-50 hover:bg-foreground/90 transition-colors">
+              <button
+                type="button"
+                onClick={() => setScannerOpen(true)}
+                disabled={checkInBusy}
+                className="w-full flex items-center justify-center gap-2 bg-foreground text-background px-4 py-3.5 rounded-full text-[11px] font-black uppercase tracking-widest disabled:opacity-50 hover:bg-foreground/90 transition-colors"
+              >
                 <Camera className="w-4 h-4" />{checkInBusy ? "Checking in…" : "Scan QR Code"}
               </button>
               <div className="pt-4 border-t-2 border-border border-dashed">
@@ -240,6 +242,19 @@ export const LobbyMatchTab = (props: LobbyMatchTabProps) => {
             </>
           )}
         </div>
+      )}
+
+      {/* FIX: Issue 2 - QRScannerModal is rendered at the top level (not inside the
+          conditional) so its useEffect can reliably mount the video element. It is
+          only displayed when scannerOpen is true. */}
+      {scannerOpen && (
+        <QRScannerModal
+          onScan={(value) => {
+            setScannerOpen(false);
+            submitCheckIn(value);
+          }}
+          onClose={() => setScannerOpen(false)}
+        />
       )}
 
       {!showCheckIn && userParticipant?.status === "active" && match?.status !== "cancelled" && match?.status !== "completed" && (
