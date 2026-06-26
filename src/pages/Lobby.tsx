@@ -351,21 +351,70 @@ const Lobby = () => {
   // FIX: Issue 2 - startScan/stopScan removed; QRScannerModal manages its own camera
   // stream internally so these functions are no longer needed in Lobby.tsx.
 
+  // FIX: Issue 3 - Rewritten submitCheckIn with:
+  //   1. Pre-call empty-input validation with user-facing message
+  //   2. Pre-call 10-char minimum validation with specific guidance
+  //   3. Token sanitization (uppercase + strip non-alphanumeric) before API call
+  //   4. Success message includes match name: "✅ You're checked in to [Match Name]!"
+  //   5. already: true response shown as info (not another success toast)
+  //   6. Clear, specific error messages for every rejection case
   const submitCheckIn = async (token: string) => {
-    if (!token || !match?.id) return;
+    // Pre-call: empty check
+    const sanitized = token.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (!sanitized) {
+      toast.warning("Please enter a check-in code.");
+      return;
+    }
+    // Pre-call: length check — the backend regex requires exactly 10 chars
+    if (sanitized.length !== 10) {
+      toast.warning(`Code must be 10 characters — you entered ${sanitized.length}.`);
+      return;
+    }
+    if (!match?.id) return;
     setCheckInBusy(true);
     try {
-      const { data, error } = await supabase.functions.invoke("scan-match-qr", { body: { token } });
+      const { data, error } = await supabase.functions.invoke("scan-match-qr", {
+        body: { token: sanitized },
+      });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      toast.success(data?.message || "Checked in!");
+
+      // Differentiate "already checked in" from a fresh check-in
+      if (data?.already) {
+        toast.info("You are already checked in! ✅");
+      } else {
+        // FIX: Issue 3 - Include match name in success message
+        const venueName = venue?.name ?? match?.join_code ?? "match";
+        toast.success(`✅ You're checked in to ${venueName}!`);
+      }
+
       await refresh();
     } catch (e: any) {
-      toast.error(e?.message || "Check-in failed");
+      // FIX: Issue 3 - Map specific error strings from the edge function to
+      // clear, human-friendly messages instead of surfacing raw API text.
+      const msg: string = e?.message ?? "";
+      if (msg.includes("not registered")) {
+        toast.error("You are not registered for this match.");
+      } else if (msg.includes("already checked in") || msg.includes("already")) {
+        toast.info("You are already checked in! ✅");
+      } else if (msg.includes("not open for check-in") || msg.includes("cancelled") || msg.includes("completed")) {
+        toast.error("This match is no longer open for check-in.");
+      } else if (msg.includes("around match time")) {
+        toast.error("Check-in is only available within 2 hours of match time.");
+      } else if (msg.includes("payment") || msg.includes("paid")) {
+        toast.error("Please complete your payment before checking in.");
+      } else if (msg.includes("Invalid") || msg.includes("not found") || msg.includes("expired")) {
+        toast.error("Invalid check-in code. Please check and try again.");
+      } else if (msg.includes("active")) {
+        toast.error("Only active match participants can check in.");
+      } else {
+        toast.error(msg || "Check-in failed. Please try again.");
+      }
     } finally {
       setCheckInBusy(false);
     }
   };
+
 
   const endMatch = async () => {
     if (!match) return;

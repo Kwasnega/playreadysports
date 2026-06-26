@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Check, Clock, MapPin, Wallet, Trophy, Calendar, QrCode, Camera, X,
-  CloudSun, Droplets, Flag, Star, Users, ThumbsUp,
-} from "lucide-react";
+  CloudSun, Droplets, Flag, Star, Users, ThumbsUp, Loader2,
+} from "lucide-react"; // FIX: Issue 3 - Added Loader2 for check-in button spinner
 import { FactRow } from "./LobbyShared";
 import ReportButton from "@/components/ReportButton";
 import { getFormattedTime } from "@/lib/matchHelpers";
@@ -235,9 +235,37 @@ export const LobbyMatchTab = (props: LobbyMatchTabProps) => {
               <div className="pt-4 border-t-2 border-border border-dashed">
                 <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Or enter 10-character code manually</p>
                 <div className="flex gap-2">
-                  <input value={checkInCode} onChange={(e) => setCheckInCode(e.target.value.trim().toUpperCase().slice(0, 10))} placeholder="E.G. A3K9M2X7Q1" maxLength={10} className="flex-1 rounded-xl border-2 border-border bg-background px-4 py-2.5 text-xs font-mono font-bold uppercase tracking-widest" autoCapitalize="characters" autoCorrect="off" spellCheck={false} />
-                  <button type="button" disabled={checkInBusy || !checkInCode} onClick={() => submitCheckIn(checkInCode)} className="px-5 py-2.5 rounded-xl border-2 border-foreground bg-foreground text-background text-[11px] font-black uppercase disabled:opacity-40 hover:opacity-90">Go</button>
+                  {/* FIX: Issue 3 - sanitize on input: strip non-alphanumeric, uppercase, max 10 chars */}
+                  <input
+                    value={checkInCode}
+                    onChange={(e) => setCheckInCode(
+                      e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10)
+                    )}
+                    placeholder="E.G. A3K9M2X7Q1"
+                    maxLength={10}
+                    className="flex-1 rounded-xl border-2 border-border bg-background px-4 py-2.5 text-xs font-mono font-bold uppercase tracking-widest"
+                    autoCapitalize="characters"
+                    autoCorrect="off"
+                    spellCheck={false}
+                  />
+                  {/* FIX: Issue 3 - Show loading spinner inside Go button when busy */}
+                  <button
+                    type="button"
+                    disabled={checkInBusy || !checkInCode}
+                    onClick={() => submitCheckIn(checkInCode)}
+                    className="px-5 py-2.5 rounded-xl border-2 border-foreground bg-foreground text-background text-[11px] font-black uppercase disabled:opacity-40 hover:opacity-90 flex items-center gap-1.5"
+                  >
+                    {checkInBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                    {checkInBusy ? "…" : "Go"}
+                  </button>
                 </div>
+                {/* FIX: Issue 3 - Inline validation: tell user exactly how many chars they still need
+                    before any API call is made, so they don't get a silent failure */}
+                {checkInCode.length > 0 && checkInCode.length < 10 && (
+                  <p className="mt-1.5 text-[10px] font-bold text-muted-foreground">
+                    {10 - checkInCode.length} more character{10 - checkInCode.length !== 1 ? "s" : ""} needed
+                  </p>
+                )}
               </div>
             </>
           )}
