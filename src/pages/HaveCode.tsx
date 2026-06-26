@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getFormattedTime } from "@/lib/matchHelpers";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { AlreadyJoinedView } from "@/components/AlreadyJoinedView";
 
 /* Stand-alone "Have a code?" flow — wired to Supabase.
    1) User enters a 6-char match code.
@@ -30,7 +31,9 @@ type ParticipantRow = {
   team: string;
   status: string;
   slot_type: string;
-  profile: { full_name: string | null; username: string | null } | null;
+  payment_status: string;
+  attendance_scanned?: boolean;
+  profile: { full_name: string | null; username: string | null; avatar_url: string | null } | null;
 };
 
 type FoundMatch = {
@@ -165,8 +168,8 @@ const HaveCode = () => {
     const { data: partsData } = await supabase
       .from("match_participants")
       .select(`
-        id, user_id, team, status, slot_type,
-        profile:profiles(full_name, username)
+        id, user_id, team, status, slot_type, payment_status, attendance_scanned,
+        profile:profiles(full_name, username, avatar_url)
       `)
       .eq("match_id", m.id)
       .eq("status", "active");
@@ -176,11 +179,11 @@ const HaveCode = () => {
       return { ...row, profile: prof } as ParticipantRow;
     });
 
-    // FIX: Issue 3 - Check if the logged-in user is already a participant
+    // Check if the logged-in user is already a participant
     if (user && normalized.some((p) => p.user_id === user.id)) {
-      // Already joined — navigate directly to lobby instead of showing the join form
-      toast.info(`You're already in this match! Taking you to the lobby…`);
-      navigate(`/lobby/${m.join_code}`);
+      setMatch(m);
+      setParticipants(normalized);
+      setStatus("already_joined");
       return;
     }
 
@@ -394,6 +397,35 @@ const HaveCode = () => {
                 )}
               </ul>
             </section>
+          </div>
+        )}
+
+        {status === "already_joined" && match && (
+          <div className="space-y-5">
+            <AlreadyJoinedView
+              match={match}
+              user={user}
+              participants={participants}
+              onRefresh={async () => {
+                await lookup();
+              }}
+            />
+            
+            {/* Go to Lobby button */}
+            <div className="pt-4 flex gap-3">
+              <button
+                onClick={reset}
+                className="px-6 h-14 rounded-full border-2 border-border bg-card text-[11px] font-black uppercase tracking-widest text-foreground hover:bg-secondary transition-colors"
+              >
+                Back
+              </button>
+              <button
+                onClick={() => navigate(`/lobby/${match.join_code}`)}
+                className="flex-1 h-14 rounded-full bg-foreground border-2 border-foreground text-background text-[11px] font-black uppercase tracking-widest transition-transform active:scale-[0.98]"
+              >
+                Go to Lobby
+              </button>
+            </div>
           </div>
         )}
       </div>

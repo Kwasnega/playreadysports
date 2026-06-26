@@ -305,6 +305,7 @@ function transformMatches(
           isOrganizer: m.organizer_id === userId,
           friendCount,
           friendAvatars,
+          status: m.intelligent_status,
         };
       }
 
@@ -324,6 +325,7 @@ function transformMatches(
         isOrganizer: m.organizer_id === userId,
         friendCount,
         friendAvatars,
+        status: m.intelligent_status,
       };
     });
 }

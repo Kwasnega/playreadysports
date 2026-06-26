@@ -458,14 +458,17 @@ export default function AdminLiveMonitor() {
       },
       body: JSON.stringify({
         matchId: broadcastModal.matchId,
-        title: "Admin Broadcast",
+        title: "📢 Admin Broadcast",
         message: broadcastMsg,
-        type: "admin_broadcast",
       }),
     });
     const data = await res.json();
     if (data.success) {
-      toast.success(`Broadcast sent to ${data.sent} players`);
+      toast.success(
+        data.sent > 0
+          ? `📢 Broadcast sent — notified ${data.sent} player${data.sent === 1 ? "" : "s"} and posted to match chat`
+          : `📢 Broadcast posted to match chat`
+      );
       setBroadcastModal({ open: false, matchId: "", joinCode: "" });
       setBroadcastMsg("");
     } else {

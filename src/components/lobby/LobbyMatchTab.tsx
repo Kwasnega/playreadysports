@@ -358,14 +358,24 @@ export const LobbyMatchTab = (props: LobbyMatchTabProps) => {
                 ].map((team) => (
                   <button key={team.value} disabled={ending} onClick={async () => {
                     if (!match.id) return;
-                    const { error } = await supabase.from("matches").update({ winning_team: team.value } as any).eq("id", match.id);
-                    if (error) toast.error("Failed to record result"); else { toast.success(`${team.label} wins!`); navigate(0); }
+                    const { data, error } = await supabase.rpc("record_match_result", { p_match_id: match.id, p_winning_team: team.value });
+                    if (error || (data as any)?.success === false) {
+                      toast.error(error?.message || (data as any)?.error || "Failed to record result");
+                    } else {
+                      toast.success(`${team.label} wins!`);
+                      navigate(0);
+                    }
                   }} className="flex-1 py-3.5 rounded-full font-black text-[11px] uppercase tracking-widest border-2 border-border hover:border-foreground transition-all">{team.label}</button>
                 ))}
                 <button disabled={ending} onClick={async () => {
                   if (!match.id) return;
-                  const { error } = await supabase.from("matches").update({ winning_team: "draw" } as any).eq("id", match.id);
-                  if (error) toast.error("Failed to record result"); else { toast.success("Draw recorded"); navigate(0); }
+                  const { data, error } = await supabase.rpc("record_match_result", { p_match_id: match.id, p_winning_team: "draw" });
+                  if (error || (data as any)?.success === false) {
+                    toast.error(error?.message || (data as any)?.error || "Failed to record result");
+                  } else {
+                    toast.success("Draw recorded");
+                    navigate(0);
+                  }
                 }} className="flex-1 py-3.5 rounded-full font-black text-[11px] uppercase tracking-widest border-2 border-border hover:border-foreground transition-all">Draw</button>
               </div>
             </>

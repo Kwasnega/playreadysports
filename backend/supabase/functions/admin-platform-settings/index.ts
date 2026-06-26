@@ -4,6 +4,7 @@ import { getCorsHeaders } from "../_shared/cors.ts";
 // ── Allowlist: only these keys may be read or written via this function ──
 const ALLOWED_KEYS = new Set([
   "commission_rate",
+  "organizer_incentive",
   "organizer_incentive_amount",
   "cancel_cutoff_minutes",
   "auto_cancel_window_minutes",
@@ -20,8 +21,9 @@ function validateValue(key: string, value: string): string | null {
       if (num > 1) return "commission_rate must be between 0 and 1";
       return null;
     }
+    case "organizer_incentive":
     case "organizer_incentive_amount": {
-      if (num > 10000) return "organizer_incentive_amount must be ≤ 10,000";
+      if (num > 10000) return `${key} must be ≤ 10,000`;
       return null;
     }
     case "cancel_cutoff_minutes": {

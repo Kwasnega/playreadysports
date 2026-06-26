@@ -46,10 +46,12 @@ export type BrowseMatch = {
   } | null;
   participants: {
     id: string;
+    user_id: string;
     status: string;
     team: string;
     slot_type: string;
     payment_status: string;
+    attendance_scanned?: boolean;
   }[];
 };
 
@@ -110,6 +112,8 @@ export function useBrowseMatches(filters: BrowseFilters) {
     setError(null);
 
     const now = new Date().toISOString();
+    // Look back 3 hours to capture live matches that have already started
+    const liveWindow = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
 
     let query = supabase
       .from("matches")
@@ -117,12 +121,12 @@ export function useBrowseMatches(filters: BrowseFilters) {
         `
         *,
         venue:venues(id, name, city, area, lat, lng),
-        participants:match_participants(id, status, team, slot_type, payment_status)
+        participants:match_participants(id, user_id, status, team, slot_type, payment_status, attendance_scanned)
       `
       )
       .eq("match_type", "public" as any)
       .in("intelligent_status", ["upcoming", "soon", "live_now"] as any)
-      .gte("match_date", now)
+      .gte("match_date", liveWindow)
       .order("match_date", { ascending: true })
       .limit(50);
 
@@ -211,6 +215,13 @@ export function useBrowseMatches(filters: BrowseFilters) {
     }
     // soonest is default order from DB
 
+    // Always float live_now matches to the top regardless of sort
+    list.sort((a, b) => {
+      const aLive = a.intelligent_status === "live_now" ? 0 : 1;
+      const bLive = b.intelligent_status === "live_now" ? 0 : 1;
+      return aLive - bLive;
+    });
+
     return list;
   }, [matches, sort, userLat, userLng]);
 
@@ -234,7 +245,7 @@ export function useBrowseMatches(filters: BrowseFilters) {
       .map((k) => ({ key: k, label: BUCKET_LABEL[k], items: groups[k] }));
   }, [sorted, sort]);
 
-  return { matches: sorted, grouped, loading, error };
+  return { matches: sorted, grouped, loading, error, refetch: load };
 }
 
 /** Keep filter state in URL query params so back/forward works */

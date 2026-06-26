@@ -35,6 +35,7 @@ type GalaOpening = {
   isOrganizer?: boolean;
   friendCount?: number;
   friendAvatars?: string[];
+  status?: string;
 };
 
 type TwoTeamOpening = {
@@ -53,6 +54,7 @@ type TwoTeamOpening = {
   isOrganizer?: boolean;
   friendCount?: number;
   friendAvatars?: string[];
+  status?: string;
 };
 
 type LiveScore = {
@@ -102,8 +104,6 @@ export const NearYou = ({
 
   let filtered = sourceItems.filter(it => {
     if (it.km > maxKm) return false;
-    if (it.kind === "gala" && it.teamsIn >= it.capTeams) return false;
-    if (it.kind === "two-team" && it.filled >= it.cap) return false;
     if (!q) return true;
     const code = it.kind === "live" ? "" : it.code.toLowerCase();
     return (
@@ -116,7 +116,10 @@ export const NearYou = ({
   if (variant === "curated") {
     const priority = (it: Item): number => {
       if (it.kind === "live") return 0;
-      const t = (it as GalaOpening | TwoTeamOpening).time.toLowerCase();
+      const nonLive = it as GalaOpening | TwoTeamOpening;
+      // Live status matches always first
+      if (nonLive.status === "live_now") return 0;
+      const t = nonLive.time.toLowerCase();
       if (t.startsWith("tonight") || t.startsWith("in ")) return 1;
       if (t.startsWith("tomorrow")) return 2;
       if (t.startsWith("sat")) return 3;
@@ -318,8 +321,10 @@ const FriendAvatarStack = ({ count, avatars }: { count?: number; avatars?: strin
 
 const GalaRow = ({ s }: { s: GalaOpening }) => {
   const slotsLeft = s.capTeams - s.teamsIn;
+  const isFull = slotsLeft <= 0;
+  const isLive = s.status === "live_now";
   const { when, time } = splitTime(s.time);
-  const accent = slotsLeft <= 1 ? "warn" : null;
+  const accent = isLive ? "live" : slotsLeft <= 1 && !isFull ? "warn" : null;
   const nav = useNavigate();
   const onJoin = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
@@ -327,12 +332,25 @@ const GalaRow = ({ s }: { s: GalaOpening }) => {
   };
   return (
     <RowShell to={`/lobby/${s.code}`} accent={accent}>
-      <TimeBlock when={when} time={time} accent={accent} />
+      {isLive ? (
+        <div className="w-[90px] shrink-0 border-r border-border border-dashed bg-secondary/40 flex flex-col items-center justify-center p-2">
+          <span className="text-[10px] font-black uppercase tracking-widest mb-1 text-foreground animate-pulse inline-flex items-center gap-1">
+            <Radio className="w-2.5 h-2.5" /> Live
+          </span>
+          <span className="text-xl font-display font-black tracking-tighter leading-none text-foreground">{s.format}v{s.format}</span>
+        </div>
+      ) : (
+        <TimeBlock when={when} time={time} accent={accent} />
+      )}
       <div className="flex-1 p-3.5 flex flex-col justify-center">
         <div className="flex items-start justify-between gap-2 mb-1">
           <p className="text-sm font-bold text-foreground leading-tight truncate">{s.venue}</p>
           <div className="flex items-center gap-1">
-            {s.isOrganizer ? <ManageCTA onClick={onJoin} /> : s.joined ? <JoinedCTA /> : <JoinCTA onClick={onJoin} />}
+            {isFull ? (
+              <span className="shrink-0 inline-flex items-center justify-center h-8 px-3 rounded-full border-[1.5px] border-border text-muted-foreground text-[10px] font-black uppercase tracking-widest bg-secondary/60">
+                Full
+              </span>
+            ) : s.isOrganizer ? <ManageCTA onClick={onJoin} /> : s.joined ? <JoinedCTA /> : <JoinCTA onClick={onJoin} />}
           </div>
         </div>
         <p className="text-xs text-muted-foreground font-medium flex items-center gap-1.5 truncate">
@@ -340,9 +358,15 @@ const GalaRow = ({ s }: { s: GalaOpening }) => {
         </p>
         <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
           <Chip><Repeat className="w-2.5 h-2.5" /> Gala {s.format}v{s.format}</Chip>
-          <Chip tone={slotsLeft <= 1 ? "warn" : "default"}>
-            {slotsLeft} team{slotsLeft === 1 ? "" : "s"} needed
-          </Chip>
+          {isLive ? (
+            <Chip tone="live"><Radio className="w-2.5 h-2.5" /> Live</Chip>
+          ) : isFull ? (
+            <Chip>Full — no spots</Chip>
+          ) : (
+            <Chip tone={slotsLeft <= 1 ? "warn" : "default"}>
+              {slotsLeft} team{slotsLeft === 1 ? "" : "s"} needed
+            </Chip>
+          )}
           {s.friendCount ? <FriendAvatarStack count={s.friendCount} avatars={s.friendAvatars} /> : null}
         </div>
       </div>
@@ -352,8 +376,10 @@ const GalaRow = ({ s }: { s: GalaOpening }) => {
 
 const TwoTeamRow = ({ s }: { s: TwoTeamOpening }) => {
   const left = s.cap - s.filled;
+  const isFull = left <= 0;
+  const isLive = s.status === "live_now";
   const { when, time } = splitTime(s.time);
-  const accent = left <= 2 ? "warn" : null;
+  const accent = isLive ? "live" : left <= 2 && !isFull ? "warn" : null;
   const nav = useNavigate();
   const onJoin = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
@@ -361,12 +387,25 @@ const TwoTeamRow = ({ s }: { s: TwoTeamOpening }) => {
   };
   return (
     <RowShell to={`/lobby/${s.code}`} accent={accent}>
-      <TimeBlock when={when} time={time} accent={accent} />
+      {isLive ? (
+        <div className="w-[90px] shrink-0 border-r border-border border-dashed bg-secondary/40 flex flex-col items-center justify-center p-2">
+          <span className="text-[10px] font-black uppercase tracking-widest mb-1 text-foreground animate-pulse inline-flex items-center gap-1">
+            <Radio className="w-2.5 h-2.5" /> Live
+          </span>
+          <span className="text-xl font-display font-black tracking-tighter leading-none text-foreground">{s.format}</span>
+        </div>
+      ) : (
+        <TimeBlock when={when} time={time} accent={accent} />
+      )}
       <div className="flex-1 p-3.5 flex flex-col justify-center">
         <div className="flex items-start justify-between gap-2 mb-1">
           <p className="text-sm font-bold text-foreground leading-tight truncate">{s.venue}</p>
           <div className="flex items-center gap-1">
-            {s.isOrganizer ? <ManageCTA onClick={onJoin} /> : s.joined ? <JoinedCTA /> : <JoinCTA onClick={onJoin} />}
+            {isFull ? (
+              <span className="shrink-0 inline-flex items-center justify-center h-8 px-3 rounded-full border-[1.5px] border-border text-muted-foreground text-[10px] font-black uppercase tracking-widest bg-secondary/60">
+                Full
+              </span>
+            ) : s.isOrganizer ? <ManageCTA onClick={onJoin} /> : s.joined ? <JoinedCTA /> : <JoinCTA onClick={onJoin} />}
           </div>
         </div>
         <p className="text-xs text-muted-foreground font-medium flex items-center gap-1.5 truncate">
@@ -374,9 +413,15 @@ const TwoTeamRow = ({ s }: { s: TwoTeamOpening }) => {
         </p>
         <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
           <Chip><UsersIcon className="w-2.5 h-2.5" /> {s.format}</Chip>
-          <Chip tone={left <= 2 ? "warn" : "default"}>
-            {left} spot{left === 1 ? "" : "s"} left
-          </Chip>
+          {isLive ? (
+            <Chip tone="live"><Radio className="w-2.5 h-2.5" /> Live</Chip>
+          ) : isFull ? (
+            <Chip>Full — no spots</Chip>
+          ) : (
+            <Chip tone={left <= 2 ? "warn" : "default"}>
+              {left} spot{left === 1 ? "" : "s"} left
+            </Chip>
+          )}
           {s.friendCount ? <FriendAvatarStack count={s.friendCount} avatars={s.friendAvatars} /> : null}
         </div>
       </div>
