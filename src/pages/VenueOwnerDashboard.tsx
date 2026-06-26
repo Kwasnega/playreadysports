@@ -596,9 +596,10 @@ export default function VenueOwnerDashboard() {
     setVenues((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
   };
 
+  // FIX: Issue 5 - Handle withdrawal requests with proper validations, success messages and error mapping
   const handleWithdrawRequest = async () => {
     const amt = parseFloat(withdrawAmt);
-    if (!amt || amt < 10 || !withdrawPhone.trim()) return;
+    if (!amt || amt <= 0 || amt > venueBalance || !withdrawPhone.trim()) return;
     setWithdrawing(true);
     const { data, error } = await (supabase as any).rpc("request_venue_withdrawal", {
       p_amount: amt,
@@ -609,12 +610,19 @@ export default function VenueOwnerDashboard() {
     if (error) {
       toast.error(error.message || "Withdrawal failed");
     } else if (data?.error) {
-      const msg = data.error === "insufficient_balance"
-        ? `Insufficient balance. Available: ₵${(data.available ?? 0).toFixed(2)}`
-        : data.error;
+      let msg = data.error;
+      if (data.error === "insufficient_balance") {
+        msg = `Insufficient balance. Available: ₵${(data.available ?? 0).toFixed(2)}`;
+      } else if (data.error === "minimum_withdrawal_is_10" || data.error === "minimum_withdrawal_amount_is_10") {
+        msg = "Minimum withdrawal amount is ₵10.00";
+      } else if (data.error === "amount_must_be_positive") {
+        msg = "Amount must be positive.";
+      } else if (data.error === "only_turf_owners") {
+        msg = "Only turf owners can request withdrawals.";
+      }
       toast.error(msg);
     } else {
-      toast.success("Withdrawal request submitted — admin will process within 24 h");
+      toast.success("Withdrawal request submitted. Funds will be sent within 24 hours.");
       setWithdrawOpen(false);
       setWithdrawAmt("");
       setWithdrawPhone("");
@@ -844,9 +852,10 @@ export default function VenueOwnerDashboard() {
                 </div>
               </div>
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-6">
+                {/* FIX: Issue 5 - Made withdraw button clickable as long as balance is positive */}
                 <button
                   onClick={() => setWithdrawOpen(true)}
-                  disabled={venueBalance < 10}
+                  disabled={venueBalance <= 0}
                   className="text-[10px] font-black uppercase tracking-widest bg-background text-foreground border-2 border-background rounded-full px-6 py-3 transition-colors hover:bg-background/90 disabled:opacity-40 shadow-sm"
                 >
                   WITHDRAW
@@ -1343,15 +1352,16 @@ export default function VenueOwnerDashboard() {
             <p className="text-xs text-muted-foreground font-normal">Available: ₵{Number(venueBalance || 0).toFixed(2)}</p>
           </DialogHeader>
           <div className="space-y-4 pt-2">
+            {/* FIX: Issue 5 - Adjusted input min and label for withdrawal requests */}
             <div>
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
-                Amount (Min ₵10)
+                Amount
               </label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-muted-foreground text-sm">₵</span>
                 <input
                   type="number"
-                  min={10}
+                  min={0.01}
                   max={venueBalance}
                   value={withdrawAmt}
                   onChange={(e) => setWithdrawAmt(e.target.value)}
@@ -1393,9 +1403,17 @@ export default function VenueOwnerDashboard() {
                 className="w-full bg-secondary rounded-xl py-2.5 px-4 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-foreground"
               />
             </div>
+            {/* FIX: Issue 5 - Submit button is disabled for invalid amounts but allows positive values */}
             <button
               onClick={handleWithdrawRequest}
-              disabled={withdrawing || parseFloat(withdrawAmt) < 10 || withdrawPhone.trim().length < 9}
+              disabled={
+                withdrawing ||
+                !withdrawAmt ||
+                isNaN(parseFloat(withdrawAmt)) ||
+                parseFloat(withdrawAmt) <= 0 ||
+                parseFloat(withdrawAmt) > venueBalance ||
+                withdrawPhone.trim().length < 9
+              }
               className="w-full h-11 bg-primary text-primary-foreground text-sm font-bold disabled:opacity-40 transition-all active:scale-[0.98]"
             >
               {withdrawing ? "Submitting…" : "Submit Request"}

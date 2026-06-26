@@ -42,10 +42,6 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'error', 'amount_must_be_positive');
   END IF;
 
-  IF p_amount < 10 THEN
-    RETURN jsonb_build_object('success', false, 'error', 'minimum_withdrawal_is_10');
-  END IF;
-
   -- Read balance from wallet_balances (the canonical balance table)
   SELECT balance INTO v_balance
   FROM public.wallet_balances
