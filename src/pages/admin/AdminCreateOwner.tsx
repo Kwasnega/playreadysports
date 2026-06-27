@@ -31,6 +31,8 @@ export default function AdminCreateOwner() {
   const [copied, setCopied] = useState(false);
   const [owners, setOwners] = useState<OwnerRow[]>([]);
   const [loadingOwners, setLoadingOwners] = useState(true);
+  const [logs, setLogs] = useState<string[]>([]);
+  const [showLogs, setShowLogs] = useState(false);
 
   const loadOwners = async () => {
     setLoadingOwners(true);
@@ -59,8 +61,14 @@ export default function AdminCreateOwner() {
     }
     setBusy(true);
     setTempPassword(null);
+    setLogs([`[INFO] Initiating creation request for turf owner: ${email.trim()}`]);
+    setShowLogs(true);
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
+      setLogs(prev => [...prev, `[INFO] Retrieved Supabase authorization session`]);
+
+      setLogs(prev => [...prev, `[INFO] Sending API request to admin-create-venue-owner edge function...`]);
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-create-venue-owner`, {
         method: "POST",
         headers: {
@@ -75,8 +83,25 @@ export default function AdminCreateOwner() {
           venueId: venueId || undefined,
         }),
       });
+
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data.error || "Failed to create owner");
+
+      setLogs(prev => [...prev, `[SUCCESS] Account processing successful. User ID: ${data.userId}`]);
+      
+      if (data.existingUser) {
+        setLogs(prev => [...prev, `[INFO] Existing user promoted to turf owner.`]);
+      } else {
+        setLogs(prev => [...prev, `[INFO] New auth user and profile created.`]);
+      }
+
+      if (data.emailSent) {
+        setLogs(prev => [...prev, `[SUCCESS] Welcome email successfully sent via Resend.`]);
+      } else if (data.emailError) {
+        setLogs(prev => [...prev, `[ERROR] Email dispatch failed: ${data.emailError}`]);
+      } else {
+        setLogs(prev => [...prev, `[INFO] Email dispatch status: not sent.`]);
+      }
 
       if (data.temporaryPassword) {
         setTempPassword(data.temporaryPassword);
@@ -86,13 +111,20 @@ export default function AdminCreateOwner() {
       } else {
         toast.success("Turf owner account created");
       }
+
+      setLogs(prev => [...prev, `[INFO] Reloading turf owners registry list...`]);
+      await loadOwners();
+      setLogs(prev => [...prev, `[SUCCESS] Registry updated.`]);
+
       setEmail("");
       setFullName("");
       setPhone("");
       setPassword("");
       setVenueId("");
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Create failed");
+      const errMsg = e instanceof Error ? e.message : "Create failed";
+      setLogs(prev => [...prev, `[ERROR] Operations failed: ${errMsg}`]);
+      toast.error(errMsg);
     } finally {
       setBusy(false);
     }
@@ -165,6 +197,34 @@ export default function AdminCreateOwner() {
         >
           {busy ? "Creating..." : "Create turf owner"}
         </button>
+
+        {showLogs && (
+          <div className="mt-4 bg-black/40 border border-white/[0.08] rounded-xl p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black uppercase tracking-widest text-slate-400">Creation logs</span>
+              <button 
+                type="button" 
+                onClick={() => setShowLogs(false)} 
+                className="text-[10px] font-bold uppercase tracking-widest text-slate-500 hover:text-slate-300"
+              >
+                Clear/Hide
+              </button>
+            </div>
+            <div className="font-mono text-[11px] space-y-1 max-h-40 overflow-y-auto text-slate-300 scrollbar-thin">
+              {logs.map((log, index) => {
+                let color = "text-slate-300";
+                if (log.startsWith("[SUCCESS]")) color = "text-emerald-400 font-semibold";
+                if (log.startsWith("[ERROR]")) color = "text-rose-400 font-bold";
+                if (log.startsWith("[WARNING]")) color = "text-amber-400 font-semibold";
+                return (
+                  <div key={index} className={color}>
+                    {log}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {tempPassword && (

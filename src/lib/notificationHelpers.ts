@@ -19,6 +19,7 @@ export type NotificationType =
   | "lineup_locked"
   | "payment_received"
   | "refund_processed"
+  | "turf_event"
   | "account"
   | "system";
 

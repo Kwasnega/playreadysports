@@ -120,15 +120,20 @@ Deno.serve(async (req) => {
         }
 
         // Send upgrade notification email to existing user (non-blocking)
+        let emailSent = false;
+        let emailError: string | null = null;
         try {
           const emailPayload = venueOwnerPromotedEmail(email, fullName, venueName);
           const emailResult = await sendBrandedEmail(emailPayload);
           if (emailResult.error) {
+            emailError = emailResult.error;
             console.warn("[admin-create-venue-owner] Promotion email failed:", emailResult.error);
           } else {
+            emailSent = true;
             console.log("[admin-create-venue-owner] Promotion email sent to:", email);
           }
         } catch (emailErr: any) {
+          emailError = emailErr?.message ?? "Unknown error";
           console.warn("[admin-create-venue-owner] Promotion email error:", emailErr?.message);
         }
 
@@ -139,6 +144,8 @@ Deno.serve(async (req) => {
             email,
             temporaryPassword: null,
             existingUser: true,
+            emailSent,
+            emailError,
           }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
@@ -192,15 +199,20 @@ Deno.serve(async (req) => {
     });
 
     // Send branded welcome email with credentials (non-blocking — never fails the account creation)
+    let emailSent = false;
+    let emailError: string | null = null;
     try {
       const emailPayload = venueOwnerWelcomeEmail(email, fullName, password, venueName);
       const emailResult = await sendBrandedEmail(emailPayload);
       if (emailResult.error) {
+        emailError = emailResult.error;
         console.warn("[admin-create-venue-owner] Welcome email failed:", emailResult.error);
       } else {
+        emailSent = true;
         console.log("[admin-create-venue-owner] Welcome email sent to:", email);
       }
     } catch (emailErr: any) {
+      emailError = emailErr?.message ?? "Unknown error";
       console.warn("[admin-create-venue-owner] Welcome email error:", emailErr?.message);
     }
 
@@ -211,6 +223,8 @@ Deno.serve(async (req) => {
         email,
         // Return temp password to admin UI only if it was auto-generated
         temporaryPassword: adminSuppliedPassword ? null : password,
+        emailSent,
+        emailError,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );

@@ -15,6 +15,7 @@ export type NotifType =
   | "match_reminder"
   | "payment_received"
   | "refund_processed"
+  | "turf_event"
   | "account"
   | "system";
 
