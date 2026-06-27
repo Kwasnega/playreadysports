@@ -164,6 +164,111 @@ export function welcomeEmail(to: string, fullName: string): EmailPayload {
   };
 }
 
+export function venueOwnerWelcomeEmail(
+  to: string,
+  fullName: string,
+  password: string,
+  venueName?: string | null,
+): EmailPayload {
+  const name = escapeHtml(fullName || "Turf Owner");
+  const venueLabel = venueName ? escapeHtml(venueName) : null;
+
+  const html = shell(`
+    <p style="margin:0 0 20px;color:#2c3e50;font-size:16px;line-height:1.8;"><strong>Welcome aboard, ${name}! 🏟️</strong></p>
+    <p style="margin:0 0 20px;color:#555555;font-size:15px;line-height:1.7;">
+      Your PlayReady <strong>Turf Owner</strong> account has been created by an admin. You can now manage your venue, track bookings, and monitor earnings — all from your dashboard.
+    </p>
+
+    ${venueLabel ? `
+    <div style="margin:20px 0;padding:16px;border-radius:8px;background:#f0fdf4;border-left:4px solid #0F766E;">
+      <div style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#0F766E;font-weight:700;margin-bottom:4px;">Linked Venue</div>
+      <div style="font-size:16px;color:#2c3e50;font-weight:600;">${venueLabel}</div>
+    </div>
+    ` : ''}
+
+    <div style="margin:24px 0;padding:20px;border-radius:8px;background:#fefce8;border:2px solid #eab308;">
+      <div style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#a16207;font-weight:700;margin-bottom:12px;">🔑 Your Login Credentials</div>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;">
+        <tr>
+          <td style="padding:8px 0;color:#666666;font-size:14px;font-weight:600;width:90px;">Email</td>
+          <td style="padding:8px 0;color:#2c3e50;font-size:14px;font-family:monospace;">${escapeHtml(to)}</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0;color:#666666;font-size:14px;font-weight:600;border-top:1px solid #f0e68c;">Password</td>
+          <td style="padding:8px 0;color:#2c3e50;font-size:14px;font-family:monospace;border-top:1px solid #f0e68c;">${escapeHtml(password)}</td>
+        </tr>
+      </table>
+    </div>
+
+    <div style="margin:20px 0;padding:16px;border-radius:8px;background:#fef2f2;border-left:4px solid #ef4444;">
+      <p style="margin:0;color:#991b1b;font-size:13px;line-height:1.6;">
+        <strong>⚠️ Security:</strong> Please change your password after your first login. Do not share these credentials with anyone.
+      </p>
+    </div>
+
+    <div style="margin:28px 0;padding:20px;border-radius:8px;background:#f0fdf4;border-left:4px solid #0F766E;">
+      <div style="color:#0F766E;font-weight:700;margin-bottom:8px;">✓ What You Can Do:</div>
+      <ul style="margin:0;padding-left:20px;color:#555555;font-size:14px;">
+        <li style="margin:6px 0;">View all upcoming, live, and completed matches at your venue</li>
+        <li style="margin:6px 0;">Track bookings, revenue, and player statistics</li>
+        <li style="margin:6px 0;">Monitor your earnings and request withdrawals</li>
+        <li style="margin:6px 0;">Get real-time notifications for new bookings</li>
+      </ul>
+    </div>
+  `, "Your PlayReady Turf Owner account is ready.", `${brand.origin}/venue/dashboard`, "Go to Your Dashboard");
+
+  return {
+    to,
+    subject: "Your PlayReady Turf Owner Account is Ready 🏟️",
+    html,
+    text: `Welcome ${fullName || "Turf Owner"}! Your PlayReady turf owner account has been created. Email: ${to} | Password: ${password} | ${venueName ? `Venue: ${venueName} | ` : ''}Dashboard: ${brand.origin}/venue/dashboard — Please change your password after your first login.`,
+  };
+}
+
+export function venueOwnerPromotedEmail(
+  to: string,
+  fullName: string,
+  venueName?: string | null,
+): EmailPayload {
+  const name = escapeHtml(fullName || "Turf Owner");
+  const venueLabel = venueName ? escapeHtml(venueName) : null;
+
+  const html = shell(`
+    <p style="margin:0 0 20px;color:#2c3e50;font-size:16px;line-height:1.8;"><strong>Great news, ${name}! 🏟️</strong></p>
+    <p style="margin:0 0 20px;color:#555555;font-size:15px;line-height:1.7;">
+      Your existing PlayReady account has been upgraded to a <strong>Turf Owner</strong> account. You can now manage venues, track bookings, and monitor your earnings.
+    </p>
+
+    ${venueLabel ? `
+    <div style="margin:20px 0;padding:16px;border-radius:8px;background:#f0fdf4;border-left:4px solid #0F766E;">
+      <div style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#0F766E;font-weight:700;margin-bottom:4px;">Linked Venue</div>
+      <div style="font-size:16px;color:#2c3e50;font-weight:600;">${venueLabel}</div>
+    </div>
+    ` : ''}
+
+    <p style="margin:20px 0;color:#555555;font-size:14px;line-height:1.7;">
+      Use your existing login credentials to access your new Turf Owner Dashboard. No password change is needed.
+    </p>
+
+    <div style="margin:28px 0;padding:20px;border-radius:8px;background:#f0fdf4;border-left:4px solid #0F766E;">
+      <div style="color:#0F766E;font-weight:700;margin-bottom:8px;">✓ What You Can Do Now:</div>
+      <ul style="margin:0;padding-left:20px;color:#555555;font-size:14px;">
+        <li style="margin:6px 0;">View all upcoming, live, and completed matches at your venue</li>
+        <li style="margin:6px 0;">Track bookings, revenue, and player statistics</li>
+        <li style="margin:6px 0;">Monitor your earnings and request withdrawals</li>
+        <li style="margin:6px 0;">Get real-time notifications for new bookings</li>
+      </ul>
+    </div>
+  `, "Your PlayReady account has been upgraded to Turf Owner.", `${brand.origin}/venue/dashboard`, "Go to Your Dashboard");
+
+  return {
+    to,
+    subject: "Your PlayReady Account Has Been Upgraded to Turf Owner 🏟️",
+    html,
+    text: `Hi ${fullName || "Turf Owner"}, your PlayReady account has been upgraded to Turf Owner. ${venueName ? `Venue: ${venueName}. ` : ''}Access your dashboard: ${brand.origin}/venue/dashboard`,
+  };
+}
+
 export async function sendBrandedEmail(payload: EmailPayload): Promise<{ error?: string }> {
   const apiKey = Deno.env.get("RESEND_API_KEY");
   if (!apiKey) {

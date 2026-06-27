@@ -1,5 +1,10 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import {
+  venueOwnerWelcomeEmail,
+  venueOwnerPromotedEmail,
+  sendBrandedEmail,
+} from "../_shared/brandedEmail.ts";
 
 // CORS is handled via corsHeaders from _shared/cors.ts
 
@@ -65,8 +70,21 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Track whether admin supplied password or we auto-generated it
+    const adminSuppliedPassword = !!password;
     if (!password) {
       password = crypto.randomUUID().replace(/-/g, "").slice(0, 12) + "Aa1!";
+    }
+
+    // Look up venue name upfront so we can include it in the welcome email
+    let venueName: string | null = null;
+    if (venueId) {
+      const { data: venueRow } = await svc
+        .from("venues")
+        .select("name")
+        .eq("id", venueId)
+        .single();
+      venueName = venueRow?.name ?? null;
     }
 
     const { data: created, error: createErr } = await svc.auth.admin.createUser({
@@ -99,6 +117,19 @@ Deno.serve(async (req) => {
             owner_email: email,
             status: "verified",
           }).eq("id", venueId);
+        }
+
+        // Send upgrade notification email to existing user (non-blocking)
+        try {
+          const emailPayload = venueOwnerPromotedEmail(email, fullName, venueName);
+          const emailResult = await sendBrandedEmail(emailPayload);
+          if (emailResult.error) {
+            console.warn("[admin-create-venue-owner] Promotion email failed:", emailResult.error);
+          } else {
+            console.log("[admin-create-venue-owner] Promotion email sent to:", email);
+          }
+        } catch (emailErr: any) {
+          console.warn("[admin-create-venue-owner] Promotion email error:", emailErr?.message);
         }
 
         return new Response(
@@ -160,12 +191,26 @@ Deno.serve(async (req) => {
       details: { email, fullName, venueId: venueId ?? null },
     });
 
+    // Send branded welcome email with credentials (non-blocking — never fails the account creation)
+    try {
+      const emailPayload = venueOwnerWelcomeEmail(email, fullName, password, venueName);
+      const emailResult = await sendBrandedEmail(emailPayload);
+      if (emailResult.error) {
+        console.warn("[admin-create-venue-owner] Welcome email failed:", emailResult.error);
+      } else {
+        console.log("[admin-create-venue-owner] Welcome email sent to:", email);
+      }
+    } catch (emailErr: any) {
+      console.warn("[admin-create-venue-owner] Welcome email error:", emailErr?.message);
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
         userId: newUserId,
         email,
-        temporaryPassword: body?.password ? null : password,
+        // Return temp password to admin UI only if it was auto-generated
+        temporaryPassword: adminSuppliedPassword ? null : password,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
