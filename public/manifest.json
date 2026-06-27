@@ -1,6 +1,6 @@
 {
-  "name": "PLAYREADYSPORTS",
-  "short_name": "PLAYREADYSPORTS",
+  "name": "PlayReady Sports",
+  "short_name": "PlayReady",
   "description": "Find pickup football matches near you. Join, create, and compete with PlayReady Sports in Ghana.",
   "start_url": "/",
   "display": "standalone",
