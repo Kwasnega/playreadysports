@@ -3,6 +3,7 @@ import { Trophy, Minus, Loader2, AlertTriangle, CheckCircle2, X } from "lucide-r
 import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { broadcastNotification } from "@/lib/notificationHelpers";
 
 interface Props {
   matchId: string;
@@ -13,6 +14,12 @@ interface Props {
   matchStatus?: string;            // 'completed' → show dispute option
   resultSubmittedAt?: string | null; // ISO string — used to check 72-hr window
   onSubmitted?: () => void;
+  matchDate?: string;              // ISO string for match time
+  coreCheckedInCount?: number;     // How many players checked in
+  maxCoreCount?: number;           // Total core player slots
+  allPaid?: boolean;               // Whether all payment is done
+  matchCode?: string;              // For notifications
+  matchTitle?: string;             // For notifications
 }
 
 const DISPUTE_WINDOW_HOURS = 72;
@@ -26,6 +33,12 @@ export function SubmitMatchResult({
   matchStatus,
   resultSubmittedAt,
   onSubmitted,
+  matchDate,
+  coreCheckedInCount = 0,
+  maxCoreCount = 10,
+  allPaid = false,
+  matchCode = "",
+  matchTitle = "Match",
 }: Props) {
   const confirm = useConfirm();
   const [submitting, setSubmitting] = useState(false);
@@ -36,6 +49,20 @@ export function SubmitMatchResult({
   const [disputeReason, setDisputeReason] = useState("");
   const [raisingDispute, setRaisingDispute] = useState(false);
   const [disputeRaised, setDisputeRaised] = useState(false);
+
+  // ── Validation checks ──
+  const hasTimePassedKickoff = matchDate ? new Date() > new Date(matchDate) : false;
+  const minCheckInRequired = Math.ceil(maxCoreCount * 0.5); // 50% requirement
+  const hasMinCheckIn = coreCheckedInCount >= minCheckInRequired;
+  const canSubmitResult = hasTimePassedKickoff && hasMinCheckIn && allPaid;
+
+  const getValidationMessage = () => {
+    const reasons: string[] = [];
+    if (!hasTimePassedKickoff) reasons.push("Match time has not passed yet");
+    if (!hasMinCheckIn) reasons.push(`Need ≥${minCheckInRequired} players checked in (currently ${coreCheckedInCount})`);
+    if (!allPaid) reasons.push("Not all payment has been processed");
+    return reasons;
+  };
 
   const handleSubmit = async (winningTeam: "reds" | "blues" | null) => {
     const ok = await confirm({
@@ -71,7 +98,11 @@ export function SubmitMatchResult({
 
       const result = await res.json().catch(() => ({ error: "Network error" }));
 
+      console.log('Submit match result response:', result);
+      console.log('Response status:', res.status);
+
       if (!res.ok || result?.error) {
+        console.error('Submit result error:', result);
         toast.error(result?.error ?? "Failed to submit result.");
         setSubmitting(false);
         return;
@@ -79,6 +110,32 @@ export function SubmitMatchResult({
 
       toast.success("Match result submitted successfully!");
       setSubmitted(true);
+
+      // Send status change notifications to all participants
+      try {
+        const { data: participants } = await supabase
+          .from("match_participants")
+          .select("user_id")
+          .eq("match_id", matchId)
+          .eq("status", "active");
+
+        const userIds = participants?.map((p: any) => p.user_id) ?? [];
+        if (userIds.length > 0) {
+          await broadcastNotification(
+            userIds,
+            "Match Completed",
+            `${matchTitle} (${matchCode}) has been completed. ${
+              winningTeam ? `${winningTeam.charAt(0).toUpperCase() + winningTeam.slice(1)} team won!` : "It was a draw!"
+            }`,
+            "match_completed",
+            { link: `/lobby/${matchCode}` }
+          );
+        }
+      } catch (notifErr) {
+        console.error("Error sending notifications:", notifErr);
+        // Don't fail the whole operation if notifications error out
+      }
+
       onSubmitted?.();
     } catch (err: any) {
       toast.error(err?.message ?? "Something went wrong.");
@@ -102,6 +159,30 @@ export function SubmitMatchResult({
 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+
+      // Turf Owner Notification (Issue 14)
+      try {
+        const { data: matchData } = await supabase
+          .from("matches")
+          .select("match_date, venue:venues(name, owner_id)")
+          .eq("id", matchId)
+          .single();
+          
+        const turfOwnerId = Array.isArray(matchData?.venue) ? matchData?.venue[0]?.owner_id : (matchData?.venue as any)?.owner_id;
+        const venueName = Array.isArray(matchData?.venue) ? matchData?.venue[0]?.name : (matchData?.venue as any)?.name ?? "your turf";
+        
+        if (turfOwnerId) {
+          const matchDateStr = matchData?.match_date ? new Date(matchData.match_date).toLocaleDateString() : "the match date";
+          await supabase.from("notifications").insert({
+            user_id: turfOwnerId,
+            title: "Dispute Filed",
+            body: `A dispute has been filed for a match at ${venueName} on ${matchDateStr}. Admin has been notified.`,
+            type: "turf_event"
+          });
+        }
+      } catch (e) {
+        console.error("Failed to notify turf owner of dispute", e);
+      }
 
       toast.success("Dispute raised. An admin will review it shortly.");
       setDisputeRaised(true);
@@ -228,11 +309,29 @@ export function SubmitMatchResult({
         <h3 className="font-display font-bold text-sm">Submit Match Result</h3>
       </div>
 
+      {/* Validation Error Box (if criteria not met) */}
+      {!canSubmitResult && (
+        <div className="rounded-xl bg-red-500/10 border-2 border-red-500/30 p-4 space-y-2">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0" />
+            <p className="font-bold text-red-600 dark:text-red-400 text-sm uppercase tracking-widest">Cannot Submit Result</p>
+          </div>
+          <div className="text-sm text-red-600/90 dark:text-red-400/90 space-y-1">
+            {getValidationMessage().map((msg, idx) => (
+              <p key={idx} className="flex items-start gap-2">
+                <span className="text-red-500 mt-1">•</span>
+                <span>{msg}</span>
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-2.5">
         <button
           onClick={() => handleSubmit("reds")}
-          disabled={submitting}
-          className="h-12 rounded-xl bg-primary/8 border border-primary/15 text-primary font-semibold text-sm flex items-center justify-center gap-2 hover:bg-primary/20 transition-colors disabled:opacity-50"
+          disabled={submitting || !canSubmitResult}
+          className="h-12 rounded-xl bg-primary/8 border border-primary/15 text-primary font-semibold text-sm flex items-center justify-center gap-2 hover:bg-primary/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
           {teamAName} Won
@@ -240,8 +339,8 @@ export function SubmitMatchResult({
 
         <button
           onClick={() => handleSubmit("blues")}
-          disabled={submitting}
-          className="h-12 rounded-xl bg-primary/8 border border-primary/15 text-primary font-semibold text-sm flex items-center justify-center gap-2 hover:bg-primary/20 transition-colors disabled:opacity-50"
+          disabled={submitting || !canSubmitResult}
+          className="h-12 rounded-xl bg-primary/8 border border-primary/15 text-primary font-semibold text-sm flex items-center justify-center gap-2 hover:bg-primary/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
           {teamBName} Won
@@ -250,8 +349,8 @@ export function SubmitMatchResult({
 
       <button
         onClick={() => handleSubmit(null)}
-        disabled={submitting}
-        className="w-full h-11 rounded-xl bg-secondary text-muted-foreground font-semibold text-sm flex items-center justify-center gap-2 hover:bg-secondary/80 transition-colors disabled:opacity-50"
+        disabled={submitting || !canSubmitResult}
+        className="w-full h-11 rounded-xl bg-secondary text-muted-foreground font-semibold text-sm flex items-center justify-center gap-2 hover:bg-secondary/80 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
         <Minus className="w-4 h-4" />

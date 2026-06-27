@@ -21,6 +21,7 @@ export type ChatMessage = {
   sender_avatar: string | null;
   content: string;
   created_at: string;
+  is_admin_broadcast: boolean;
 };
 
 const PAGE_SIZE = 50;
@@ -33,10 +34,11 @@ function normalizeRow(row: any, cache?: ProfileCache): ChatMessage {
   return {
     id: row.id,
     sender_id: row.sender_id,
-    sender_name: prof.full_name ?? prof.username ?? "Unknown",
-    sender_avatar: prof.avatar_url ?? null,
+    sender_name: row.is_admin_broadcast ? (row.sender_name || "PlayReady Admin") : (prof.full_name ?? prof.username ?? "Unknown"),
+    sender_avatar: row.is_admin_broadcast ? null : (prof.avatar_url ?? null),
     content: row.content,
     created_at: row.created_at,
+    is_admin_broadcast: !!row.is_admin_broadcast,
   };
 }
 
@@ -60,7 +62,7 @@ export function useLobbyChat(matchId: string | undefined) {
     const load = async () => {
       const { data, error } = await supabase
         .from("messages")
-        .select("id, sender_id, content, created_at")
+        .select("id, sender_id, content, created_at, sender_type, sender_name, is_admin_broadcast")
         .eq("match_id", matchId)
         .order("created_at", { ascending: false })
         .limit(PAGE_SIZE);
@@ -134,7 +136,7 @@ export function useLobbyChat(matchId: string | undefined) {
     setLoadingMore(true);
     const { data, error } = await supabase
       .from("messages")
-      .select("id, sender_id, content, created_at")
+      .select("id, sender_id, content, created_at, sender_type, sender_name, is_admin_broadcast")
       .eq("match_id", matchId)
       .lt("created_at", oldestCreatedAt.current)
       .order("created_at", { ascending: false })

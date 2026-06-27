@@ -1,18 +1,21 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
 
-// CORS is handled via getCorsHeaders() from _shared/cors.ts
+// CORS is handled via corsHeaders from _shared/cors.ts
 
 Deno.serve(async (req) => {
+  const requestOrigin = req.headers.get("origin");
+  const corsHeaders = getCorsHeaders(requestOrigin);
+
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: getCorsHeaders() });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -21,7 +24,7 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!serviceKey) {
       return new Response(JSON.stringify({ error: "Server misconfiguration" }), {
-        status: 500, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -33,7 +36,7 @@ Deno.serve(async (req) => {
     const { data: { user }, error: authErr } = await supabase.auth.getUser();
     if (authErr || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -45,7 +48,7 @@ Deno.serve(async (req) => {
 
     if (adminProfile?.role !== "admin" && adminProfile?.role !== "super_admin") {
       return new Response(JSON.stringify({ error: "Admin only" }), {
-        status: 403, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -58,7 +61,7 @@ Deno.serve(async (req) => {
 
     if (!email || !fullName) {
       return new Response(JSON.stringify({ error: "Email and full name are required" }), {
-        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -80,7 +83,7 @@ Deno.serve(async (req) => {
         const existing = list?.users?.find((u) => u.email?.toLowerCase() === email);
         if (!existing) {
           return new Response(JSON.stringify({ error: createErr.message }), {
-            status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
         await svc.from("profiles").update({
@@ -106,18 +109,18 @@ Deno.serve(async (req) => {
             temporaryPassword: null,
             existingUser: true,
           }),
-          { status: 200, headers: { ...getCorsHeaders(), "Content-Type": "application/json" } },
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
       return new Response(JSON.stringify({ error: createErr.message }), {
-        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const newUserId = created.user?.id;
     if (!newUserId) {
       return new Response(JSON.stringify({ error: "User creation failed" }), {
-        status: 500, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -164,12 +167,12 @@ Deno.serve(async (req) => {
         email,
         temporaryPassword: body?.password ? null : password,
       }),
-      { status: 200, headers: { ...getCorsHeaders(), "Content-Type": "application/json" } },
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err: any) {
     console.error("admin-create-venue-owner:", err);
     return new Response(JSON.stringify({ error: err.message ?? "Internal error" }), {
-      status: 500, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });

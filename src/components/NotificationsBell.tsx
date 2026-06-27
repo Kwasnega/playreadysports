@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 const iconFor = (t: NotifType) => {
   switch (t) {
+    case "match_share":  return Mail;
     case "match_invite": return Mail;
     case "match_join":   return UserPlus;
     case "match_leave":  return UserMinus;

@@ -5,6 +5,7 @@ import {
   ChevronRight, Plus, Minus, MapPin, Star, Search, Wallet, Lightbulb, Zap, Sunrise, Info
 } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { useVenues } from "@/hooks/useVenues";
 import { useUserLocation } from "@/hooks/useUserLocation";
 import { useCreateMatch } from "@/hooks/useCreateMatch";
@@ -13,6 +14,7 @@ import { getDistanceKm, getFormattedTime, extractFormatNumber, getVenueHours, is
 import { format } from "date-fns";
 import { ShareMatchCard, ShareMatchData } from "@/components/matches/ShareMatchCard";
 import { useSEO } from "@/hooks/useSEO";
+import { LoadingModal } from "@/components/LoadingModal";
 
 /* Tier-3 Create flow — wired to Supabase via Edge Function ----------------
    1. Setup   — type + mode + format
@@ -34,6 +36,32 @@ const DEFAULT_HOURS = Array.from({ length: 24 }, (_, i) => i);
 const MINUTES = [0, 15, 30, 45];
 
 const DURATIONS = [60, 90, 120];
+const GHANA_TIME_ZONE = "Africa/Accra";
+
+const getGhanaDateParts = (date: Date) => {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: GHANA_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+
+  return {
+    year: Number(parts.find((part) => part.type === "year")?.value ?? 0),
+    month: Number(parts.find((part) => part.type === "month")?.value ?? 0),
+    day: Number(parts.find((part) => part.type === "day")?.value ?? 0),
+  };
+};
+
+const formatGhanaDateInput = (date: Date) => {
+  const { year, month, day } = getGhanaDateParts(date);
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+};
+
+const buildGhanaDateTime = (dateString: string, hour: number, minute: number) => {
+  const [year, month, day] = dateString.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day, hour, minute, 0, 0));
+};
 
 const CreateMatch = () => {
   const navigate = useNavigate();
@@ -65,12 +93,19 @@ const CreateMatch = () => {
   const [title, setTitle] = useState("");
   const sportType = "football";
   const [matchDate, setMatchDate] = useState<string>("");
-  const [matchHour, setMatchHour] = useState<number>(() => Math.min(new Date().getHours() + 2, 22));
+  const [matchHour, setMatchHour] = useState<number>(() => {
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    // Ensure at least 30 minutes from now
+    const minHour = currentMinute >= 30 ? currentHour + 1 : currentHour;
+    const suggestedHour = Math.min(currentHour + 2, 22);
+    return Math.max(minHour, suggestedHour);
+  });
   const [matchMinute, setMatchMinute] = useState<number>(0);
   const [duration, setDuration] = useState<number>(60);
   const [entryFeeEnabled, setEntryFeeEnabled] = useState(false);
   const [entryFee, setEntryFee] = useState<number>(0);
-  const [profitAmount, setProfitAmount] = useState<number>(0);
   const [maxCore, setMaxCore] = useState<number>(10);
   const [notes, setNotes] = useState("");
   const [teamName, setTeamName] = useState("");
@@ -95,13 +130,6 @@ const CreateMatch = () => {
     return Number(price) * (duration / 60);
   }, [selectedVenue, duration]);
 
-  useEffect(() => {
-    if (step === 2 && basePerPlayer > 0) {
-      setEntryFeeEnabled(true);
-      setProfitAmount(0);
-    }
-  }, [step, basePerPlayer]);
-
   // Auto-set maxCore from format/mode
   useEffect(() => {
     if (matchFormat) {
@@ -112,8 +140,9 @@ const CreateMatch = () => {
   }, [matchFormat, mode]);
 
   useEffect(() => {
-    if (basePerPlayer > 0) setEntryFee(basePerPlayer + profitAmount);
-  }, [basePerPlayer, profitAmount]);
+    if (entryFeeEnabled && basePerPlayer > 0) setEntryFee(basePerPlayer);
+    if (!entryFeeEnabled) setEntryFee(0);
+  }, [basePerPlayer, entryFeeEnabled]);
 
   const availableFormats = mode === "gala" ? GALA_FORMATS : TWO_TEAM_FORMATS;
 
@@ -145,8 +174,8 @@ const CreateMatch = () => {
     if (step === 2) {
       if (!title.trim() || !matchDate) return false;
       if (mode === "gala" && teamName.trim().length < 2) return false;
-      const d = new Date(matchDate);
-      d.setHours(matchHour, matchMinute, 0, 0);
+      // Parse date string as local timezone (YYYY-MM-DD format)
+    const d = buildGhanaDateTime(matchDate, matchHour, matchMinute);
       if (d.getTime() <= Date.now() + 30 * 60 * 1000) return false;
       if (selectedVenue) {
         const hoursCheck = isVenueOpenForMatch(selectedVenue, d, duration);
@@ -193,20 +222,38 @@ const CreateMatch = () => {
       newErrors.maxCore = "Max players cannot exceed 100";
     }
 
-    if (profitAmount < 0) {
-      newErrors.profitAmount = "Profit cannot be negative";
-    } else if (entryFeeEnabled && profitAmount >= entryFee * maxCore) {
-      newErrors.profitAmount = "Profit must be less than total pot (entry fee × max players)";
-    }
-
-    const dateObj = new Date(matchDate);
-    dateObj.setHours(matchHour, matchMinute, 0, 0);
+    const dateObj = buildGhanaDateTime(matchDate, matchHour, matchMinute);
     if (dateObj.getTime() <= Date.now() + 30 * 60 * 1000) {
       newErrors.matchDate = "Match must be scheduled at least 30 minutes from now";
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const checkVenueConflict = async (venueId: string, startDate: Date, durationMinutes: number) => {
+    const requestedStart = startDate.getTime();
+    const requestedEnd = requestedStart + durationMinutes * 60_000;
+    const requestedEndIso = new Date(requestedEnd).toISOString();
+
+    const { data, error } = await supabase
+      .from("matches")
+      .select("id, match_date, duration_minutes")
+      .eq("venue_id", venueId)
+      .not("status", "in", "(cancelled,completed)")
+      .lt("match_date", requestedEndIso)
+      .order("match_date", { ascending: false })
+      .limit(20);
+
+    if (error) {
+      throw new Error("Failed to verify turf availability. Please try again.");
+    }
+
+    return (data ?? []).some((existing: any) => {
+      const existingStart = new Date(existing.match_date).getTime();
+      const existingEnd = existingStart + ((existing.duration_minutes ?? 60) * 60_000);
+      return existingStart < requestedEnd && existingEnd > requestedStart;
+    });
   };
 
   const next = async () => {
@@ -223,10 +270,19 @@ const CreateMatch = () => {
     setErrors({});
     if (!validateForm()) return;
 
-    const dateObj = new Date(matchDate);
-    dateObj.setHours(matchHour, matchMinute, 0, 0);
+    const dateObj = buildGhanaDateTime(matchDate, matchHour, matchMinute);
     const matchDateIso = dateObj.toISOString();
 
+    try {
+      const venueConflict = await checkVenueConflict(venueId, dateObj, duration);
+      if (venueConflict) {
+        toast.error("This turf is already booked for that time. Please choose a different time or turf.");
+        return;
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to verify turf availability. Please try again.");
+      return;
+    }
     const result = await createMatch({
       title: title.trim(),
       sportType,
@@ -238,7 +294,6 @@ const CreateMatch = () => {
       durationMinutes: duration,
       entryFee: entryFeeEnabled ? entryFee : 0,
       maxCore,
-      profitAmount: entryFeeEnabled ? profitAmount : 0,
       notes: notes || undefined,
     });
 
@@ -287,6 +342,7 @@ const CreateMatch = () => {
                 }}
               />
             </Group> */}
+
 
 
             <Group title="Format" hint="Select match format">
@@ -515,7 +571,7 @@ const CreateMatch = () => {
                 <input
                   type="date"
                   value={matchDate}
-                  min={format(new Date(), "yyyy-MM-dd")}
+                  min={formatGhanaDateInput(new Date())}
                   onChange={(e) => setMatchDate(e.target.value)}
                   className="w-full bg-background border-2 border-border rounded-xl px-4 py-3 text-xs font-black uppercase tracking-widest focus:outline-none focus:border-foreground focus:ring-1 focus:ring-foreground transition-all shadow-sm text-foreground"
                 />
@@ -550,10 +606,10 @@ const CreateMatch = () => {
             {/* Quick Date Selectors */}
             <div className="flex flex-wrap gap-2">
               {[
-                { label: "Today", get: () => format(new Date(), "yyyy-MM-dd") },
-                { label: "Tomorrow", get: () => format(new Date(Date.now() + 86400000), "yyyy-MM-dd") },
-                { label: "+2 days", get: () => format(new Date(Date.now() + 2 * 86400000), "yyyy-MM-dd") },
-                { label: "+7 days", get: () => format(new Date(Date.now() + 7 * 86400000), "yyyy-MM-dd") },
+                { label: "Today", get: () => formatGhanaDateInput(new Date()) },
+                { label: "Tomorrow", get: () => formatGhanaDateInput(new Date(Date.now() + 86400000)) },
+                { label: "+2 days", get: () => formatGhanaDateInput(new Date(Date.now() + 2 * 86400000)) },
+                { label: "+7 days", get: () => formatGhanaDateInput(new Date(Date.now() + 7 * 86400000)) },
               ].map((btn) => (
                 <button
                   key={btn.label}
@@ -572,7 +628,9 @@ const CreateMatch = () => {
             {/* Validation Errors for Date/Time */}
             {selectedVenue?.close_time && (() => {
               const [h, m] = selectedVenue.close_time.split(":").map(Number);
-              const closeMin = (h ?? 0) * 60 + (m ?? 0);
+              let closeMin = (h ?? 0) * 60 + (m ?? 0);
+              // Treat 00:00 closing time as end of day (24:00 = 1440 minutes)
+              if (closeMin === 0) closeMin = 1440;
               const startMin = matchHour * 60 + matchMinute;
               const endMin = startMin + duration;
               if (endMin > closeMin) {
@@ -700,7 +758,6 @@ const CreateMatch = () => {
                         </div>
                       </div>
                       {errors.profitAmount && <p className="text-[11px] text-destructive font-sans font-bold">{errors.profitAmount}</p>}
-                      
                       <div className="border-t-2 border-dashed border-border pt-3 flex items-center justify-between mt-4">
                         <span className="font-sans font-black uppercase tracking-widest text-foreground text-[10px]">Player Pays</span>
                         <span className="font-display font-black text-2xl text-foreground">₵{entryFee}</span>
@@ -773,7 +830,7 @@ const CreateMatch = () => {
               <SummaryRow label="Venue" value={selectedVenue ? `${selectedVenue.name}` : "—"} />
               <SummaryRow label="When" value={matchDate ? `${matchDate} @ ${String(matchHour).padStart(2, "0")}:${String(matchMinute).padStart(2, "0")}` : "—"} />
               <SummaryRow label="Duration" value={`${duration} min`} />
-              <SummaryRow label="Entry fee" value={entryFeeEnabled ? (profitAmount > 0 ? `₵${entryFee}/player (₵${basePerPlayer} base + ₵${profitAmount} profit)` : `₵${entryFee}/player`) : venueCost > 0 ? `Free (you pay ₵${venueCost.toFixed(0)})` : "Free"} />
+              <SummaryRow label="Entry fee" value={entryFeeEnabled ? `₵${entryFee}/player` : venueCost > 0 ? `Free (you pay ₵${venueCost.toFixed(0)})` : "Free"} />
             </div>
           </div>
         )}
@@ -872,6 +929,13 @@ const CreateMatch = () => {
           </div>
         </div>
       )}
+      
+      {/* Loading Modal */}
+      <LoadingModal 
+        isOpen={creating} 
+        title="Creating Match" 
+        description="Hold tight while we set up your match..."
+      />
     </main>
   );
 };

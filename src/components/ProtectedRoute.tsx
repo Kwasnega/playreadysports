@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { ShieldAlert, Lock, Loader2 } from "lucide-react";
+import playreadyLogo from "@/assets/playready-logo.jpg";
 
 interface Props {
   children: React.ReactNode;
@@ -34,12 +35,10 @@ function AdminLoginGate({ onSuccess }: { onSuccess: () => void }) {
         onSubmit={handleLogin}
         className="w-full max-w-sm bg-card border border-border rounded-xl p-8 space-y-5"
       >
-        <div className="text-center space-y-2">
-          <div className="w-14 h-14 rounded-xl bg-secondary flex items-center justify-center mx-auto">
-            <Lock className="w-6 h-6 text-foreground" />
-          </div>
-          <h1 className="font-display font-bold text-xl text-foreground">Admin Login</h1>
-          <p className="text-xs text-muted-foreground">Sign in with your admin credentials</p>
+        <div className="text-center space-y-4">
+          <img src={playreadyLogo} alt="PlayReady Sports" className="h-16 w-auto mx-auto rounded-lg" />
+          <h1 className="font-display font-bold text-2xl text-foreground">PLAYREADYSPORTS</h1>
+          <p className="text-xs text-muted-foreground">Admin Dashboard</p>
         </div>
 
         <div className="space-y-3">

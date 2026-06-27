@@ -56,7 +56,7 @@ const Nav = () => {
         <Link to="/" className="flex items-center gap-2.5">
           <img src={logoLight} alt="" className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl object-cover dark:hidden" />
           <img src={logoDark} alt="" className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl object-cover hidden dark:block" />
-          <span className="font-display font-extrabold text-[15px] sm:text-[17px] tracking-tight">PlayReady</span>
+          <span className="font-display font-extrabold text-[15px] sm:text-[17px] tracking-tight">PLAYREADYSPORTS</span>
         </Link>
         <div className="flex items-center gap-1">
           <ThemeToggle />
@@ -109,8 +109,7 @@ const Hero = ({ liveCount }: { liveCount: number }) => {
       <div ref={ref} className="relative max-w-[680px] mx-auto flex items-start justify-between gap-4">
         <div>
           <h1 className="display-xl text-[40px] sm:text-[44px] md:text-[52px] mt-2 leading-[0.95]">
-            Find your<br/>
-            <span className="italic font-display">match.</span>
+            <span className="italic font-display">Find your match.</span>
           </h1>
           <a
             href="#near-you"
@@ -314,6 +313,7 @@ function transformMatches(
           isOrganizer: m.organizer_id === userId,
           friendCount,
           friendAvatars,
+          status: m.intelligent_status,
         };
       }
 
@@ -333,6 +333,7 @@ function transformMatches(
         isOrganizer: m.organizer_id === userId,
         friendCount,
         friendAvatars,
+        status: m.intelligent_status,
       };
     });
 }
@@ -443,13 +444,15 @@ const Index = () => {
   }, [user]);
 
   const liveCount = matches.filter((m) => {
-    if (m.status !== "live") return false;
+    const isActive = !['ended', 'cancelled', 'archived'].includes(m.intelligent_status || '');
+    if (!isActive) return false;
     const venue = m.venue;
     if (!venue?.lat || !venue?.lng) return false;
     return getDistanceKm(userLat, userLng, venue.lat, venue.lng) <= 20;
   }).length;
   const friendIds = useMemo(() => new Set(friends.map((f) => f.id)), [friends]);
   const feedItems = transformMatches(matches, userLat, userLng, user?.id, friendIds);
+  console.log('Feed items count:', feedItems.length, 'Matches count:', matches.length);
 
   useSEO({
     title: "PlayReady Sports | Discover Football Matches in Ghana",

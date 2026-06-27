@@ -1,7 +1,7 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
 
-// CORS is handled via getCorsHeaders() from _shared/cors.ts
+// CORS is handled via corsHeaders from _shared/cors.ts
 
 async function getCancelCutoffMinutes(svc: ReturnType<typeof createClient>): Promise<number> {
   const { data } = await svc.from("platform_settings").select("value").eq("key", "cancel_cutoff_minutes").maybeSingle();
@@ -10,15 +10,18 @@ async function getCancelCutoffMinutes(svc: ReturnType<typeof createClient>): Pro
 }
 
 Deno.serve(async (req) => {
+  const requestOrigin = req.headers.get("origin");
+  const corsHeaders = getCorsHeaders(requestOrigin);
+
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: getCorsHeaders() });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Missing authorization header" }), {
-        status: 401, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -27,7 +30,7 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!serviceKey) {
       return new Response(JSON.stringify({ error: "Server misconfiguration" }), {
-        status: 500, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -38,7 +41,7 @@ Deno.serve(async (req) => {
     const { data: { user }, error: authErr } = await supabase.auth.getUser();
     if (authErr || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -46,25 +49,25 @@ Deno.serve(async (req) => {
     const { matchId } = body;
     if (!matchId) {
       return new Response(JSON.stringify({ error: "Missing matchId" }), {
-        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const { data: match, error: matchErr } = await supabase
       .from("matches")
-      .select("id, organizer_id, join_code, entry_fee, core_paid_count, match_date, status, venue:venues(name)")
+      .select("id, organizer_id, join_code, entry_fee, core_paid_count, match_date, status, venue_id, venue:venues(name, owner_id)")
       .eq("id", matchId)
       .single();
 
     if (matchErr || !match) {
       return new Response(JSON.stringify({ error: "Match not found" }), {
-        status: 404, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     if (match.status === "completed" || match.status === "cancelled") {
       return new Response(JSON.stringify({ error: "Match already ended" }), {
-        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -77,7 +80,7 @@ Deno.serve(async (req) => {
     const isAdmin = profile?.role === "admin" || profile?.role === "super_admin";
     if (match.organizer_id !== user.id && !isAdmin) {
       return new Response(JSON.stringify({ error: "Only the organizer or admin can cancel" }), {
-        status: 403, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -92,7 +95,7 @@ Deno.serve(async (req) => {
         JSON.stringify({
           error: `Cannot cancel within ${cutoffMinutes} minutes of kickoff. Contact support if you need an exception.`,
         }),
-        { status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" } },
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
@@ -220,6 +223,22 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Turf Owner Notification (Issue 14)
+    const turfOwnerId = Array.isArray(match.venue) ? match.venue[0]?.owner_id : (match.venue as any)?.owner_id;
+    if (turfOwnerId && !notifByUser.has(turfOwnerId)) {
+      const matchTimeStr = match.match_date ? new Date(match.match_date).toLocaleString('en-US', { 
+        timeZone: 'Africa/Accra', dateStyle: 'medium', timeStyle: 'short'
+      }) : "an unknown time";
+      
+      notifByUser.set(turfOwnerId, {
+        user_id: turfOwnerId,
+        title: "Match Cancelled",
+        body: `A match at ${venueName} on ${matchTimeStr} was cancelled by the organizer. The slot is now free.`,
+        type: "turf_event",
+        data: { match_id: matchId, venue_id: match.venue_id }
+      });
+    }
+
     const notifs = [...notifByUser.values()];
     if (notifs.length) {
       await supabaseService.from("notifications").insert(notifs as any);
@@ -233,12 +252,12 @@ Deno.serve(async (req) => {
         walletRefunds: true,
         refundErrors: refundErrors.length ? refundErrors : undefined,
       }),
-      { status: 200, headers: { ...getCorsHeaders(), "Content-Type": "application/json" } },
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err: any) {
     console.error("Edge function error:", err);
     return new Response(JSON.stringify({ error: err.message ?? "Internal error" }), {
-      status: 500, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });

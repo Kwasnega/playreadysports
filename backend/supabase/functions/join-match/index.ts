@@ -3,6 +3,13 @@ import { getCorsHeaders } from "../_shared/cors.ts";
 
 // CORS is handled via getCorsHeaders() from _shared/cors.ts
 
+const normalizeTeamSide = (team?: string | null): "reds" | "blues" | "unassigned" => {
+  const value = String(team ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (["reds", "red", "team_a", "a"].includes(value)) return "reds";
+  if (["blues", "blue", "team_b", "b"].includes(value)) return "blues";
+  return "unassigned";
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: getCorsHeaders() });
@@ -65,7 +72,7 @@ Deno.serve(async (req) => {
       .select("id, status")
       .eq("match_id", matchId)
       .eq("user_id", user.id)
-      .in("status", ["active", "waitlist"] as any)
+      .in("status", ["active", "waitlist", "waitlisted"] as any)
       .maybeSingle();
 
     if (existing) {
@@ -94,7 +101,7 @@ Deno.serve(async (req) => {
         .from("match_participants")
         .select("waitlist_position")
         .eq("match_id", matchId)
-        .eq("status", "waitlist" as any)
+        .in("status", ["waitlist", "waitlisted"] as any)
         .order("waitlist_position", { ascending: false })
         .limit(1);
 
@@ -105,7 +112,7 @@ Deno.serve(async (req) => {
         .insert({
           match_id: matchId,
           user_id: user.id,
-          slot_type: "core" as any,
+          slot_type: "spare" as any,
           team: "unassigned" as any,
           status: "waitlist" as any,
           payment_status: "unpaid" as any,
@@ -129,28 +136,26 @@ Deno.serve(async (req) => {
       });
 
       return new Response(
-        JSON.stringify({ waitlisted: true, position: nextPos, participant: waitlistEntry }),
+        JSON.stringify({ waitlisted: true, substitute: true, position: nextPos, participant: waitlistEntry }),
         { status: 200, headers: { ...getCorsHeaders(), "Content-Type": "application/json" } },
       );
     }
 
     // Not full → normal join
     // Determine team: auto-assign for public matches, manual for private
-    let assignedTeam = requestedTeam;
+    let assignedTeam = normalizeTeamSide(requestedTeam);
     if (!assignedTeam || match.match_type === "public") {
-      const teamA = (match.team_color_a ?? "red").toLowerCase();
-      const teamB = (match.team_color_b ?? "blue").toLowerCase();
       const { data: teamCounts } = await supabase
         .from("match_participants")
         .select("team")
         .eq("match_id", matchId)
         .eq("status", "active")
         .eq("slot_type", "core");
-      const countA = (teamCounts ?? []).filter((p: any) => p.team === teamA).length;
-      const countB = (teamCounts ?? []).filter((p: any) => p.team === teamB).length;
-      assignedTeam = countA <= countB ? teamA : teamB;
+      const countReds = (teamCounts ?? []).filter((p: any) => p.team === "reds").length;
+      const countBlues = (teamCounts ?? []).filter((p: any) => p.team === "blues").length;
+      assignedTeam = countReds <= countBlues ? "reds" : "blues";
     }
-    if (!assignedTeam) assignedTeam = "reds";
+    if (assignedTeam === "unassigned") assignedTeam = "reds";
 
     // Insert participant via service role to bypass RLS
     const isFreeJoin = match.entry_fee === 0;

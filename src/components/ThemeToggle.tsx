@@ -3,10 +3,10 @@ import { Moon, Sun } from "lucide-react";
 
 export const useTheme = () => {
   const [theme, setTheme] = useState<"light" | "dark">(() => {
-    if (typeof window === "undefined") return "light";
+    if (typeof window === "undefined") return "dark";
     const saved = localStorage.getItem("theme") as "light" | "dark" | null;
     if (saved) return saved;
-    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "dark";
   });
 
   useEffect(() => {

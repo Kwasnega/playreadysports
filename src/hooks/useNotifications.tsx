@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
 export type NotifType =
+  | "match_share"
   | "match_invite"
   | "match_join"
   | "match_leave"

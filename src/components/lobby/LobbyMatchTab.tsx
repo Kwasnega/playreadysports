@@ -1,15 +1,17 @@
-import { useEffect, useState, type RefObject } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Check, Clock, MapPin, Wallet, Trophy, Calendar, QrCode, Camera, X,
-  CloudSun, Droplets, Flag, Star, Users, ThumbsUp,
-} from "lucide-react";
+  CloudSun, Droplets, Flag, Star, Users, ThumbsUp, Loader2,
+} from "lucide-react"; // FIX: Issue 3 - Added Loader2 for check-in button spinner
 import { FactRow } from "./LobbyShared";
 import ReportButton from "@/components/ReportButton";
 import { getFormattedTime } from "@/lib/matchHelpers";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { LobbyParticipant } from "./LobbyShared";
+// FIX: Issue 2 - Import the new self-contained scanner that properly manages its own DOM lifecycle
+import { QRScannerModal } from "./QRScannerModal";
 
 interface LobbyMatchTabProps {
   match: any;
@@ -31,10 +33,9 @@ interface LobbyMatchTabProps {
   checkInCode: string;
   setCheckInCode: (v: string) => void;
   checkInBusy: boolean;
-  scanning: boolean;
-  videoRef: RefObject<HTMLVideoElement>;
-  startScan: () => void;
-  stopScan: () => void;
+  // FIX: Issue 2 - Removed: scanning, videoRef, startScan, stopScan — these were the
+  // broken props that caused the camera-never-opens bug. The scanner is now fully
+  // self-contained inside QRScannerModal.
   submitCheckIn: (token: string) => void;
   endMatch: () => void;
   cancelMatch: () => void;
@@ -53,11 +54,44 @@ export const LobbyMatchTab = (props: LobbyMatchTabProps) => {
     match, venue, organizer, weather, isOrganizer, userParticipant, user,
     countdownMain, countdownSub, isLive,
     venueCost, sharePerPlayer, allPaid, corePaidCount, maxCore,
-    showCheckIn, checkInCode, setCheckInCode, checkInBusy, scanning, videoRef,
-    startScan, stopScan, submitCheckIn,
+    showCheckIn, checkInCode, setCheckInCode, checkInBusy,
+    submitCheckIn,
     endMatch, cancelMatch, ending,
     onLeaveMatch, openProfile, activeParticipants, myReviews, submitReview, matchCode,
   } = props;
+
+  // FIX: Issue 2 - Local state controls the QRScannerModal; no ref/stream plumbing needed
+  const [scannerOpen, setScannerOpen] = useState(false);
+
+  // Smart validation: Check if match can be completed
+  const canCompleteMatch = () => {
+    if (!match) return { allowed: false, reason: "Match data missing" };
+    
+    // Check if match date/time has passed
+    const matchTime = new Date(match.match_date).getTime();
+    const nowTime = new Date().getTime();
+    if (matchTime > nowTime) {
+      const diffMs = matchTime - nowTime;
+      const diffMins = Math.ceil(diffMs / 60000);
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours > 0) {
+        return { allowed: false, reason: `Match starts in ${diffHours}h ${diffMins % 60}m` };
+      } else {
+        return { allowed: false, reason: `Match starts in ${diffMins}m` };
+      }
+    }
+    
+    // Check if at least 50% of max players have paid
+    const minPaidRequired = Math.ceil(maxCore * 0.5);
+    if (corePaidCount < minPaidRequired) {
+      return { allowed: false, reason: `Waiting for payments — ${corePaidCount}/${minPaidRequired} paid` };
+    }
+    
+    // All checks passed
+    return { allowed: true, reason: "Ready to complete" };
+  };
+
+  const completeCheck = canCompleteMatch();
 
   const [slideIdx, setSlideIdx] = useState(0);
   const imageUrls = venue?.image_urls?.filter(Boolean) ?? [];
@@ -97,7 +131,16 @@ export const LobbyMatchTab = (props: LobbyMatchTabProps) => {
           <FactRow icon={MapPin} label="Venue" value={`${venue?.name ?? "Venue"} · ${venue?.city ?? ""}`} />
           <FactRow icon={Clock} label="Kickoff" value={match ? getFormattedTime(match.match_date) : "—"} />
           <FactRow icon={Users} label="Format" value={`${matchMode === "gala" ? "Gala" : "Two-team"} · ${match?.format ?? "?"}`} />
-          <FactRow icon={Wallet} label="Cost" value={`₵${venueCost} total`} />
+          {Number(match?.entry_fee ?? 0) === 0 ? (
+            <div className="flex items-center gap-3 py-1">
+              <Wallet className="w-4 h-4 text-muted-foreground shrink-0" />
+              <span className="text-[10px] uppercase tracking-widest font-black text-muted-foreground w-20 shrink-0">Entry</span>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-widest">FREE</span>
+              <span className="text-[10px] font-bold text-muted-foreground">· organizer covers turf</span>
+            </div>
+          ) : (
+            <FactRow icon={Wallet} label="Cost" value={`₵${venueCost} total`} />
+          )}
           <FactRow icon={Trophy} label="Code" value={matchCode} mono />
         </div>
       </div>
@@ -176,39 +219,106 @@ export const LobbyMatchTab = (props: LobbyMatchTabProps) => {
             <div className="bg-secondary p-4 rounded-xl border border-border">
               <p className="text-sm font-bold flex items-center gap-2"><Check className="w-4 h-4" /> Checked in</p>
             </div>
-          ) : scanning ? (
-            <div className="space-y-4">
-              <div className="relative aspect-square rounded-xl overflow-hidden border-2 border-border bg-black">
-                <video ref={videoRef} className="w-full h-full object-cover grayscale" playsInline muted autoPlay />
-                <div className="absolute inset-0 border-4 border-dashed border-white/50 rounded-xl m-8" />
-              </div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground text-center">Point camera at venue QR</p>
-              <button type="button" onClick={stopScan} className="w-full py-3 rounded-full border-2 border-border font-black text-[11px] uppercase tracking-widest">Cancel Scan</button>
-            </div>
           ) : (
             <>
+              {/* FIX: Issue 2 - QR scanner button now opens the self-contained modal;
+                  no videoRef plumbing required. */}
               <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground leading-relaxed">Tap camera to scan venue QR code</p>
-              <button type="button" onClick={startScan} disabled={checkInBusy} className="w-full flex items-center justify-center gap-2 bg-foreground text-background px-4 py-3.5 rounded-full text-[11px] font-black uppercase tracking-widest disabled:opacity-50 hover:bg-foreground/90 transition-colors">
+              <button
+                type="button"
+                onClick={() => setScannerOpen(true)}
+                disabled={checkInBusy}
+                className="w-full flex items-center justify-center gap-2 bg-foreground text-background px-4 py-3.5 rounded-full text-[11px] font-black uppercase tracking-widest disabled:opacity-50 hover:bg-foreground/90 transition-colors"
+              >
                 <Camera className="w-4 h-4" />{checkInBusy ? "Checking in…" : "Scan QR Code"}
               </button>
               <div className="pt-4 border-t-2 border-border border-dashed">
                 <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Or enter 10-character code manually</p>
                 <div className="flex gap-2">
-                  <input value={checkInCode} onChange={(e) => setCheckInCode(e.target.value.trim().toUpperCase().slice(0, 10))} placeholder="E.G. A3K9M2X7Q1" maxLength={10} className="flex-1 rounded-xl border-2 border-border bg-background px-4 py-2.5 text-xs font-mono font-bold uppercase tracking-widest" autoCapitalize="characters" autoCorrect="off" spellCheck={false} />
-                  <button type="button" disabled={checkInBusy || !checkInCode} onClick={() => submitCheckIn(checkInCode)} className="px-5 py-2.5 rounded-xl border-2 border-foreground bg-foreground text-background text-[11px] font-black uppercase disabled:opacity-40 hover:opacity-90">Go</button>
+                  {/* FIX: Issue 3 - sanitize on input: strip non-alphanumeric, uppercase, max 10 chars */}
+                  <input
+                    value={checkInCode}
+                    onChange={(e) => setCheckInCode(
+                      e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10)
+                    )}
+                    placeholder="E.G. A3K9M2X7Q1"
+                    maxLength={10}
+                    className="flex-1 rounded-xl border-2 border-border bg-background px-4 py-2.5 text-xs font-mono font-bold uppercase tracking-widest"
+                    autoCapitalize="characters"
+                    autoCorrect="off"
+                    spellCheck={false}
+                  />
+                  {/* FIX: Issue 3 - Show loading spinner inside Go button when busy */}
+                  <button
+                    type="button"
+                    disabled={checkInBusy || !checkInCode}
+                    onClick={() => submitCheckIn(checkInCode)}
+                    className="px-5 py-2.5 rounded-xl border-2 border-foreground bg-foreground text-background text-[11px] font-black uppercase disabled:opacity-40 hover:opacity-90 flex items-center gap-1.5"
+                  >
+                    {checkInBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                    {checkInBusy ? "…" : "Go"}
+                  </button>
                 </div>
+                {/* FIX: Issue 3 - Inline validation: tell user exactly how many chars they still need
+                    before any API call is made, so they don't get a silent failure */}
+                {checkInCode.length > 0 && checkInCode.length < 10 && (
+                  <p className="mt-1.5 text-[10px] font-bold text-muted-foreground">
+                    {10 - checkInCode.length} more character{10 - checkInCode.length !== 1 ? "s" : ""} needed
+                  </p>
+                )}
               </div>
             </>
           )}
         </div>
       )}
 
+      {/* FIX: Issue 2 - QRScannerModal is rendered at the top level (not inside the
+          conditional) so its useEffect can reliably mount the video element. It is
+          only displayed when scannerOpen is true. */}
+      {scannerOpen && (
+        <QRScannerModal
+          onScan={(value) => {
+            setScannerOpen(false);
+            submitCheckIn(value);
+          }}
+          onClose={() => setScannerOpen(false)}
+        />
+      )}
+
+      {!showCheckIn && userParticipant?.status === "active" && match?.status !== "cancelled" && match?.status !== "completed" && (
+        <div className="rounded-2xl border-2 border-border bg-secondary p-4 flex items-start gap-3">
+          <QrCode className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-black uppercase tracking-tight text-foreground">Check-in opens near kickoff</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground leading-relaxed mt-1">
+              QR check-in appears from 90 minutes before kickoff until 2 hours after.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Organizer actions */}
       {isOrganizer && match?.status !== 'completed' && match?.status !== 'cancelled' && (
         <div className="space-y-3">
-          <button onClick={endMatch} disabled={ending} className="w-full border-2 border-foreground bg-foreground text-background font-black uppercase tracking-widest text-[11px] rounded-full px-4 py-4 flex items-center justify-center gap-2 hover:opacity-90 transition-all disabled:opacity-50">
-            <Flag className="w-4 h-4" /> {ending ? "Completing…" : "Complete Match"}
-          </button>
+          <div className="relative group">
+            <button 
+              onClick={endMatch} 
+              disabled={ending || !completeCheck.allowed}
+              title={completeCheck.reason}
+              className={`w-full border-2 font-black uppercase tracking-widest text-[11px] rounded-full px-4 py-4 flex items-center justify-center gap-2 transition-all ${
+                completeCheck.allowed 
+                  ? "border-green-500 bg-green-500 text-white hover:opacity-90 active:scale-95" 
+                  : "border-muted-foreground bg-muted-foreground/10 text-muted-foreground cursor-not-allowed opacity-60"
+              }`}
+            >
+              <Flag className="w-4 h-4" /> {ending ? "Completing…" : "Complete Match"}
+            </button>
+            {!completeCheck.allowed && (
+              <div className="absolute left-0 right-0 top-full mt-2 bg-card border-2 border-red-500/30 rounded-lg p-3 text-[10px] font-bold uppercase tracking-widest text-red-600 dark:text-red-400 z-50 whitespace-nowrap pointer-events-none">
+                ⚠️ {completeCheck.reason}
+              </div>
+            )}
+          </div>
           <button onClick={cancelMatch} disabled={ending} className="w-full border-2 border-border bg-card text-foreground font-black uppercase tracking-widest text-[11px] rounded-full px-4 py-4 flex items-center justify-center gap-2 hover:bg-secondary transition-all disabled:opacity-50">
             <X className="w-4 h-4" /> {ending ? "Cancelling…" : "Cancel Match"}
           </button>
@@ -242,17 +352,30 @@ export const LobbyMatchTab = (props: LobbyMatchTabProps) => {
             <>
               <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Select winner</p>
               <div className="flex gap-2">
-                {[match.team_color_a, match.team_color_b].filter(Boolean).map((color: string) => (
-                  <button key={color} disabled={ending} onClick={async () => {
-                    if (!match.id || !color) return;
-                    const { error } = await supabase.from("matches").update({ winning_team: color } as any).eq("id", match.id);
-                    if (error) toast.error("Failed to record result"); else { toast.success(`${color} team wins!`); navigate(0); }
-                  }} className="flex-1 py-3.5 rounded-full font-black text-[11px] uppercase tracking-widest border-2 border-border hover:border-foreground transition-all">{color}</button>
+                {[
+                  { label: match.team_color_a ?? "Team A", value: "reds" },
+                  { label: match.team_color_b ?? "Team B", value: "blues" },
+                ].map((team) => (
+                  <button key={team.value} disabled={ending} onClick={async () => {
+                    if (!match.id) return;
+                    const { data, error } = await supabase.rpc("record_match_result", { p_match_id: match.id, p_winning_team: team.value });
+                    if (error || (data as any)?.success === false) {
+                      toast.error(error?.message || (data as any)?.error || "Failed to record result");
+                    } else {
+                      toast.success(`${team.label} wins!`);
+                      navigate(0);
+                    }
+                  }} className="flex-1 py-3.5 rounded-full font-black text-[11px] uppercase tracking-widest border-2 border-border hover:border-foreground transition-all">{team.label}</button>
                 ))}
                 <button disabled={ending} onClick={async () => {
                   if (!match.id) return;
-                  const { error } = await supabase.from("matches").update({ winning_team: "draw" } as any).eq("id", match.id);
-                  if (error) toast.error("Failed to record result"); else { toast.success("Draw recorded"); navigate(0); }
+                  const { data, error } = await supabase.rpc("record_match_result", { p_match_id: match.id, p_winning_team: "draw" });
+                  if (error || (data as any)?.success === false) {
+                    toast.error(error?.message || (data as any)?.error || "Failed to record result");
+                  } else {
+                    toast.success("Draw recorded");
+                    navigate(0);
+                  }
                 }} className="flex-1 py-3.5 rounded-full font-black text-[11px] uppercase tracking-widest border-2 border-border hover:border-foreground transition-all">Draw</button>
               </div>
             </>

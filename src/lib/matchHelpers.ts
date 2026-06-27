@@ -5,22 +5,21 @@ import { HomeMatch } from "@/hooks/useHomeMatches";
    ------------------------------------------------------------ */
 
 /** Count active core participants for a match */
-export function getActiveCoreCount(match: HomeMatch | any): number {
-  if (!match || !match.participants) return 0;
-  return match.participants.filter(
-    (p: any) => p.status === "active" && p.slot_type === "core"
+export function getActiveCoreCount(match: Partial<HomeMatch> | null | undefined): number {
+  const participants = Array.isArray(match?.participants) ? match.participants : [];
+  return participants.filter(
+    (p) => p?.status === "active" && p?.slot_type === "core"
   ).length;
 }
 
 /** Spots left = max_core_players minus active core count */
-export function getSpotsLeft(match: HomeMatch | any): number {
-  if (!match) return 0;
-  const max = match.max_core_players ?? match.players_per_side ?? 10;
+export function getSpotsLeft(match: Partial<HomeMatch> | null | undefined): number {
+  const max = match?.max_core_players ?? match?.players_per_side ?? 10;
   return Math.max(0, max - getActiveCoreCount(match));
 }
 
 /** Is the match completely full? */
-export function isMatchFull(match: HomeMatch): boolean {
+export function isMatchFull(match: Partial<HomeMatch> | null | undefined): boolean {
   return getSpotsLeft(match) === 0;
 }
 
@@ -55,6 +54,17 @@ function deg2rad(deg: number): number {
   return deg * (Math.PI / 180);
 }
 
+const APP_TIME_ZONE = "Africa/Accra";
+
+function getDateKey(date: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: APP_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
 /** Format a match date into friendly display text
  *  "Tonight · 7:30 PM" / "Sat · 4:00 PM" / "In 2h 15m"
  */
@@ -73,28 +83,20 @@ export function getFormattedTime(matchDate: string): string {
   }
 
   // Today
-  if (isSameDay(date, now)) {
+  if (getDateKey(date) === getDateKey(now)) {
     return `Tonight · ${formatTime(date)}`;
   }
 
   // Tomorrow
   const tomorrow = new Date(now);
   tomorrow.setDate(tomorrow.getDate() + 1);
-  if (isSameDay(date, tomorrow)) {
+  if (getDateKey(date) === getDateKey(tomorrow)) {
     return `Tomorrow · ${formatTime(date)}`;
   }
 
   // Day name
-  const dayName = date.toLocaleDateString("en-US", { weekday: "short" });
+  const dayName = date.toLocaleDateString("en-US", { weekday: "short", timeZone: APP_TIME_ZONE });
   return `${dayName} · ${formatTime(date)}`;
-}
-
-function isSameDay(a: Date, b: Date): boolean {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
 }
 
 function formatTime(date: Date): string {
@@ -102,6 +104,7 @@ function formatTime(date: Date): string {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
+    timeZone: APP_TIME_ZONE,
   });
 }
 
@@ -118,20 +121,20 @@ export function extractFormatNumber(fmt: string): string {
 }
 
 /** Count distinct teams in a gala match (teams != 'unassigned') */
-export function getGalaTeamsIn(match: HomeMatch | any): number {
-  if (!match || !match.participants) return 0;
+export function getGalaTeamsIn(match: Partial<HomeMatch> | null | undefined): number {
+  const participants = Array.isArray(match?.participants) ? match.participants : [];
   const teams = new Set(
-    match.participants
-      .filter((p: any) => p.status === "active" && p.team && p.team !== "unassigned")
-      .map((p: any) => p.team)
+    participants
+      .filter((p) => p?.status === "active" && p?.team && p.team !== "unassigned")
+      .map((p) => p.team)
   );
   return teams.size;
 }
 
 /** Estimated max teams for gala = max_core_players / players_per_side */
-export function getGalaMaxTeams(match: HomeMatch): number {
-  const side = match.players_per_side ?? 5;
-  const max = match.max_core_players ?? side * 2;
+export function getGalaMaxTeams(match: Partial<HomeMatch> | null | undefined): number {
+  const side = match?.players_per_side ?? 5;
+  const max = match?.max_core_players ?? side * 2;
   return Math.max(2, Math.floor(max / side));
 }
 
@@ -223,8 +226,10 @@ export function isVenueOpenForMatch(
   const start = isVenueOpen(venue, kickoff);
   if (!start.isOpen) return start;
   const end = new Date(kickoff.getTime() + durationMinutes * 60_000);
-  const openMin = timeToMinutes(venue.open_time);
-  const closeMin = timeToMinutes(venue.close_time);
+  let openMin = timeToMinutes(venue.open_time);
+  let closeMin = timeToMinutes(venue.close_time);
+  // Treat 00:00 closing time as end of day (24:00 = 1440 minutes)
+  if (closeMin === 0) closeMin = 1440;
   const endMin = end.getHours() * 60 + end.getMinutes();
   if (openMin <= closeMin && endMin > closeMin) {
     return { isOpen: false, label: `Closed · match ends after ${formatTimeStr(venue.close_time)}` };

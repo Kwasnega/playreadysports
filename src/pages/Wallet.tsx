@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Wallet as WalletIcon, Plus, History, Check, Loader2,
@@ -12,9 +12,39 @@ const TOPUP_OPTIONS = [20, 50, 100, 200];
 const WalletPage = () => {
   const nav = useNavigate();
   const { user, openAuth } = useAuth();
-  const { balance, transactions, loading, toppingUp, error, topUp } = useWallet();
+  const { balance, transactions, loading, toppingUp, error, topUp, verifyTopUp } = useWallet();
   const [customAmount, setCustomAmount] = useState("");
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
+  const handledMoolreRef = useRef<string | null>(null);
+
+  const goHome = () => {
+    nav("/", { replace: true });
+  };
+
+  useEffect(() => {
+    if (!user) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get("status");
+    const reference = params.get("moolre_ref") || params.get("reference");
+    
+    // Handle Moolre redirect with or without reference
+    if (status === "success" || reference) {
+      // Skip if already handled
+      if (handledMoolreRef.current === (reference || "moolre_latest")) return;
+      handledMoolreRef.current = reference || "moolre_latest";
+      
+      // Call verifyTopUp with reference or "latest" to fetch most recent pending transaction
+      verifyTopUp(reference || "latest", "moolre").finally(() => {
+        params.delete("moolre_ref");
+        params.delete("reference");
+        params.delete("status");
+        const query = params.toString();
+        const nextUrl = `${window.location.pathname}${query ? `?${query}` : ""}`;
+        window.history.replaceState({}, "", nextUrl);
+      });
+    }
+  }, [user, verifyTopUp]);
 
   if (!user) {
     return (
@@ -33,7 +63,7 @@ const WalletPage = () => {
           Sign In
         </button>
         <button
-          onClick={() => nav(-1)}
+          onClick={() => nav("/", { replace: true })}
           className="mt-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
         >
           Go Back
@@ -55,7 +85,7 @@ const WalletPage = () => {
     <main className="min-h-screen bg-background pb-10">
       <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b-2 border-border">
         <div className="max-w-[680px] mx-auto px-5 h-16 flex items-center gap-3">
-          <button onClick={() => nav(-1)} className="w-10 h-10 -ml-2 rounded-full border-2 border-transparent hover:border-border flex items-center justify-center transition-colors" aria-label="Back">
+          <button onClick={goHome} className="w-10 h-10 -ml-2 rounded-full border-2 border-transparent hover:border-border flex items-center justify-center transition-colors" aria-label="Back">
             <ArrowLeft className="w-5 h-5" />
           </button>
           <h1 className="font-display font-black text-xl tracking-tight uppercase flex-1">Wallet</h1>

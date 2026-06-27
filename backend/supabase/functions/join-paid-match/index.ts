@@ -4,6 +4,13 @@ import { getCorsHeaders } from "../_shared/cors.ts";
 
 const PAYSTACK_SECRET = Deno.env.get("PAYSTACK_SECRET_KEY");
 
+const normalizeTeamSide = (team?: string | null): "reds" | "blues" | "unassigned" => {
+  const value = String(team ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (["reds", "red", "team_a", "a"].includes(value)) return "reds";
+  if (["blues", "blue", "team_b", "b"].includes(value)) return "blues";
+  return "unassigned";
+};
+
 Deno.serve(async (req) => {
   const corsHeaders = getCorsHeaders();
   if (req.method === "OPTIONS") {
@@ -115,7 +122,7 @@ Deno.serve(async (req) => {
     const { data: rpcResult, error: rpcErr } = await supabase.rpc("process_paid_join", {
       p_match_id: matchId,
       p_user_id: user.id,
-      p_team: team || "unassigned",
+      p_team: normalizeTeamSide(team),
       p_payment_reference: paystackReference,
       p_amount: match.entry_fee ?? 0,
       p_slot_type: "core",

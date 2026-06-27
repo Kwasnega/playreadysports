@@ -188,7 +188,9 @@ Deno.serve(async (req) => {
 
     const notifs: { user_id: string; title: string; body: string; type: string; data: Record<string, unknown> }[] = [];
 
+    let turfOwnerId: string | null = null;
     if (venue?.owner_id) {
+      turfOwnerId = venue.owner_id;
       notifs.push({
         user_id: venue.owner_id,
         title: "Player checked in",
@@ -199,12 +201,33 @@ Deno.serve(async (req) => {
     } else if (venue?.owner_email) {
       const { data: ownerProf } = await svc.from("profiles").select("id").eq("email", venue.owner_email.trim()).maybeSingle();
       if (ownerProf?.id) {
+        turfOwnerId = ownerProf.id;
         notifs.push({
           user_id: ownerProf.id,
           title: "Player checked in",
           body: `${scannerName} checked in for ${match.join_code}${venue.name ? ` at ${venue.name}` : ""}.`,
           type: "match_update",
           data: { match_id: matchId, join_code: match.join_code },
+        });
+      }
+    }
+
+    // Turf Owner Notification (Issue 14) - Match Goes Live
+    // We treat the first player check-in as the signal that the match is going live.
+    if (turfOwnerId) {
+      const { count: checkedInCount } = await svc
+        .from("match_participants")
+        .select("id", { count: "exact" })
+        .eq("match_id", matchId)
+        .eq("attendance_scanned", true);
+
+      if (checkedInCount === 1) {
+        notifs.push({
+          user_id: turfOwnerId,
+          title: "Match goes live",
+          body: `${match.title || match.join_code} at ${venue?.name || 'your turf'} is now live. 1 player has checked in.`,
+          type: "turf_event" as any,
+          data: { match_id: matchId, venue_id: match.venue_id }
         });
       }
     }

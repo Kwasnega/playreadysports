@@ -3,7 +3,7 @@ import { getCorsHeaders } from "../_shared/cors.ts";
 import { checkRateLimit } from "../_shared/rateLimiter.ts";
 
 // CORS headers for browser calls
-// CORS is handled via getCorsHeaders() from _shared/cors.ts
+// CORS is handled via getCorsHeaders(requestOrigin) from _shared/cors.ts
 
 Deno.serve(async (req) => {
   const requestOrigin = req.headers.get("origin");
@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Missing authorization header" }), {
         status: 401,
-        headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
     if (authErr || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
-        headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(requestOrigin), "Content-Type": "application/json" },
       });
     }
 
@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
     //     message: "You have reached the match creation limit. Please wait a few minutes and try again.",
     //   }), {
     //     status: 429,
-    //     headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+    //     headers: { ...getCorsHeaders(requestOrigin), "Content-Type": "application/json" },
     //   });
     // }
 
@@ -86,24 +86,24 @@ Deno.serve(async (req) => {
     if (!venueId || !matchType || !matchMode || !format || !matchDate) {
       return new Response(JSON.stringify({ error: "VALIDATION_ERROR", field: "required", message: "Missing required fields" }), {
         status: 400,
-        headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(requestOrigin), "Content-Type": "application/json" },
       });
     }
 
     // Title
     if (!title || typeof title !== "string") {
       return new Response(JSON.stringify({ error: "VALIDATION_ERROR", field: "title", message: "Match title is required" }), {
-        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        status: 400, headers: { ...getCorsHeaders(requestOrigin), "Content-Type": "application/json" },
       });
     }
     if (title.trim().length < 3) {
       return new Response(JSON.stringify({ error: "VALIDATION_ERROR", field: "title", message: "Title must be at least 3 characters" }), {
-        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        status: 400, headers: { ...getCorsHeaders(requestOrigin), "Content-Type": "application/json" },
       });
     }
     if (title.trim().length > 60) {
       return new Response(JSON.stringify({ error: "VALIDATION_ERROR", field: "title", message: "Title must be 60 characters or less" }), {
-        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        status: 400, headers: { ...getCorsHeaders(requestOrigin), "Content-Type": "application/json" },
       });
     }
 
@@ -111,7 +111,7 @@ Deno.serve(async (req) => {
     const ALLOWED_MATCH_TYPES = ["public", "private"];
     if (!matchType || !ALLOWED_MATCH_TYPES.includes(matchType)) {
       return new Response(JSON.stringify({ error: "VALIDATION_ERROR", field: "matchType", message: "Invalid match type" }), {
-        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        status: 400, headers: { ...getCorsHeaders(requestOrigin), "Content-Type": "application/json" },
       });
     }
 
@@ -119,14 +119,14 @@ Deno.serve(async (req) => {
     const ALLOWED_MATCH_MODES = ["two_team", "gala"];
     if (!matchMode || !ALLOWED_MATCH_MODES.includes(matchMode)) {
       return new Response(JSON.stringify({ error: "VALIDATION_ERROR", field: "matchMode", message: "Invalid match mode" }), {
-        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        status: 400, headers: { ...getCorsHeaders(requestOrigin), "Content-Type": "application/json" },
       });
     }
 
     // Sport
     if (!sportType || typeof sportType !== "string") {
       return new Response(JSON.stringify({ error: "VALIDATION_ERROR", field: "sportType", message: "Please select a sport" }), {
-        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        status: 400, headers: { ...getCorsHeaders(requestOrigin), "Content-Type": "application/json" },
       });
     }
 
@@ -134,12 +134,12 @@ Deno.serve(async (req) => {
     const feeNum = Number(entryFee);
     if (isNaN(feeNum) || feeNum < 0) {
       return new Response(JSON.stringify({ error: "VALIDATION_ERROR", field: "entryFee", message: "Entry fee must be a number >= 0" }), {
-        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        status: 400, headers: { ...getCorsHeaders(requestOrigin), "Content-Type": "application/json" },
       });
     }
     if (feeNum > 10000) {
       return new Response(JSON.stringify({ error: "VALIDATION_ERROR", field: "entryFee", message: "Entry fee cannot exceed 10000" }), {
-        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        status: 400, headers: { ...getCorsHeaders(requestOrigin), "Content-Type": "application/json" },
       });
     }
 
@@ -147,33 +147,23 @@ Deno.serve(async (req) => {
     const maxCoreNum = Number(maxCore);
     if (!Number.isInteger(maxCoreNum) || maxCoreNum < 2) {
       return new Response(JSON.stringify({ error: "VALIDATION_ERROR", field: "maxCore", message: "Max players must be at least 2" }), {
-        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        status: 400, headers: { ...getCorsHeaders(requestOrigin), "Content-Type": "application/json" },
       });
     }
     if (maxCoreNum > 100) {
       return new Response(JSON.stringify({ error: "VALIDATION_ERROR", field: "maxCore", message: "Max players cannot exceed 100" }), {
-        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        status: 400, headers: { ...getCorsHeaders(requestOrigin), "Content-Type": "application/json" },
       });
     }
 
-    // Profit
-    const profitNum = Number(profitAmount ?? 0);
-    if (profitNum < 0) {
-      return new Response(JSON.stringify({ error: "VALIDATION_ERROR", field: "profitAmount", message: "Profit cannot be negative" }), {
-        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
-      });
-    }
-    if (profitNum >= feeNum * maxCoreNum) {
-      return new Response(JSON.stringify({ error: "VALIDATION_ERROR", field: "profitAmount", message: "Profit must be less than total pot (entry fee × max players)" }), {
-        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
-      });
-    }
+    // Profit is no longer supported — always set to 0
+    const profitNum = 0;
 
     // Date — must be at least 30 minutes in the future
     const kickoff = new Date(matchDate);
     if (isNaN(kickoff.getTime()) || kickoff.getTime() <= Date.now() + 30 * 60 * 1000) {
       return new Response(JSON.stringify({ error: "VALIDATION_ERROR", field: "matchDate", message: "Match must be scheduled at least 30 minutes from now" }), {
-        status: 400, headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        status: 400, headers: { ...getCorsHeaders(requestOrigin), "Content-Type": "application/json" },
       });
     }
 
@@ -189,14 +179,14 @@ Deno.serve(async (req) => {
     if (profileErr) {
       return new Response(JSON.stringify({ error: "Failed to load profile" }), {
         status: 500,
-        headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(requestOrigin), "Content-Type": "application/json" },
       });
     }
 
     if (profile?.is_banned || (profile?.banned_until && new Date(profile.banned_until) > new Date())) {
       return new Response(JSON.stringify({ error: "Account is banned" }), {
         status: 403,
-        headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(requestOrigin), "Content-Type": "application/json" },
       });
     }
 
@@ -205,14 +195,14 @@ Deno.serve(async (req) => {
     // ------------------------------------------------------------------
     const { data: venue, error: venueErr } = await supabase
       .from("venues")
-      .select("city, owner_id, owner_email, open_time, close_time, price_per_hour")
+      .select("name, city, owner_id, owner_email, open_time, close_time, price_per_hour")
       .eq("id", venueId)
       .single();
 
     if (venueErr || !venue) {
       return new Response(JSON.stringify({ error: "Venue not found" }), {
         status: 404,
-        headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(requestOrigin), "Content-Type": "application/json" },
       });
     }
 
@@ -233,21 +223,27 @@ Deno.serve(async (req) => {
       const endH = Number(endParts.find((p) => p.type === "hour")?.value ?? 0);
       const endM = Number(endParts.find((p) => p.type === "minute")?.value ?? 0);
 
-      const openMin = (venue.open_time.split(":").map(Number)[0] ?? 0) * 60 + (venue.open_time.split(":").map(Number)[1] ?? 0);
-      const closeMin = (venue.close_time.split(":").map(Number)[0] ?? 0) * 60 + (venue.close_time.split(":").map(Number)[1] ?? 0);
+      let openMin = (venue.open_time.split(":").map(Number)[0] ?? 0) * 60 + (venue.open_time.split(":").map(Number)[1] ?? 0);
+      let closeMin = (venue.close_time.split(":").map(Number)[0] ?? 0) * 60 + (venue.close_time.split(":").map(Number)[1] ?? 0);
+      // Treat 00:00 closing time as end of day (24:00 = 1440 minutes)
+      if (closeMin === 0) closeMin = 1440;
       const startMin = kickoffH * 60 + kickoffM;
       const endMinVal = endH * 60 + endM;
 
+      // Allow 30-minute grace period after closing for match end time
+      const gracePeriodMin = closeMin + 30;
+      
+      // Match must START during operating hours and END within 30 min after closing
       const withinHours = openMin <= closeMin
-        ? (startMin >= openMin && endMinVal <= closeMin)
-        : (startMin >= openMin || endMinVal <= closeMin);
+        ? (startMin >= openMin && startMin < closeMin && endMinVal <= gracePeriodMin)
+        : (startMin >= openMin || (endMinVal <= gracePeriodMin && endMinVal >= 0));
 
       if (!withinHours) {
         return new Response(JSON.stringify({
           error: `This venue is only open ${venue.open_time.slice(0, 5)} – ${venue.close_time.slice(0, 5)} (Ghana time). Please pick a time within operating hours.`,
         }), {
           status: 409,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...getCorsHeaders(requestOrigin), "Content-Type": "application/json" },
         });
       }
     }
@@ -255,10 +251,29 @@ Deno.serve(async (req) => {
     // ------------------------------------------------------------------
     // 4c. Check for blockout overlap
     // ------------------------------------------------------------------
-    const kickoffDate = kickoff.toISOString().split("T")[0];
-    const blockoutKickoffTime = kickoff.toTimeString().slice(0, 8); // HH:MM:SS
+    const ghanaKickoffParts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Africa/Accra",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    }).formatToParts(kickoff);
+    const getKickoffPart = (type: string) => ghanaKickoffParts.find((p) => p.type === type)?.value ?? "00";
+    const kickoffDate = `${getKickoffPart("year")}-${getKickoffPart("month")}-${getKickoffPart("day")}`;
+    const blockoutKickoffTime = `${getKickoffPart("hour")}:${getKickoffPart("minute")}:${getKickoffPart("second")}`;
     const blockoutMatchEnd = new Date(kickoff.getTime() + (durationMinutes ?? 60) * 60_000);
-    const blockoutEndTime = blockoutMatchEnd.toTimeString().slice(0, 8);
+    const ghanaEndParts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Africa/Accra",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    }).formatToParts(blockoutMatchEnd);
+    const getEndPart = (type: string) => ghanaEndParts.find((p) => p.type === type)?.value ?? "00";
+    const blockoutEndTime = `${getEndPart("hour")}:${getEndPart("minute")}:${getEndPart("second")}`;
 
     const { data: blockouts } = await supabase
       .from("venue_blockouts")
@@ -273,7 +288,7 @@ Deno.serve(async (req) => {
           error: `This venue is blocked on ${kickoffDate}${b.reason ? ` — ${b.reason}` : ""}. Please pick another date or time.`
         }), {
           status: 409,
-          headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+          headers: { ...getCorsHeaders(requestOrigin), "Content-Type": "application/json" },
         });
       }
       // Partial blockout — check overlap
@@ -282,7 +297,42 @@ Deno.serve(async (req) => {
           error: `This venue is blocked from ${b.start_time} to ${b.end_time} on ${kickoffDate}${b.reason ? ` — ${b.reason}` : ""}. Please pick another time.`
         }), {
           status: 409,
-          headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+          headers: { ...getCorsHeaders(requestOrigin), "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    const requestedStart = kickoff.toISOString();
+    const requestedEnd = blockoutMatchEnd.toISOString();
+    const { data: overlappingMatches, error: overlapErr } = await svc
+      .from("matches")
+      .select("id, match_date, duration_minutes")
+      .eq("venue_id", venueId)
+      .not("status", "in", "(cancelled,completed)")
+      .lt("match_date", requestedEnd)
+      .order("match_date", { ascending: false })
+      .limit(20);
+
+    if (overlapErr) {
+      return new Response(JSON.stringify({ error: "Failed to verify turf availability. Please try again." }), {
+        status: 500,
+        headers: { ...getCorsHeaders(requestOrigin), "Content-Type": "application/json" },
+      });
+    }
+
+    if (overlappingMatches?.length > 0) {
+      const conflict = overlappingMatches.find((existing: any) => {
+        const existingStart = new Date(existing.match_date).getTime();
+        const existingEnd = existingStart + ((existing.duration_minutes ?? 60) * 60_000);
+        return existingStart < new Date(requestedEnd).getTime() && existingEnd > new Date(requestedStart).getTime();
+      });
+
+      if (conflict) {
+        return new Response(JSON.stringify({
+          error: "This turf is already booked for that time. Please choose a different time or turf."
+        }), {
+          status: 409,
+          headers: { ...getCorsHeaders(requestOrigin), "Content-Type": "application/json" },
         });
       }
     }
@@ -319,7 +369,7 @@ Deno.serve(async (req) => {
     if (!joinCode) {
       return new Response(JSON.stringify({ error: "Could not generate unique join code" }), {
         status: 500,
-        headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(requestOrigin), "Content-Type": "application/json" },
       });
     }
 
@@ -390,7 +440,7 @@ Deno.serve(async (req) => {
         message: "Only 'football' is currently supported." 
       }), {
         status: 400,
-        headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(requestOrigin), "Content-Type": "application/json" },
       });
     }
 
@@ -413,15 +463,15 @@ Deno.serve(async (req) => {
         match_date: matchDate,
         duration_minutes: durationMinutes ?? 60,
         entry_fee: feeNum,
-        organizer_profit_amount: profitNum,
+        organizer_profit_amount: 0,
         notes: notes ?? null,
         status: "upcoming" as any,
         escrow_status: "none" as any,
         core_paid_count: 0,
         qr_code_secret: qrSecret,
         check_in_code: checkInCode,
-        team_color_a: teamColorA ?? "Red",
-        team_color_b: teamColorB ?? "Blue",
+        team_color_a: "Team A",
+        team_color_b: "Team B",
       })
       .select("*")
       .single();
@@ -429,7 +479,7 @@ Deno.serve(async (req) => {
     if (insertErr || !match) {
       return new Response(JSON.stringify({ error: insertErr?.message ?? "Failed to create match" }), {
         status: 500,
-        headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(requestOrigin), "Content-Type": "application/json" },
       });
     }
 
@@ -453,7 +503,7 @@ Deno.serve(async (req) => {
       await svc.from("matches").delete().eq("id", match.id);
       return new Response(
         JSON.stringify({ error: `Match created but failed to add you as participant: ${participantErr.message}. Match has been cancelled.` }),
-        { status: 500, headers: { ...getCorsHeaders(), "Content-Type": "application/json" } }
+        { status: 500, headers: { ...getCorsHeaders(requestOrigin), "Content-Type": "application/json" } }
       );
     }
 
@@ -477,7 +527,7 @@ Deno.serve(async (req) => {
         await svc.from("matches").delete().eq("id", match.id);
         return new Response(
           JSON.stringify({ error: `Insufficient wallet balance. You need ₵${feeNum} to create this match. Please top up your wallet.` }),
-          { status: 402, headers: { ...getCorsHeaders(), "Content-Type": "application/json" } }
+          { status: 402, headers: { ...getCorsHeaders(requestOrigin), "Content-Type": "application/json" } }
         );
       }
 
@@ -513,10 +563,10 @@ Deno.serve(async (req) => {
         const { error: txErr } = await svc.rpc("process_wallet_transaction", {
           p_user_id: user.id,
           p_amount: -organizerVenueFee,
-          p_type: "spend",
+          p_type: "turf_booking_payment",
           p_reference: ref,
           p_match_id: match.id,
-          p_description: `Venue cost for free match: ${match.title}`,
+          p_description: `Turf booking payment for free match: ${match.title} (₵${organizerVenueFee.toFixed(2)} covers ${durationMinutes ?? 60}min at ${venue.name})`,
         });
 
         if (txErr) {
@@ -525,7 +575,7 @@ Deno.serve(async (req) => {
           await svc.from("matches").delete().eq("id", match.id);
           return new Response(
             JSON.stringify({ error: `Insufficient wallet balance. You need ₵${organizerVenueFee.toFixed(2)} to cover the venue cost for this free match.` }),
-            { status: 402, headers: { ...getCorsHeaders(), "Content-Type": "application/json" } },
+            { status: 402, headers: { ...getCorsHeaders(requestOrigin), "Content-Type": "application/json" } },
           );
         }
 
@@ -560,10 +610,28 @@ Deno.serve(async (req) => {
       await supabase.from("match_participants").insert({
         match_id: match.id,
         user_id: turfOwnerId,
-        slot_type: "turf_owner" as any,
+        slot_type: "core" as any,
         team: "unassigned" as any,
         status: "active" as any,
-        payment_status: "exempt" as any,
+        payment_status: "paid" as any,
+      });
+    }
+
+    // 8d. Turf Owner Notification (Issue 14)
+    if (turfOwnerId) {
+      const matchTimeStr = new Date(matchDate).toLocaleString('en-US', { 
+        timeZone: 'Africa/Accra',
+        dateStyle: 'medium',
+        timeStyle: 'short'
+      });
+      const organizerName = user.user_metadata?.full_name || "Someone";
+      
+      await svc.from("notifications").insert({
+        user_id: turfOwnerId,
+        title: "Match Booked",
+        body: `A match has been booked at ${venue.name || 'your turf'} on ${matchTimeStr} by ${organizerName}.`,
+        type: "turf_event",
+        data: { match_id: match.id, venue_id: venueId }
       });
     }
 
@@ -572,7 +640,7 @@ Deno.serve(async (req) => {
     // ------------------------------------------------------------------
     return new Response(JSON.stringify({ match }), {
       status: 200,
-      headers: { ...getCorsHeaders(), "Content-Type": "application/json" },
+      headers: { ...getCorsHeaders(requestOrigin), "Content-Type": "application/json" },
     });
   } catch (err: any) {
     console.error("create-match error:", err);
@@ -589,3 +657,4 @@ Deno.serve(async (req) => {
     });
   }
 });
+

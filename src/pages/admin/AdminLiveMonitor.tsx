@@ -253,8 +253,10 @@ export default function AdminLiveMonitor() {
         .from("matches")
         .select(`
           id, join_code, title, match_date, status, match_mode, format, entry_fee,
-          max_core_players, core_paid_count, escrow_status, duration_minutes,
+          max_core_players, core_paid_count, escrow_status, duration_minutes, payments_frozen,
           venue:venues(name, city, lat, lng),
+          organizer:profiles!matches_organizer_id_fkey(full_name, username, id),
+          wallet_transactions(amount, type),
           participants:match_participants(
             id, user_id, status, payment_status, slot_type, team, joined_at, attendance_scanned,
             profiles(full_name, username)
@@ -263,23 +265,39 @@ export default function AdminLiveMonitor() {
         .in("status", ["upcoming", "live", "full"] as any)
         .order("match_date", { ascending: true });
 
-      const normalized = (matchesRaw ?? []).map((m: any) => ({
-        ...m,
-        payments_frozen: false,
-        venue: Array.isArray(m.venue) ? m.venue[0] ?? null : m.venue ?? null,
-        organizer: null,
-        participants: (m.participants ?? []).map((p: any) => ({
-          ...p,
-          profiles: Array.isArray(p.profiles) ? p.profiles[0] ?? null : p.profiles ?? null,
-        })),
-      })) as LiveMatch[];
+      const normalized = (matchesRaw ?? []).map((m: any) => {
+        // Calculate escrow by summing entry_fee transactions for this match
+        const actualEscrow = (m.wallet_transactions ?? [])
+          .filter((t: any) => t.type === 'entry_fee' || t.type === 'turf_booking_payment')
+          .reduce((sum: number, t: any) => sum + Math.abs(Number(t.amount)), 0);
+
+        return {
+          ...m,
+          actual_escrow_amount: actualEscrow,
+          payments_frozen: m.payments_frozen || false,
+          venue: Array.isArray(m.venue) ? m.venue[0] ?? null : m.venue ?? null,
+          organizer: Array.isArray(m.organizer) ? m.organizer[0] ?? null : m.organizer ?? null,
+          participants: (m.participants ?? []).map((p: any) => ({
+            ...p,
+            profiles: Array.isArray(p.profiles) ? p.profiles[0] ?? null : p.profiles ?? null,
+          })),
+        };
+      }) as (LiveMatch & { actual_escrow_amount: number })[];
 
       setMatches(normalized);
 
       // Compute stats client-side from matches
       const liveMatches = normalized.filter((m) => m.status === "live");
       const playersOnPitch = liveMatches.reduce((sum, m) => sum + m.participants.filter((p: any) => p.status === "active").length, 0);
-      const totalEscrow = normalized.reduce((sum, m) => sum + (Number(m.entry_fee ?? 0) * Number(m.core_paid_count ?? 0)), 0);
+      
+      // Escrow: sum of entry fees for confirmed paid core spots
+      const totalEscrow = normalized
+        .filter((m: any) => (Number(m.entry_fee ?? 0) > 0))
+        .reduce((sum, m: any) => {
+          const paidCoreCount = Number(m.core_paid_count ?? 0);
+          return sum + (Number(m.entry_fee ?? 0) * paidCoreCount);
+        }, 0);
+      
       setStats({ live_matches: liveMatches.length, players_on_pitch: playersOnPitch, total_escrow: totalEscrow, active_users: 0 });
       setInterventions([]);
       setLastRefresh(new Date());
@@ -440,14 +458,17 @@ export default function AdminLiveMonitor() {
       },
       body: JSON.stringify({
         matchId: broadcastModal.matchId,
-        title: "Admin Broadcast",
+        title: "📢 Admin Broadcast",
         message: broadcastMsg,
-        type: "admin_broadcast",
       }),
     });
     const data = await res.json();
     if (data.success) {
-      toast.success(`Broadcast sent to ${data.sent} players`);
+      toast.success(
+        data.sent > 0
+          ? `📢 Broadcast sent — notified ${data.sent} player${data.sent === 1 ? "" : "s"} and posted to match chat`
+          : `📢 Broadcast posted to match chat`
+      );
       setBroadcastModal({ open: false, matchId: "", joinCode: "" });
       setBroadcastMsg("");
     } else {
@@ -457,7 +478,18 @@ export default function AdminLiveMonitor() {
 
   const toggleFreezePayments = async (m: LiveMatch) => {
     const newVal = !m.payments_frozen;
-    await supabase.from("matches").update({ payments_frozen: newVal }).eq("id", m.id);
+    const { data, error } = await supabase
+      .from("matches")
+      .update({ payments_frozen: newVal } as any)
+      .eq("id", m.id)
+      .select()
+      .single();
+
+    if (error || !data) {
+      toast.error(error?.message || "Failed to update freeze status");
+      return;
+    }
+
     toast.success(newVal ? "Payments frozen for this match" : "Payments unfrozen");
     load();
   };
@@ -743,10 +775,10 @@ export default function AdminLiveMonitor() {
                               {m.entry_fee > 0 ? `₵${m.entry_fee}` : "Free"}
                             </span>
                             <span className="inline-flex items-center gap-1">
-                              Organizer: {m.organizer?.full_name || m.organizer?.username || "—"}
+                              Organizer: {m.organizer?.full_name || m.organizer?.username || "Unknown"}
                             </span>
                             <span className="inline-flex items-center gap-1">
-                              Escrow: {m.escrow_status || "none"}
+                              Escrow: {(m as any).actual_escrow_amount > 0 ? `₵${(m as any).actual_escrow_amount.toFixed(2)}` : "₵0.00"}
                             </span>
                           </div>
                         </div>

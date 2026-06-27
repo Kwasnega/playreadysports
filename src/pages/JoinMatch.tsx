@@ -3,10 +3,14 @@ import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft, ArrowRight, Search, KeyRound, Clock, MapPin, Users, Repeat,
   Check, X, ChevronRight, SlidersHorizontal, Sparkles, Star, Wallet as WalletIcon,
+  Loader2, Radio,
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { AlreadyJoinedView } from "@/components/AlreadyJoinedView";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useWallet } from "@/hooks/useWallet";
 import { useBrowseMatches, useBrowseFilters } from "@/hooks/useBrowseMatches";
@@ -60,7 +64,7 @@ const JoinMatch = () => {
   const modeFilter: ModeFilter = filters.mode ? filters.mode : "all";
   const sort = filters.sort;
 
-  const { matches, grouped, loading } = useBrowseMatches(filters);
+  const { matches, grouped, loading, refetch } = useBrowseMatches(filters);
 
   const [active, setActive] = useState<string | null>(null);
   const activeMatch = useMemo(() => matches.find((m) => m.id === active) ?? null, [matches, active]);
@@ -237,6 +241,7 @@ const JoinMatch = () => {
         }}
         user={user}
         openAuth={openAuth}
+        onRefreshFeed={refetch}
       />
     </main>
   );
@@ -269,6 +274,7 @@ const FeedRow = ({ m, user, onTap }: { m: BrowseMatch; user: any; onTap: () => v
   const organizerRating = m.organizer?.reputation_score ?? 5.0;
   const isConfirmed = m.core_paid_count >= max;
   const isOrganizer = user?.id && m.organizer_id === user.id;
+  const isJoined = user?.id && m.participants?.some((p: any) => p.user_id === user.id && p.status === "active");
 
   return (
     <li>
@@ -281,17 +287,28 @@ const FeedRow = ({ m, user, onTap }: { m: BrowseMatch; user: any; onTap: () => v
         <div className="absolute left-[84px] bottom-[-7px] w-3.5 h-3.5 rounded-full bg-background border-2 border-border z-10" />
         
         {/* Time stub */}
-        <div className="w-[90px] shrink-0 border-r-2 border-border border-dashed bg-secondary/40 flex flex-col items-center justify-center p-2 group-hover:bg-secondary/60 transition-colors">
-          <span className={`text-[10px] font-black uppercase tracking-widest mb-1 ${tight ? 'text-foreground' : 'text-muted-foreground'}`}>{when}</span>
-          <span className="text-xl font-display font-black tracking-tighter leading-none text-foreground">
-            {time.split(' ')[0]}
-          </span>
-          {time.split(' ')[1] && (
-            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">
-              {time.split(' ')[1]}
+        {m.intelligent_status === "live_now" ? (
+          <div className="w-[90px] shrink-0 border-r-2 border-border border-dashed bg-secondary/40 flex flex-col items-center justify-center p-2 group-hover:bg-secondary/60 transition-colors">
+            <span className="text-[10px] font-black uppercase tracking-widest mb-1 text-foreground animate-pulse inline-flex items-center gap-1">
+              <Radio className="w-2.5 h-2.5" /> Live
             </span>
-          )}
-        </div>
+            <span className="text-xl font-display font-black tracking-tighter leading-none text-foreground">
+              {m.format}
+            </span>
+          </div>
+        ) : (
+          <div className="w-[90px] shrink-0 border-r-2 border-border border-dashed bg-secondary/40 flex flex-col items-center justify-center p-2 group-hover:bg-secondary/60 transition-colors">
+            <span className={`text-[10px] font-black uppercase tracking-widest mb-1 ${tight ? 'text-foreground' : 'text-muted-foreground'}`}>{when}</span>
+            <span className="text-xl font-display font-black tracking-tighter leading-none text-foreground">
+              {time.split(' ')[0]}
+            </span>
+            {time.split(' ')[1] && (
+              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">
+                {time.split(' ')[1]}
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Main Details */}
         <div className="flex-1 p-3.5 flex flex-col justify-center min-w-0">
@@ -307,7 +324,12 @@ const FeedRow = ({ m, user, onTap }: { m: BrowseMatch; user: any; onTap: () => v
             })()}
           </div>
           <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 truncate">
-            {area} <span className="text-[8px]">•</span> <span className="text-foreground">₵{Number(m.entry_fee)}</span>
+            {area} <span className="text-[8px]">•</span>
+            {Number(m.entry_fee) === 0 ? (
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[9px] font-black uppercase tracking-widest">FREE</span>
+            ) : (
+              <span className="text-foreground">₵{Number(m.entry_fee)}</span>
+            )}
           </p>
           
           <div className="flex items-center gap-1.5 mt-2">
@@ -334,9 +356,17 @@ const FeedRow = ({ m, user, onTap }: { m: BrowseMatch; user: any; onTap: () => v
               {m.match_mode === "gala" ? <Repeat className="w-2.5 h-2.5" /> : <Users className="w-2.5 h-2.5" />}
               {m.match_mode === "gala" ? `Gala ${m.format}` : m.format}
             </span>
-            {isConfirmed ? (
+            {m.intelligent_status === "live_now" ? (
+              <span className="inline-flex items-center gap-1 rounded-sm border-2 border-foreground bg-foreground text-background px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest animate-pulse">
+                <Radio className="w-2.5 h-2.5" /> Live Now
+              </span>
+            ) : isJoined ? (
               <span className="inline-flex items-center gap-1 rounded-sm border-2 border-foreground bg-foreground text-background px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest">
-                <Check className="w-2.5 h-2.5" /> Confirmed
+                <Check className="w-2.5 h-2.5" /> Joined
+              </span>
+            ) : isConfirmed ? (
+              <span className="inline-flex items-center gap-1 rounded-sm border-2 border-border text-muted-foreground px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest bg-secondary/60">
+                Full — no spots
               </span>
             ) : (
               <span className={`inline-flex items-center gap-1 rounded-sm border-[1.5px] px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest ${tight ? "border-foreground text-foreground" : "border-border text-muted-foreground bg-secondary/50"}`}>
@@ -353,21 +383,60 @@ const FeedRow = ({ m, user, onTap }: { m: BrowseMatch; user: any; onTap: () => v
 /* ---- Quick-join sheet ---- */
 
 const JoinSheet = ({
-  match, onClose, onJoin, user, openAuth,
+  match, onClose, onJoin, user, openAuth, onRefreshFeed,
 }: {
   match: BrowseMatch | null;
   onClose: () => void;
   onJoin: (team: string) => void;
   user: any;
   openAuth: (mode?: "signin" | "signup") => void;
+  onRefreshFeed?: () => void;
 }) => {
   const [picked, setPicked] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showSubstituteConfirm, setShowSubstituteConfirm] = useState(false);
+  const [participants, setParticipants] = useState<any[]>([]);
+  const [loadingParticipants, setLoadingParticipants] = useState(false);
 
   // Reset team selection whenever a different match opens
   useEffect(() => { setPicked(null); }, [match?.id]);
 
   const open = !!match;
+  const isJoined = user?.id && match?.participants?.some((p: any) => p.user_id === user.id && p.status === "active");
+
+  useEffect(() => {
+    if (!match?.id || !isJoined) {
+      setParticipants([]);
+      return;
+    }
+    
+    let active = true;
+    const fetchParticipants = async () => {
+      setLoadingParticipants(true);
+      const { data, error } = await supabase
+        .from("match_participants")
+        .select(`
+          id, user_id, team, status, slot_type, payment_status, attendance_scanned,
+          profile:profiles(full_name, username, avatar_url)
+        `)
+        .eq("match_id", match.id)
+        .eq("status", "active");
+      
+      if (active) {
+        if (!error && data) {
+          const normalized = data.map((row: any) => {
+            const prof = Array.isArray(row.profile) ? row.profile[0] ?? null : row.profile ?? null;
+            return { ...row, profile: prof };
+          });
+          setParticipants(normalized);
+        }
+        setLoadingParticipants(false);
+      }
+    };
+    fetchParticipants();
+    return () => { active = false; };
+  }, [match?.id, isJoined, user?.id]);
+  const isFull = match?.match_type !== "private" && match?.match_mode !== "gala" && getActiveCoreCount(match) >= (match?.max_core_players ?? match?.players_per_side ?? 10);
 
   const handlePick = (teamName: string) => {
     if (!user) {
@@ -377,13 +446,26 @@ const JoinSheet = ({
     setPicked(teamName);
   };
 
+  // FIX: Issue 1 - Check auth BEFORE checking picked; previously if user had no team
+  // picked, the !picked guard would fire first, silently doing nothing instead of
+  // prompting the unauthenticated user to sign in.
   const handleJoin = () => {
-    if (!picked) return;
     if (!user) {
+      toast.error("Please log in to join a match");
       openAuth("signin");
       return;
     }
-    onJoin(picked);
+    if (!picked) return;
+    if (isFull) {
+      setShowSubstituteConfirm(true);
+    } else {
+      onJoin(picked);
+    }
+  };
+
+  const confirmSubstituteJoin = () => {
+    setShowSubstituteConfirm(false);
+    onJoin("__substitute__");
   };
 
   return (
@@ -414,106 +496,220 @@ const JoinSheet = ({
               <div className="grid grid-cols-2 gap-y-2 text-xs text-muted-foreground mt-1">
                 <div className="inline-flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {getFormattedTime(match.match_date)}</div>
                 <div className="inline-flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> {match.venue?.area ?? match.venue?.city ?? ""}</div>
-                <div className="inline-flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> ₵{Number(match.entry_fee)}/player</div>
+                <div className="inline-flex items-center gap-1.5"><Users className="w-3.5 h-3.5" />
+                  {Number(match.entry_fee) === 0 ? (
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[9px] font-black uppercase tracking-widest">FREE</span>
+                  ) : (
+                    <span>₵{Number(match.entry_fee)}/player</span>
+                  )}
+                </div>
               </div>
             </SheetHeader>
 
-            <section className="px-5 pt-5 pb-4">
-              {/* Public matches: auto-assign team server-side */}
-              {match.match_type !== "private" && match.match_mode !== "gala" ? (
-                <div className="text-center py-4">
-                  <p className="text-sm text-muted-foreground mb-1">Team will be auto-assigned for balance</p>
-                  <p className="text-xs text-muted-foreground">
-                    {getActiveCoreCount(match)}/{match.max_core_players ?? match.players_per_side ?? 10} spots filled
-                  </p>
+            {isJoined ? (
+              <div className="px-5 py-5 pb-10">
+                {loadingParticipants ? (
+                  <div className="flex flex-col items-center justify-center py-10 gap-2">
+                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                    <p className="text-xs text-muted-foreground uppercase tracking-widest font-black">Loading registration details…</p>
+                  </div>
+                ) : (
+                  <AlreadyJoinedView
+                    match={match}
+                    user={user}
+                    participants={participants}
+                    onRefresh={async () => {
+                      if (onRefreshFeed) onRefreshFeed();
+                      const { data } = await supabase
+                        .from("match_participants")
+                        .select(`
+                          id, user_id, team, status, slot_type, payment_status, attendance_scanned,
+                          profile:profiles(full_name, username, avatar_url)
+                        `)
+                        .eq("match_id", match.id)
+                        .eq("status", "active");
+                      if (data) {
+                        const normalized = data.map((row: any) => {
+                          const prof = Array.isArray(row.profile) ? row.profile[0] ?? null : row.profile ?? null;
+                          return { ...row, profile: prof };
+                        });
+                        setParticipants(normalized);
+                      }
+                    }}
+                  />
+                )}
+                <div className="mt-6 pt-5 border-t-2 border-border border-dashed">
+                  <button
+                    onClick={() => { onJoin("__auto__"); }}
+                    className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-lg bg-secondary border-2 border-border text-foreground text-sm font-semibold active:scale-[0.99]"
+                  >
+                    View match lobby
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
                 </div>
-              ) : (
-                <>
-                  <p className="text-sm text-muted-foreground mb-2">Pick your team</p>
-                  <ul className="divide-y divide-border">
-                    {match.match_mode !== "gala" && (
-                      <>
-                        <li>
-                          <button
-                            onClick={() => handlePick("reds")}
-                            className="w-full flex items-center justify-between py-4 text-left"
-                          >
-                            <div>
-                              <p className="text-base font-semibold">Reds</p>
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                {getActiveCoreCount(match)}/{match.max_core_players ?? match.players_per_side ?? 10}
-                              </p>
-                            </div>
-                            {picked === "reds" ? <Check className="w-5 h-5" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
-                          </button>
-                        </li>
-                        <li>
-                          <button
-                            onClick={() => handlePick("blues")}
-                            className="w-full flex items-center justify-between py-4 text-left"
-                          >
-                            <div>
-                              <p className="text-base font-semibold">Blues</p>
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                {getActiveCoreCount(match)}/{match.max_core_players ?? match.players_per_side ?? 10}
-                              </p>
-                            </div>
-                            {picked === "blues" ? <Check className="w-5 h-5" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
-                          </button>
-                        </li>
-                      </>
-                    )}
-                    {match.match_mode === "gala" && (
-                      <li>
-                        <button
-                          onClick={() => handlePick("__bring__")}
-                          className="w-full flex items-center justify-between py-4 text-left"
-                        >
-                          <div>
-                            <p className="text-base font-semibold">Bring my own team</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">Captain a new squad in this gala</p>
-                          </div>
-                          {picked === "__bring__" ? <Check className="w-5 h-5" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
-                        </button>
-                      </li>
-                    )}
-                  </ul>
-                </>
-              )}
-            </section>
+              </div>
+            ) : (
+              <>
+                <section className="px-5 pt-5 pb-4">
+                  {/* Check if match is full - offer substitute option */}
+                  {match.match_type !== "private" && match.match_mode !== "gala" && getActiveCoreCount(match) >= (match.max_core_players ?? match.players_per_side ?? 10) ? (
+                    <div className="text-center py-4 bg-amber-500/10 border-2 border-amber-500/20 rounded-xl">
+                      <p className="text-sm font-bold text-amber-600 dark:text-amber-400 mb-1">Match is full</p>
+                      <p className="text-xs text-muted-foreground mb-3">
+                        You can join as a substitute and take a spot if someone leaves
+                      </p>
+                      <div className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400">
+                        <Users className="w-3.5 h-3.5" />
+                        Substitute available
+                      </div>
+                    </div>
+                  ) : match.match_type !== "private" && match.match_mode !== "gala" ? (
+                    <div className="text-center py-4">
+                      <p className="text-sm text-muted-foreground mb-1">Team will be auto-assigned for balance</p>
+                      <p className="text-xs text-muted-foreground">
+                        {getActiveCoreCount(match)}/{match.max_core_players ?? match.players_per_side ?? 10} spots filled
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-sm text-muted-foreground mb-2">Pick your team</p>
+                      <ul className="divide-y divide-border">
+                        {match.match_mode !== "gala" && (
+                          <>
+                            <li>
+                              <button
+                                onClick={() => handlePick("reds")}
+                                className="w-full flex items-center justify-between py-4 text-left"
+                              >
+                                <div>
+                                  <p className="text-base font-semibold">Reds</p>
+                                  <p className="text-xs text-muted-foreground mt-0.5">
+                                    {getActiveCoreCount(match)}/{match.max_core_players ?? match.players_per_side ?? 10}
+                                  </p>
+                                </div>
+                                {picked === "reds" ? <Check className="w-5 h-5" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+                              </button>
+                            </li>
+                            <li>
+                              <button
+                                onClick={() => handlePick("blues")}
+                                className="w-full flex items-center justify-between py-4 text-left"
+                              >
+                                <div>
+                                  <p className="text-base font-semibold">Blues</p>
+                                  <p className="text-xs text-muted-foreground mt-0.5">
+                                    {getActiveCoreCount(match)}/{match.max_core_players ?? match.players_per_side ?? 10}
+                                  </p>
+                                </div>
+                                {picked === "blues" ? <Check className="w-5 h-5" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+                              </button>
+                            </li>
+                          </>
+                        )}
+                        {match.match_mode === "gala" && (
+                          <li>
+                            <button
+                              onClick={() => handlePick("__bring__")}
+                              className="w-full flex items-center justify-between py-4 text-left"
+                            >
+                              <div>
+                                <p className="text-base font-semibold">Bring my own team</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">Captain a new squad in this gala</p>
+                              </div>
+                              {picked === "__bring__" ? <Check className="w-5 h-5" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+                            </button>
+                          </li>
+                        )}
+                      </ul>
+                    </>
+                  )}
+                </section>
 
-            <div className="sticky bottom-0 bg-background/95 backdrop-blur-md border-t border-border px-5 py-3">
-              {user?.id && match.organizer_id === user.id ? (
-                <button
-                  onClick={() => { onJoin("__auto__"); }}
-                  className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-lg bg-primary text-primary-foreground text-sm font-semibold active:scale-[0.99]"
-                >
-                  Manage match
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              ) : (
-                <button
-                  onClick={() => {
-                    if (!user) { openAuth(); return; }
-                    setBusy(true);
-                    if (match.match_mode === "gala" || match.match_type === "private") {
-                      if (!picked) { setBusy(false); return; }
-                      onJoin(picked === "__bring__" ? "__bring__" : picked);
-                    } else {
-                      onJoin("__auto__");
-                    }
-                    setBusy(false);
-                  }}
-                  disabled={busy || (match.match_mode === "gala" || match.match_type === "private" ? !picked : false)}
-                  className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-lg bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40 active:scale-[0.99]"
-                >
-                  {match.match_type !== "private" && match.match_mode !== "gala"
-                    ? "Join match"
-                    : picked ? `Join as ${picked === "__bring__" ? "captain" : picked}` : "Pick a team to join"}
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              )}
-            </div>
+                <div className="sticky bottom-0 bg-background/95 backdrop-blur-md border-t border-border px-5 py-3">
+                  {user?.id && match.organizer_id === user.id ? (
+                    <button
+                      onClick={() => { onJoin("__auto__"); }}
+                      className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-lg bg-primary text-primary-foreground text-sm font-semibold active:scale-[0.99]"
+                    >
+                      Manage match
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        // FIX: Issue 1 - Auth check fires first; previously openAuth() was
+                        // called with no user feedback, so the user had no context for why
+                        // the login modal appeared. Now a toast explains the requirement.
+                        if (!user) {
+                          toast.error("Please log in to join a match");
+                          openAuth();
+                          return;
+                        }
+                        setBusy(true);
+                        if (match.match_mode === "gala" || match.match_type === "private") {
+                          if (!picked) { setBusy(false); return; }
+                          if (isFull) {
+                            setShowSubstituteConfirm(true);
+                            setBusy(false);
+                          } else {
+                            onJoin(picked === "__bring__" ? "__bring__" : picked);
+                          }
+                        } else {
+                          if (isFull) {
+                            setShowSubstituteConfirm(true);
+                            setBusy(false);
+                          } else {
+                            onJoin("__auto__");
+                          }
+                        }
+                        setBusy(false);
+                      }}
+                      disabled={busy || (match.match_mode === "gala" || match.match_type === "private" ? !picked : false)}
+                      className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-lg bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40 active:scale-[0.99]"
+                    >
+                      {match.match_type !== "private" && match.match_mode !== "gala"
+                        ? isFull ? "Join as substitute" : "Join match"
+                        : picked ? `Join as ${picked === "__bring__" ? "captain" : picked}` : "Pick a team to join"}
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  )}
+
+                  {/* Substitute confirmation modal */}
+                  {showSubstituteConfirm && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setShowSubstituteConfirm(false)}>
+                      <div className="bg-background border-2 border-border rounded-xl p-6 w-full max-w-sm shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                            <Users className="w-5 h-5 text-amber-500" />
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-bold text-foreground">Join as substitute?</h3>
+                            <p className="text-xs text-muted-foreground">You'll be charged only if you get a spot</p>
+                          </div>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          This match is currently full. Join as a substitute and you'll be notified if a spot opens up.{Number(match.entry_fee) > 0 ? ` You'll only be charged ₵${Number(match.entry_fee)} if you get added to the match.` : " This match is free — no charge to join."}
+                        </p>
+                        <div className="flex gap-3">
+                          <button
+                            onClick={() => setShowSubstituteConfirm(false)}
+                            className="flex-1 py-2.5 rounded-xl bg-secondary text-foreground text-sm font-semibold hover:bg-secondary/80 transition-all"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={confirmSubstituteJoin}
+                            className="flex-1 py-2.5 rounded-xl bg-foreground text-background text-sm font-semibold hover:bg-foreground/90 transition-all"
+                          >
+                            Join as substitute
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </>
         )}
       </SheetContent>

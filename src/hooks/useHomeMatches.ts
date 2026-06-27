@@ -43,6 +43,7 @@ export type HomeMatch = {
   duration_minutes: number;
   entry_fee: number;
   status: string;
+  intelligent_status: string | null;
   core_paid_count: number;
   notes: string | null;
   organizer_id: string | null;
@@ -55,6 +56,8 @@ const PAGE_SIZE = 10;
 
 async function fetchHomeMatches(cursor?: string): Promise<HomeMatch[]> {
   const now = new Date().toISOString();
+  // Look back 3 hours to capture live matches that have already started
+  const liveWindow = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
   let q = supabase
     .from("matches")
     .select(`
@@ -62,9 +65,9 @@ async function fetchHomeMatches(cursor?: string): Promise<HomeMatch[]> {
       venue:venues(id, name, city, area, lat, lng),
       participants:match_participants(id, user_id, status, team, slot_type, payment_status)
     `)
-    .in("status", ["upcoming", "live"] as any)
+    .in("intelligent_status", ["upcoming", "soon", "live_now"] as any)
     .eq("match_type", "public" as any)
-    .gte("match_date", now)
+    .gte("match_date", liveWindow)
     .order("match_date", { ascending: true })
     .limit(PAGE_SIZE);
 
@@ -81,6 +84,7 @@ async function fetchHomeMatches(cursor?: string): Promise<HomeMatch[]> {
     // instead of crashing the entire feed.
     const code = (error as any).code ?? "";
     const status = (error as any).status ?? 0;
+    console.log('Home matches query error:', error);
     if (status === 401 || status === 403 || code === "PGRST301") {
       return [];
     }
@@ -88,6 +92,7 @@ async function fetchHomeMatches(cursor?: string): Promise<HomeMatch[]> {
   }
 
   const rows = data ?? [];
+  console.log('Fetched home matches:', rows.length);
 
   // Two-step: fetch organizer profiles from public_profiles (safe view)
   const organizerIds = [...new Set(rows.map((r: any) => r.organizer_id).filter(Boolean))];
@@ -100,12 +105,20 @@ async function fetchHomeMatches(cursor?: string): Promise<HomeMatch[]> {
     (profs ?? []).forEach((p: any) => { organizerMap[p.id] = p; });
   }
 
-  return rows.map((row: any) => ({
+  const mapped = rows.map((row: any) => ({
     ...row,
     venue: Array.isArray(row.venue) ? row.venue[0] ?? null : row.venue ?? null,
     organizer: organizerMap[(row as any).organizer_id] ?? null,
     participants: Array.isArray(row.participants) ? row.participants : [],
   })) as HomeMatch[];
+
+  // Sort: live_now first, then by match_date ascending
+  return mapped.sort((a, b) => {
+    const aLive = a.intelligent_status === "live_now" ? 0 : 1;
+    const bLive = b.intelligent_status === "live_now" ? 0 : 1;
+    if (aLive !== bLive) return aLive - bLive;
+    return new Date(a.match_date).getTime() - new Date(b.match_date).getTime();
+  });
 }
 
 export function useHomeMatches() {

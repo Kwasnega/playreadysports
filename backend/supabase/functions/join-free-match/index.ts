@@ -2,6 +2,13 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { checkRateLimit } from "../_shared/rateLimiter.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 
+const normalizeTeamSide = (team?: string | null): "reds" | "blues" | "unassigned" => {
+  const value = String(team ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (["reds", "red", "team_a", "a"].includes(value)) return "reds";
+  if (["blues", "blue", "team_b", "b"].includes(value)) return "blues";
+  return "unassigned";
+};
+
 Deno.serve(async (req) => {
   const corsHeaders = getCorsHeaders();
   if (req.method === "OPTIONS") {
@@ -60,7 +67,7 @@ Deno.serve(async (req) => {
     const { data: rpcResult, error: rpcErr } = await svc.rpc("process_free_join", {
       p_match_id: matchId,
       p_user_id:  user.id,
-      p_team:     team || "unassigned",
+      p_team:     normalizeTeamSide(team),
     });
 
     if (rpcErr) {
@@ -71,6 +78,72 @@ Deno.serve(async (req) => {
 
     const result = rpcResult as any;
     if (!result?.success) {
+      if (result?.error === "Match is full") {
+        const { data: existing } = await svc
+          .from("match_participants")
+          .select("id, status, waitlist_position")
+          .eq("match_id", matchId)
+          .eq("user_id", user.id)
+          .in("status", ["active", "waitlist", "waitlisted"] as any)
+          .maybeSingle();
+
+        if (existing) {
+          return new Response(JSON.stringify({
+            waitlisted: existing.status === "waitlist",
+            position: existing.waitlist_position,
+            participant_id: existing.id,
+          }), {
+            status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const { data: lastWaitlist } = await svc
+          .from("match_participants")
+          .select("waitlist_position")
+          .eq("match_id", matchId)
+          .in("status", ["waitlist", "waitlisted"] as any)
+          .order("waitlist_position", { ascending: false })
+          .limit(1);
+        const nextPos = ((lastWaitlist?.[0] as any)?.waitlist_position ?? 0) + 1;
+
+        const { data: substitute, error: subErr } = await svc
+          .from("match_participants")
+          .insert({
+            match_id: matchId,
+            user_id: user.id,
+            team: "unassigned" as any,
+            slot_type: "spare" as any,
+            status: "waitlist" as any,
+            payment_status: "unpaid" as any,
+            waitlist_position: nextPos,
+          })
+          .select("id, waitlist_position")
+          .single();
+
+        if (subErr) {
+          return new Response(JSON.stringify({ error: subErr.message }), {
+            status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        await svc.from("notifications").insert({
+          user_id: user.id,
+          title: "Added as substitute",
+          body: `Match ${match?.join_code ?? ""} is full. You're #${nextPos}; we'll move you in if a spot opens.`,
+          type: "match_update" as any,
+          data: { match_id: matchId, join_code: match?.join_code, waitlist_position: nextPos },
+        });
+
+        return new Response(JSON.stringify({
+          success: true,
+          waitlisted: true,
+          position: nextPos,
+          participant_id: substitute?.id,
+        }), {
+          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       const status = result?.error === "Match is full" ? 400 : 400;
       return new Response(JSON.stringify({ error: result?.error || "Join failed" }), {
         status, headers: { ...corsHeaders, "Content-Type": "application/json" },

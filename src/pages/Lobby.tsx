@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft, Wallet, Check, Share2, X, UserCheck,
-  Calendar, MessageCircle, Hourglass, Flag, Ban,
+  Calendar, MessageCircle, Hourglass, Flag, Ban, Lock, Unlock,
 } from "lucide-react";
 import { LobbyChat } from "@/components/LobbyChat";
 import { ShareMatchCard } from "@/components/matches/ShareMatchCard";
@@ -24,8 +24,16 @@ import { useCountdown, buildPlayerList, buildSpareList } from "@/components/lobb
 import { MatchVotingModal, type PublicProfile } from "@/components/matches/MatchVotingModal";
 import { SubmitMatchResult } from "@/components/matches/SubmitMatchResult";
 import { useSEO } from "@/hooks/useSEO";
+import MatchLineup from "@/components/matches/MatchLineup";
 
 /* Tier-3 Lobby — wired to Supabase --------------------------------------- */
+
+const normalizeTeamSide = (team?: string | null): "reds" | "blues" | "unassigned" => {
+  const value = String(team ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (["reds", "red", "team_a", "a"].includes(value)) return "reds";
+  if (["blues", "blue", "team_b", "b"].includes(value)) return "blues";
+  return "unassigned";
+};
 
 const Lobby = () => {
   const confirm = useConfirm();
@@ -38,17 +46,10 @@ const Lobby = () => {
   const { user, openAuth } = useAuth();
   const [checkInCode, setCheckInCode] = useState("");
   const [checkInBusy, setCheckInBusy] = useState(false);
-  const [scanning, setScanning] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const scanIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const scanningRef = useRef(false);
+  // FIX: Issue 2 - Removed: scanning state, videoRef, scanIntervalRef, scanningRef
+  // and the broken startScan/stopScan functions. Camera scanning is now handled by
+  // QRScannerModal which owns its own refs and lifecycle entirely.
 
-  useEffect(() => () => {
-    if (scanIntervalRef.current) clearInterval(scanIntervalRef.current);
-    if (videoRef.current?.srcObject) {
-      (videoRef.current.srcObject as MediaStream).getTracks().forEach((t) => t.stop());
-    }
-  }, []);
 
   const {
     match,
@@ -86,14 +87,104 @@ const Lobby = () => {
     } : undefined
   });
 
-  const [tab, setTab] = useState<"match" | "teams" | "chat">("match");
+  const [tab, setTab] = useState<"match" | "teams" | "chat" | "lineup">("match");
+  const [lineupTeam, setLineupTeam] = useState<"reds" | "blues">("reds");
   const [ending, setEnding] = useState(false);
   const [chatUnread] = useState(0);
   const [chatPreview] = useState("");
+  const [lineupEditingEnabled, setLineupEditingEnabled] = useState(true);
+
+  // Auto-lock lineup 30 minutes before match start
+  useEffect(() => {
+    if (!match?.match_date) return;
+    if (match.status === "completed" || match.status === "cancelled") return;
+    
+    const checkAutoLock = () => {
+      const now = Date.now();
+      const matchTime = new Date(match.match_date).getTime();
+      const minutesUntilMatch = (matchTime - now) / (1000 * 60);
+      
+      // Auto-lock if less than 30 minutes before match
+      if (minutesUntilMatch > 0 && minutesUntilMatch < 30 && lineupEditingEnabled) {
+        setLineupEditingEnabled(false);
+        toast.info("Lineup auto-locked 30 minutes before kickoff");
+      }
+    };
+
+    checkAutoLock();
+    const interval = setInterval(checkAutoLock, 60000); // Check every minute
+    
+    return () => clearInterval(interval);
+  }, [match?.match_date, match?.status, lineupEditingEnabled]);
+
+  // Fetch lineup editing state from match
+  useEffect(() => {
+    if (!match?.id) return;
+    
+    const fetchLineupState = async () => {
+      const { data } = await supabase
+        .from("matches")
+        .select("lineup_editing_enabled")
+        .eq("id", match.id)
+        .single();
+      
+      if (data?.lineup_editing_enabled !== undefined) {
+        setLineupEditingEnabled(data.lineup_editing_enabled);
+      }
+    };
+
+    fetchLineupState();
+
+    // Subscribe to changes
+    const channel = supabase
+      .channel(`lineup-editing:${match.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "matches",
+          filter: `id=eq.${match.id}`,
+        },
+        (payload) => {
+          if (payload.new?.lineup_editing_enabled !== undefined) {
+            setLineupEditingEnabled(payload.new.lineup_editing_enabled);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [match?.id]);
+
+  const toggleLineupEditing = async () => {
+    if (!match?.id || !isOrganizer) return;
+    
+    const newState = !lineupEditingEnabled;
+    const { error } = await supabase
+      .from("matches")
+      .update({ lineup_editing_enabled: newState })
+      .eq("id", match.id);
+    
+    if (error) {
+      toast.error("Failed to update lineup settings");
+    } else {
+      setLineupEditingEnabled(newState);
+      toast.success(newState ? "Lineup opened for editing" : "Lineup locked");
+    }
+  };
+
+  // Check if user can edit lineup
+  const canEditLineup = isOrganizer || (lineupEditingEnabled && userParticipant?.status === "active");
+  const userTeamSide = normalizeTeamSide(userParticipant?.team);
+  const canEditCurrentTeam = canEditLineup && (isOrganizer || userTeamSide === lineupTeam);
 
   const [shareOpen, setShareOpen] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paying, setPaying] = useState(false);
+  const joinIntentHandledRef = useRef(false);
 
   /* ---- voting modal ---- */
   const [votingOpen, setVotingOpen] = useState(false);
@@ -231,17 +322,10 @@ const Lobby = () => {
   // Resolve __auto__ to the team with fewer core players
   // Map display names to valid DB enum values ('reds', 'blues')
   const resolvedTeam = useMemo(() => {
-    if (teamFromUrl && teamFromUrl !== "__auto__") {
-      return teamFromUrl === "red" ? "reds" : teamFromUrl === "blue" ? "blues" : teamFromUrl;
-    }
-    const teamA = (match?.team_color_a ?? "Red").toLowerCase();
-    const teamB = (match?.team_color_b ?? "Blue").toLowerCase();
-    const enumA = teamA === "red" ? "reds" : teamA === "blue" ? "blues" : teamA;
-    const enumB = teamB === "red" ? "reds" : teamB === "blue" ? "blues" : teamB;
-    const countA = coreList.filter((p: any) => p.team === enumA).length;
-    const countB = coreList.filter((p: any) => p.team === enumB).length;
-    return countA <= countB ? enumA : enumB;
-  }, [teamFromUrl, match?.team_color_a, match?.team_color_b, coreList]);
+    const countA = coreList.filter((p: any) => normalizeTeamSide(p.team) === "reds").length;
+    const countB = coreList.filter((p: any) => normalizeTeamSide(p.team) === "blues").length;
+    return countA <= countB ? "reds" : "blues";
+  }, [coreList]);
 
   const matchMode = match?.match_mode === "gala" ? "gala" : "two-team";
   const targetDate = match?.match_date;
@@ -250,6 +334,11 @@ const Lobby = () => {
   const venueCost = match ? Number(match.entry_fee) * maxCore : 0;
   const sharePerPlayer = maxCore && maxCore > 0 ? Math.ceil(venueCost / maxCore) : 0;
   const allPaid = corePaidCount >= maxCore;
+  const showLineupTab = !!userParticipant && userParticipant.status !== "left" && match?.status === "full" && allPaid;
+
+  useEffect(() => {
+    if (tab === "lineup" && !showLineupTab) setTab("match");
+  }, [showLineupTab, tab]);
 
   const corePlayers = buildPlayerList(coreList);
   const sparePlayers = buildSpareList(spareList);
@@ -264,66 +353,74 @@ const Lobby = () => {
   const hoursUntilMatch = matchTimeMs ? (matchTimeMs - nowMs) / (1000 * 60 * 60) : Infinity;
   const showCheckIn = match?.status !== 'completed' && match?.status !== 'cancelled' && hoursUntilMatch <= 1.5 && hoursUntilMatch >= -2;
 
-  /* ─── QR Scanner helpers ─── */
-  const startScan = async () => {
-    if (!videoRef.current) return;
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-      videoRef.current.srcObject = stream;
-      await videoRef.current.play();
-      scanningRef.current = true;
-      setScanning(true);
+  /* ─── QR Scanner helpers (delegated to QRScannerModal) ─── */
+  // FIX: Issue 2 - startScan/stopScan removed; QRScannerModal manages its own camera
+  // stream internally so these functions are no longer needed in Lobby.tsx.
 
-      const detect = async () => {
-        if (!videoRef.current || !scanningRef.current) return;
-        const hasDetector = "BarcodeDetector" in window;
-        if (hasDetector) {
-          try {
-            const detector = new (window as any).BarcodeDetector({ formats: ["qr_code"] });
-            const results = await detector.detect(videoRef.current);
-            if (results.length > 0) {
-              const raw = results[0].rawValue;
-              stopScan();
-              await submitCheckIn(raw);
-              return;
-            }
-          } catch {}
-        }
-      };
-      scanIntervalRef.current = setInterval(detect, 600);
-    } catch {
-      toast.error("Camera access denied or unavailable.");
-    }
-  };
-
-  const stopScan = () => {
-    scanningRef.current = false;
-    if (scanIntervalRef.current) {
-      clearInterval(scanIntervalRef.current);
-      scanIntervalRef.current = null;
-    }
-    if (videoRef.current?.srcObject) {
-      (videoRef.current.srcObject as MediaStream).getTracks().forEach((t) => t.stop());
-      videoRef.current.srcObject = null;
-    }
-    setScanning(false);
-  };
-
+  // FIX: Issue 3 - Rewritten submitCheckIn with:
+  //   1. Pre-call empty-input validation with user-facing message
+  //   2. Pre-call 10-char minimum validation with specific guidance
+  //   3. Token sanitization (uppercase + strip non-alphanumeric) before API call
+  //   4. Success message includes match name: "✅ You're checked in to [Match Name]!"
+  //   5. already: true response shown as info (not another success toast)
+  //   6. Clear, specific error messages for every rejection case
   const submitCheckIn = async (token: string) => {
-    if (!token || !match?.id) return;
+    // Pre-call: empty check
+    const sanitized = token.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (!sanitized) {
+      toast.warning("Please enter a check-in code.");
+      return;
+    }
+    // Pre-call: length check — the backend regex requires exactly 10 chars
+    if (sanitized.length !== 10) {
+      toast.warning(`Code must be 10 characters — you entered ${sanitized.length}.`);
+      return;
+    }
+    if (!match?.id) return;
     setCheckInBusy(true);
     try {
-      const { data, error } = await supabase.functions.invoke("scan-match-qr", { body: { token } });
+      const { data, error } = await supabase.functions.invoke("scan-match-qr", {
+        body: { token: sanitized },
+      });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      toast.success(data?.message || "Checked in!");
+
+      // Differentiate "already checked in" from a fresh check-in
+      if (data?.already) {
+        toast.info("You are already checked in! ✅");
+      } else {
+        // FIX: Issue 3 - Include match name in success message
+        const venueName = venue?.name ?? match?.join_code ?? "match";
+        toast.success(`✅ You're checked in to ${venueName}!`);
+      }
+
       await refresh();
     } catch (e: any) {
-      toast.error(e?.message || "Check-in failed");
+      // FIX: Issue 3 - Map specific error strings from the edge function to
+      // clear, human-friendly messages instead of surfacing raw API text.
+      const msg: string = e?.message ?? "";
+      if (msg.includes("not registered")) {
+        toast.error("You are not registered for this match.");
+      } else if (msg.includes("already checked in") || msg.includes("already")) {
+        toast.info("You are already checked in! ✅");
+      } else if (msg.includes("not open for check-in") || msg.includes("cancelled") || msg.includes("completed")) {
+        toast.error("This match is no longer open for check-in.");
+      } else if (msg.includes("around match time")) {
+        toast.error("Check-in is only available within 2 hours of match time.");
+      } else if (msg.includes("payment") || msg.includes("paid")) {
+        toast.error("Please complete your payment before checking in.");
+      } else if (msg.includes("Invalid") || msg.includes("not found") || msg.includes("expired")) {
+        toast.error("Invalid check-in code. Please check and try again.");
+      } else if (msg.includes("active")) {
+        toast.error("Only active match participants can check in.");
+      } else {
+        toast.error(msg || "Check-in failed. Please try again.");
+      }
     } finally {
       setCheckInBusy(false);
     }
   };
+
 
   const endMatch = async () => {
     if (!match) return;
@@ -367,10 +464,36 @@ const Lobby = () => {
 
   const { balance, payForMatch } = useWallet();
 
-  const handleJoinPaid = () => {
+  const handleJoinPaid = useCallback(() => {
     if (!match?.id) return;
     setPaymentModalOpen(true);
-  };
+  }, [match?.id]);
+
+  // FIX: Issue 1 - Guard auth before any Supabase call; previously an unauthenticated
+  // user reaching the lobby via direct URL could trigger an RLS-blocked edge-function
+  // call and receive a raw error in the UI.
+  const handleJoinSubstitute = useCallback(async () => {
+    if (!user) {
+      toast.error("Please log in to join a match");
+      openAuth();
+      return;
+    }
+    if (!match?.id) return;
+    try {
+      const { data, error } = await supabase.functions.invoke("join-match", {
+        body: { matchId: match.id, team: "unassigned", slotType: "spare" },
+      });
+      if (error) throw error;
+      if (data?.waitlisted) {
+        toast.info(`Match is full — you're substitute #${data.position}`);
+      } else {
+        toast.success("Joined as substitute");
+      }
+      await refresh();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to join as substitute");
+    }
+  }, [match?.id, openAuth, refresh, user]);
 
   const handleWalletPay = async () => {
     if (!match?.id) return;
@@ -380,7 +503,7 @@ const Lobby = () => {
       return;
     }
     setPaying(true);
-    const team = userParticipant?.team || resolvedTeam || "unassigned";
+    const team = normalizeTeamSide(userParticipant?.team || resolvedTeam);
     const res = await payForMatch(match.id, team, "core");
     if (res.success) {
       toast.success("Payment confirmed! You're in.");
@@ -393,11 +516,17 @@ const Lobby = () => {
     }
   };
 
-  const handleJoinFree = async () => {
+  // FIX: Issue 1 - Guard auth before any Supabase call; same reason as handleJoinSubstitute.
+  const handleJoinFree = useCallback(async () => {
+    if (!user) {
+      toast.error("Please log in to join a match");
+      openAuth();
+      return;
+    }
     if (!match?.id) return;
     try {
       const { data, error } = await supabase.functions.invoke("join-free-match", {
-        body: { matchId: match.id, team: resolvedTeam || "unassigned" },
+        body: { matchId: match.id, team: normalizeTeamSide(resolvedTeam) },
       });
       if (error) throw error;
       if (data?.waitlisted) {
@@ -409,7 +538,30 @@ const Lobby = () => {
     } catch (err: any) {
       toast.error(err.message || "Failed to join");
     }
-  };
+  }, [match?.id, openAuth, refresh, resolvedTeam, user]);
+
+  useEffect(() => {
+    if (joinIntentHandledRef.current || loading || !match?.id || userParticipant) return;
+    if (!teamFromUrl) return;
+
+    if (!user) {
+      openAuth();
+      return;
+    }
+
+    joinIntentHandledRef.current = true;
+    const wantsSubstitute = teamFromUrl.includes("substitute") || teamFromUrl === "__substitute__";
+    if (wantsSubstitute || match.status === "full") {
+      void handleJoinSubstitute();
+      return;
+    }
+
+    if (Number(match.entry_fee ?? 0) > 0) {
+      setPaymentModalOpen(true);
+    } else {
+      void handleJoinFree();
+    }
+  }, [allPaid, handleJoinFree, handleJoinSubstitute, loading, match?.entry_fee, match?.id, match?.status, openAuth, teamFromUrl, user, userParticipant]);
 
   const handleLeaveMatch = async () => {
     if (!match?.id || !userParticipant) return;
@@ -445,17 +597,27 @@ const Lobby = () => {
   /* ---- Contextual CTA ---- */
   const cta = useMemo(() => {
     if (!match) return null;
+    const isFreeMatch = Number(match.entry_fee ?? 0) === 0;
     if (match.status === 'completed') return { label: "Match Over", icon: Flag, disabled: true, onClick: () => {}, tone: "neutral" as const };
     if (match.status === 'cancelled') return { label: "Match Cancelled", icon: X, disabled: true, onClick: () => {}, tone: "neutral" as const };
     if (isOrganizer) {
       if (allPaid) return { label: "Match confirmed", icon: Check, disabled: true, onClick: () => {}, tone: "success" as const };
-      if (corePaidCount === maxCore - 1) return { label: `Cover last slot · ₵${sharePerPlayer}`, icon: Wallet, disabled: paying, onClick: handleJoinPaid, tone: "primary" as const };
+      if (!isFreeMatch && corePaidCount === maxCore - 1) return { label: `Cover last slot · ₵${sharePerPlayer}`, icon: Wallet, disabled: paying, onClick: handleJoinPaid, tone: "primary" as const };
       return { label: `${corePaidCount}/${maxCore} paid · waiting`, icon: Hourglass, disabled: true, onClick: () => {}, tone: "neutral" as const };
     }
     if (!userParticipant) {
       const isPaid = (match.entry_fee ?? 0) > 0;
+      if (match.status === "full") {
+        return {
+          label: "Join as substitute",
+          icon: UserCheck,
+          disabled: paying,
+          tone: "primary" as const,
+          onClick: handleJoinSubstitute,
+        };
+      }
       return {
-        label: isPaid ? `Join · ₵${sharePerPlayer}` : "Join match",
+        label: isPaid ? `Join · ₵${sharePerPlayer}` : "Join match · FREE",
         icon: UserCheck,
         disabled: paying,
         tone: "primary" as const,
@@ -479,7 +641,7 @@ const Lobby = () => {
       return { label: "Match confirmed · Add to calendar", icon: Calendar, disabled: false, tone: "success" as const, onClick: () => toast.success("Added to your calendar") };
     }
     return { label: `Waiting · ${corePaidCount}/${maxCore} paid`, icon: Hourglass, disabled: true, tone: "neutral" as const, onClick: () => {} };
-  }, [isOrganizer, allPaid, corePaidCount, maxCore, sharePerPlayer, match, userParticipant, paying]);
+  }, [isOrganizer, allPaid, corePaidCount, maxCore, sharePerPlayer, match, userParticipant, paying, handleJoinFree, handleJoinPaid, handleJoinSubstitute]);
 
   // Countdown display
   const isMatchOver = match?.status === 'completed';
@@ -534,14 +696,18 @@ const Lobby = () => {
         </div>
         {/* Tab strip */}
         <div className="max-w-[680px] mx-auto px-5 pb-3">
-          <div className={`grid gap-2 ${userParticipant ? "grid-cols-3" : "grid-cols-2"}`}>
+            <div className={`grid gap-2 ${userParticipant && userParticipant.status !== "left" ? (showLineupTab ? "grid-cols-4" : "grid-cols-3") : "grid-cols-2"}`}>
             {([
               { id: "match" as const, label: "MATCH" },
               { id: "teams" as const, label: `TEAMS · ${corePaidCount}/${maxCore}` },
-              ...(userParticipant ? [{ id: "chat" as const, label: "CHAT" }] : []),
+              ...(showLineupTab ? [{ id: "lineup" as const, label: "LINEUP" }] : []),
+              ...(userParticipant && userParticipant.status !== "left" ? [{ id: "chat" as const, label: "CHAT" }] : []),
             ] as const).map(t => (
               <button key={t.id} onClick={() => setTab(t.id as any)} className={`inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl border-2 px-2 sm:px-4 py-2.5 text-[9px] sm:text-[10px] font-black tracking-widest transition-colors ${tab === t.id ? "bg-foreground text-background border-foreground shadow-sm" : "bg-card text-foreground border-border hover:bg-secondary"}`}>
                 {t.label}
+                {t.id === "lineup" && !lineupEditingEnabled && (
+                  <Lock className="w-3 h-3" />
+                )}
                 {t.id === "teams" && joinRequests.length > 0 && isOrganizer && (
                   <span className="text-[9px] bg-background text-foreground border border-foreground rounded-sm px-1.5 ml-0.5">{joinRequests.length}</span>
                 )}
@@ -595,10 +761,8 @@ const Lobby = () => {
             checkInCode={checkInCode}
             setCheckInCode={setCheckInCode}
             checkInBusy={checkInBusy}
-            scanning={scanning}
-            videoRef={videoRef}
-            startScan={startScan}
-            stopScan={stopScan}
+            // FIX: Issue 2 - scanning, videoRef, startScan, stopScan removed;
+            // QRScannerModal now owns all scanner state internally.
             submitCheckIn={submitCheckIn}
             endMatch={endMatch}
             cancelMatch={cancelMatch}
@@ -619,6 +783,12 @@ const Lobby = () => {
             teamAName={match?.team_color_a ?? "Team A"}
             teamBName={match?.team_color_b ?? "Team B"}
             isGala={match?.match_mode === "gala"}
+            matchDate={match?.match_date}
+            maxCoreCount={match?.max_core_players ?? 10}
+            coreCheckedInCount={coreList.filter(p => p.status === "checked_in").length}
+            allPaid={match ? (corePaidCount >= (match.max_core_players ?? 10)) : false}
+            matchCode={matchCode}
+            matchTitle={match?.title ?? "Your Match"}
             onSubmitted={() => toast.success("Match completed!")}
           />
         )}
@@ -646,7 +816,96 @@ const Lobby = () => {
           />
         )}
 
-        {tab === "chat" && match && userParticipant && (
+        {tab === "lineup" && match && (
+          <div className="space-y-4">
+            {/* Lineup Editing Control Banner */}
+            {isOrganizer ? (
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={toggleLineupEditing}
+                  className={`h-11 rounded-xl border-2 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 ${
+                    lineupEditingEnabled
+                      ? "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30"
+                      : "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/30"
+                  }`}
+                >
+                  {lineupEditingEnabled ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                  {lineupEditingEnabled ? "Open" : "Locked"}
+                </button>
+                <div className="h-11 rounded-xl border-2 border-border bg-card flex items-center justify-center text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                  {lineupEditingEnabled ? "Players can edit" : "Only you can edit"}
+                </div>
+              </div>
+            ) : (
+              <div className={`rounded-xl border-2 p-4 flex items-start gap-3 ${
+                lineupEditingEnabled
+                  ? "bg-green-500/10 border-green-500/30"
+                  : "bg-orange-500/10 border-orange-500/30"
+              }`}>
+                {lineupEditingEnabled ? (
+                  <Unlock className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                ) : (
+                  <Lock className="w-5 h-5 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" />
+                )}
+                <div>
+                  <p className={`text-sm font-bold ${lineupEditingEnabled ? "text-green-600 dark:text-green-400" : "text-orange-600 dark:text-orange-400"} uppercase tracking-widest mb-1`}>
+                    {lineupEditingEnabled ? "Lineup is Open" : "Lineup is Locked"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {lineupEditingEnabled
+                      ? "You can edit your team's lineup positions"
+                      : "Only the organizer can edit the lineup"}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Team Selection */}
+            {isOrganizer && (
+              <div className="grid grid-cols-2 gap-2">
+                {([
+                  { id: "reds" as const, label: match.team_color_a ?? "Team A" },
+                  { id: "blues" as const, label: match.team_color_b ?? "Team B" },
+                ]).map((team) => (
+                  <button
+                    key={team.id}
+                    onClick={() => setLineupTeam(team.id)}
+                    className={`h-11 rounded-xl border-2 text-[10px] font-black uppercase tracking-widest ${
+                      lineupTeam === team.id
+                        ? "bg-foreground text-background border-foreground"
+                        : "bg-card text-foreground border-border"
+                    }`}
+                  >
+                    {team.label}
+                  </button>
+                ))}
+              </div>
+            )}
+            {(() => {
+              const selectedTeam = isOrganizer ? lineupTeam : normalizeTeamSide(userParticipant?.team);
+              return (
+                <MatchLineup
+                  matchId={match.id}
+                  teamSide={selectedTeam === "reds" ? "team_a" : "team_b"}
+                  teamName={selectedTeam === "reds" ? (match.team_color_a ?? "Team A") : (match.team_color_b ?? "Team B")}
+                  maxPlayers={Math.ceil((match.max_core_players ?? 10) / 2)}
+                  canEdit={canEditCurrentTeam}
+                  matchDate={match.match_date}
+                  matchStatus={match.status}
+                  players={coreList
+                    .filter((p) => normalizeTeamSide(p.team) === selectedTeam)
+                    .map((p) => ({
+                      user_id: p.user_id,
+                      full_name: p.full_name,
+                      avatar_url: p.avatar_url,
+                    }))}
+                />
+              );
+            })()}
+          </div>
+        )}
+
+        {tab === "chat" && match && userParticipant && match.status !== 'completed' && match.status !== 'cancelled' && (
           <LobbyChat
             matchCode={matchCode}
             matchId={match.id}
@@ -692,6 +951,7 @@ const Lobby = () => {
             mode: match.match_mode,
             entryFee: Number(match.entry_fee),
             spotsLeft: maxCore - coreCount,
+            status: match.status,
           }}
         />
       )}

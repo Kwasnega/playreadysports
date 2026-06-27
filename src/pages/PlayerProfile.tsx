@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   ArrowLeft, Star, MapPin, ShieldAlert, Calendar, Trophy,
-  Swords, MessageSquare, User, Flag, UserPlus, UserCheck, UserX, Loader2, Send
+  Swords, MessageSquare, Share2, User, Flag, UserPlus, UserCheck, UserX, Loader2, Send
 } from "lucide-react";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/hooks/useAuth";
@@ -112,7 +112,7 @@ const ReportModal = ({
 const PlayerProfile = () => {
   const { username } = useParams<{ username: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, openAuth } = useAuth();
   const { profile, stats, matchHistory, reviews, loading } = useProfile(username);
 
   useSEO({
@@ -157,10 +157,22 @@ const PlayerProfile = () => {
 
   const handleAddFriend = async () => {
     if (!profile?.id) return;
+    
+    // Explicit session check to ensure the user is genuinely logged in
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      toast.info("You're not logged in. Please log in to send friend requests.");
+      openAuth("signin");
+      return;
+    }
+    
     setFriendLoading(true);
     const result = await sendRequest(profile.id);
     if (!result.error) {
       setFriendStatus("pending_sent");
+      toast.success(`Friend request sent to ${profile.full_name ?? profile.username ?? "this player"}! 🤝`);
+    } else {
+      toast.error(result.error);
     }
     setFriendLoading(false);
   };
@@ -180,6 +192,17 @@ const PlayerProfile = () => {
     setFriendStatus("none");
     setFriendshipId(null);
     setFriendLoading(false);
+  };
+
+  const handleShareProfile = async () => {
+    if (!profile?.username) return;
+    const url = `${window.location.origin}/player/${profile.username}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Profile link copied");
+    } catch {
+      toast.error("Unable to copy profile link");
+    }
   };
 
   return (
@@ -251,15 +274,15 @@ const PlayerProfile = () => {
                       <button
                         onClick={handleAddFriend}
                         disabled={friendLoading}
-                        className="inline-flex items-center gap-1.5 text-[11px] font-semibold bg-primary/8 border border-primary/15 text-primary hover:bg-primary/20 rounded-full px-3 py-1.5 disabled:opacity-50"
+                        className="inline-flex items-center gap-2.5 text-sm font-black tracking-wide bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:via-sky-500 hover:to-blue-500 text-white rounded-full px-6 py-3 shadow-xl shadow-cyan-500/40 hover:shadow-cyan-500/60 hover:scale-[1.04] active:scale-[0.97] transition-all duration-200 disabled:opacity-60 disabled:shadow-none disabled:scale-100 ring-2 ring-cyan-400/30 hover:ring-cyan-400/60"
                       >
-                        {friendLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserPlus className="w-3 h-3" />}
-                        Add friend
+                        {friendLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-[18px] h-[18px]" />}
+                        Add Friend
                       </button>
                     )}
                     {friendStatus === "pending_sent" && (
-                      <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold bg-secondary text-muted-foreground rounded-full px-3 py-1.5">
-                        <Loader2 className="w-3 h-3" /> Request sent
+                      <span className="inline-flex items-center gap-2 text-sm font-bold border border-amber-500/30 bg-amber-500/10 text-amber-600 rounded-full px-4 py-2.5 shadow-sm animate-pulse">
+                        <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" /> Request Sent
                       </span>
                     )}
                     {friendStatus === "pending_received" && (
@@ -283,16 +306,10 @@ const PlayerProfile = () => {
                       </button>
                     )}
                     <button
-                      onClick={() => toast.info("Messaging coming soon")}
+                      onClick={handleShareProfile}
                       className="inline-flex items-center gap-1.5 text-[11px] font-semibold bg-secondary text-muted-foreground hover:bg-secondary/80 rounded-full px-3 py-1.5"
                     >
-                      <MessageSquare className="w-3 h-3" /> Message
-                    </button>
-                    <button
-                      onClick={() => toast.info("Invite feature coming soon")}
-                      className="inline-flex items-center gap-1.5 text-[11px] font-semibold bg-secondary text-muted-foreground hover:bg-secondary/80 rounded-full px-3 py-1.5"
-                    >
-                      <Send className="w-3 h-3" /> Invite
+                      <Share2 className="w-3 h-3" /> Share profile
                     </button>
                     <button
                       onClick={() => setReportOpen(true)}
