@@ -21,6 +21,7 @@ const Pitch = memo(function Pitch({
   const [draggedPlayer, setDraggedPlayer] = useState<string | null>(null);
 
   const teamColor = teamSide === "team_a" ? "white" : "black";
+  const currentFormation = players[0]?.formation || "Formation";
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     if (!canEdit) return;
@@ -70,35 +71,59 @@ const Pitch = memo(function Pitch({
 
   return (
     <div
-      className="relative w-full aspect-video bg-gradient-to-b from-green-600 via-green-600 to-green-700 rounded-2xl overflow-hidden shadow-2xl border-4 border-green-800"
+      className="relative w-full max-w-[500px] mx-auto aspect-[3/4] sm:aspect-[4/5] bg-[#1a3d24] rounded-2xl overflow-hidden shadow-2xl border-4 border-[#122c19]"
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      {/* SVG Field Markings */}
-      <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-        <rect x="0" y="0" width="100" height="100" stroke="#fff" strokeWidth="0.3" fill="none" />
-        <line x1="50" y1="0" x2="50" y2="100" stroke="#fff" strokeWidth="0.2" opacity="0.6" />
-        <circle cx="50" cy="50" r="8" stroke="#fff" strokeWidth="0.2" fill="none" opacity="0.6" />
-        <circle cx="50" cy="50" r="0.8" fill="#fff" opacity="0.4" />
-        <rect x="0" y="17" width="16" height="66" stroke="#fff" strokeWidth="0.2" fill="none" opacity="0.5" />
-        <rect x="0" y="27" width="5" height="46" stroke="#fff" strokeWidth="0.2" fill="none" opacity="0.5" />
-        <circle cx="10" cy="50" r="1.5" stroke="#fff" strokeWidth="0.2" fill="none" opacity="0.4" />
-        <rect x="84" y="17" width="16" height="66" stroke="#fff" strokeWidth="0.2" fill="none" opacity="0.5" />
-        <rect x="95" y="27" width="5" height="46" stroke="#fff" strokeWidth="0.2" fill="none" opacity="0.5" />
-        <circle cx="90" cy="50" r="1.5" stroke="#fff" strokeWidth="0.2" fill="none" opacity="0.4" />
-        <rect x="0" y="32" width="8" height="36" stroke="#fff" strokeWidth="0.2" fill="none" opacity="0.4" />
-        <rect x="92" y="32" width="8" height="36" stroke="#fff" strokeWidth="0.2" fill="none" opacity="0.4" />
-        <circle cx="0" cy="0" r="2" stroke="#fff" strokeWidth="0.15" fill="none" opacity="0.3" />
-        <circle cx="100" cy="0" r="2" stroke="#fff" strokeWidth="0.15" fill="none" opacity="0.3" />
-        <circle cx="0" cy="100" r="2" stroke="#fff" strokeWidth="0.15" fill="none" opacity="0.3" />
-        <circle cx="100" cy="100" r="2" stroke="#fff" strokeWidth="0.15" fill="none" opacity="0.3" />
-        <circle cx="0" cy="50" r="1" stroke="#fff" strokeWidth="0.15" fill="none" opacity="0.3" />
-        <circle cx="100" cy="50" r="1" stroke="#fff" strokeWidth="0.15" fill="none" opacity="0.3" />
-      </svg>
+      {/* Pitch Grass Pattern (subtle stripes) */}
+      <div className="absolute inset-0 opacity-10 flex flex-col pointer-events-none">
+        {Array.from({ length: 12 }).map((_, i) => (
+          <div key={i} className={`flex-1 w-full ${i % 2 === 0 ? "bg-black" : "bg-transparent"}`} />
+        ))}
+      </div>
 
-      {/* Grass texture overlay */}
-      <div className="absolute inset-0 opacity-10 mix-blend-multiply pointer-events-none" />
+      {/* Background Watermark Logo (Optional, like reference image) */}
+      <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none overflow-hidden">
+        <div className="w-[150%] h-[150%] bg-white rounded-full blur-[100px]" />
+      </div>
+
+      {/* SVG Field Markings - Vertical Pitch */}
+      <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 133.33" preserveAspectRatio="none">
+        {/* Outer Boundary */}
+        <rect x="2" y="2" width="96" height="129.33" stroke="#ffffff" strokeWidth="0.4" fill="none" opacity="0.3" />
+        
+        {/* Halfway line */}
+        <line x1="2" y1="66.66" x2="98" y2="66.66" stroke="#ffffff" strokeWidth="0.4" opacity="0.3" />
+        
+        {/* Center circle */}
+        <circle cx="50" cy="66.66" r="12" stroke="#ffffff" strokeWidth="0.4" fill="none" opacity="0.3" />
+        <circle cx="50" cy="66.66" r="0.8" fill="#ffffff" opacity="0.3" />
+        
+        {/* Top penalty area */}
+        <rect x="22" y="2" width="56" height="22" stroke="#ffffff" strokeWidth="0.4" fill="none" opacity="0.3" />
+        {/* Top goal area */}
+        <rect x="36" y="2" width="28" height="8" stroke="#ffffff" strokeWidth="0.4" fill="none" opacity="0.3" />
+        {/* Top penalty mark */}
+        <circle cx="50" cy="16" r="0.6" fill="#ffffff" opacity="0.3" />
+        {/* Top penalty arc */}
+        <path d="M 38.6 24 A 12 12 0 0 0 61.4 24" stroke="#ffffff" strokeWidth="0.4" fill="none" opacity="0.3" />
+        
+        {/* Bottom penalty area */}
+        <rect x="22" y="109.33" width="56" height="22" stroke="#ffffff" strokeWidth="0.4" fill="none" opacity="0.3" />
+        {/* Bottom goal area */}
+        <rect x="36" y="123.33" width="28" height="8" stroke="#ffffff" strokeWidth="0.4" fill="none" opacity="0.3" />
+        {/* Bottom penalty mark */}
+        <circle cx="50" cy="117.33" r="0.6" fill="#ffffff" opacity="0.3" />
+        {/* Bottom penalty arc */}
+        <path d="M 38.6 109.33 A 12 12 0 0 1 61.4 109.33" stroke="#ffffff" strokeWidth="0.4" fill="none" opacity="0.3" />
+        
+        {/* Corner arcs */}
+        <path d="M 2 5 A 3 3 0 0 0 5 2" stroke="#ffffff" strokeWidth="0.4" fill="none" opacity="0.3" />
+        <path d="M 98 5 A 3 3 0 0 1 95 2" stroke="#ffffff" strokeWidth="0.4" fill="none" opacity="0.3" />
+        <path d="M 2 128.33 A 3 3 0 0 1 5 131.33" stroke="#ffffff" strokeWidth="0.4" fill="none" opacity="0.3" />
+        <path d="M 98 128.33 A 3 3 0 0 0 95 131.33" stroke="#ffffff" strokeWidth="0.4" fill="none" opacity="0.3" />
+      </svg>
 
       {/* Players on Pitch */}
       <div className="absolute inset-0">
@@ -106,8 +131,6 @@ const Pitch = memo(function Pitch({
           // If x_position not set, calculate based on assigned position
           const x = player.x_position ?? 50;
           const y = player.y_position ?? 50;
-
-          console.log('Rendering player:', player.player_id, 'at position:', x, y);
 
           return (
             <div
@@ -141,7 +164,7 @@ const Pitch = memo(function Pitch({
             opacity: 0.5,
           }}
         >
-          <div className="w-12 h-16 sm:w-14 sm:h-20 bg-amber-500/50 border-2 border-amber-400 rounded-md shadow-lg" />
+          <div className="w-12 h-12 rounded-full bg-amber-500/50 border-2 border-amber-400 shadow-lg" />
         </div>
       )}
 
@@ -156,18 +179,19 @@ const Pitch = memo(function Pitch({
         </div>
       )}
 
-      {/* Corner Badges */}
-      <div className="absolute top-2 left-2 text-[10px] font-black text-white/30 uppercase tracking-widest">
-        Def
-      </div>
-      <div className="absolute bottom-2 right-2 text-[10px] font-black text-white/30 uppercase tracking-widest">
-        Att
-      </div>
+      {/* Corner Formation Label matching reference image */}
+      {players.length > 0 && (
+        <div className="absolute top-4 left-4 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-md border border-white/10 pointer-events-none">
+          <p className="text-xs font-black text-white/90 tracking-widest">{currentFormation}</p>
+        </div>
+      )}
 
       {/* Drag Instruction */}
       {canEdit && players.length > 0 && (
-        <div className="absolute bottom-4 left-4 text-[9px] font-bold text-white/40 uppercase tracking-widest pointer-events-none">
-          Drag jerseys to reposition
+        <div className="absolute bottom-4 left-0 right-0 text-center pointer-events-none">
+          <span className="bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full text-[9px] font-bold text-white/70 uppercase tracking-widest border border-white/10">
+            Drag to reposition
+          </span>
         </div>
       )}
     </div>
