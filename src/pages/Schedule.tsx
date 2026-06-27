@@ -10,6 +10,7 @@ import { useVenueAvailability } from "@/hooks/useVenueAvailability";
 import { useUserLocation } from "@/hooks/useUserLocation";
 import { getDistanceKm } from "@/lib/matchHelpers";
 import { supabase } from "@/integrations/supabase/client";
+import { useSEO } from "@/hooks/useSEO";
 
 const today = new Date();
 const ymd = (d: Date) => format(d, "yyyy-MM-dd");
@@ -87,6 +88,11 @@ const Schedule = () => {
 
   const { location } = useUserLocation();
   const { venues, loading: venuesLoading } = useVenues(location?.lat, location?.lng);
+
+  useSEO({
+    title: "Match Schedule & Availability | PlayReady Sports",
+    description: "View upcoming football matches, check venue availability, and find open slots near you."
+  });
 
   const [date, setDate] = useState<Date>(today);
   const [freeOnly, setFreeOnly] = useState(false);

@@ -345,7 +345,7 @@ export default function AdminPlayers() {
     // Fetch match details for participants
     const participantRows = (participantsRes.data || []) as any[];
     const matchIds = [...new Set(participantRows.map((pr) => pr.match_id))];
-    let matchesMap: Record<string, any> = {};
+    const matchesMap: Record<string, any> = {};
     if (matchIds.length > 0) {
       const { data: matchesData } = await supabase.from("matches").select("*, venues(name, city)").in("id", matchIds);
       (matchesData || []).forEach((m: any) => { matchesMap[m.id] = m; });
@@ -354,13 +354,13 @@ export default function AdminPlayers() {
     // Enrich reviews with user names
     const enrichReviews = async (reviews: any[]) => {
       const userIds = [...new Set(reviews.flatMap((r) => [r.reviewer_id, r.reviewed_user_id]))];
-      let userMap: Record<string, any> = {};
+      const userMap: Record<string, any> = {};
       if (userIds.length > 0) {
         const { data: users } = await supabase.from("profiles").select("id, full_name, username, avatar_url").in("id", userIds);
         (users || []).forEach((u: any) => { userMap[u.id] = u; });
       }
       const matchIds2 = [...new Set(reviews.map((r) => r.match_id).filter(Boolean))];
-      let matchMap: Record<string, any> = {};
+      const matchMap: Record<string, any> = {};
       if (matchIds2.length > 0) {
         const { data: mData } = await supabase.from("matches").select("id, title, join_code").in("id", matchIds2);
         (mData || []).forEach((m: any) => { matchMap[m.id] = m; });
@@ -376,13 +376,13 @@ export default function AdminPlayers() {
     // Enrich reports with user names
     const enrichReports = async (reports: any[]) => {
       const userIds = [...new Set(reports.flatMap((r) => [r.reporter_id, r.reported_user_id]).filter(Boolean))];
-      let userMap: Record<string, any> = {};
+      const userMap: Record<string, any> = {};
       if (userIds.length > 0) {
         const { data: users } = await supabase.from("profiles").select("id, full_name, username").in("id", userIds);
         (users || []).forEach((u: any) => { userMap[u.id] = u; });
       }
       const matchIds2 = [...new Set(reports.map((r) => r.match_id).filter(Boolean))];
-      let matchMap: Record<string, any> = {};
+      const matchMap: Record<string, any> = {};
       if (matchIds2.length > 0) {
         const { data: mData } = await supabase.from("matches").select("id, title, join_code").in("id", matchIds2);
         (mData || []).forEach((m: any) => { matchMap[m.id] = m; });

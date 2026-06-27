@@ -175,18 +175,18 @@ export default function VenueOwnerCalendar({
         </div>
 
         {/* Legend */}
-        <div className="flex items-center gap-4 mb-3">
+        <div className="flex flex-wrap items-center gap-4 mb-3">
           <span className="flex items-center gap-1 text-[10px] text-muted-foreground font-semibold">
-            <span className="w-2 h-2 rounded-full bg-emerald-500" /> Upcoming / Live
+            <span className="w-2 h-2 rounded-full bg-foreground" /> Upcoming / Live
           </span>
           <span className="flex items-center gap-1 text-[10px] text-muted-foreground font-semibold">
-            <span className="w-2 h-2 rounded-full bg-cyan-500" /> Full
+            <span className="w-2 h-2 rounded-full bg-foreground/70" /> Full
           </span>
           <span className="flex items-center gap-1 text-[10px] text-muted-foreground font-semibold">
-            <span className="w-2 h-2 rounded-full bg-blue-500" /> Completed
+            <span className="w-2 h-2 rounded-full bg-foreground/40" /> Completed
           </span>
           <span className="flex items-center gap-1 text-[10px] text-muted-foreground font-semibold">
-            <span className="w-2 h-2 rounded-full bg-red-500" /> Cancelled
+            <span className="w-2 h-2 rounded-full border border-foreground/50" /> Cancelled
           </span>
         </div>
 
@@ -222,10 +222,10 @@ export default function VenueOwnerCalendar({
                   {cell.dayNum}
                 </span>
                 <div className="flex gap-0.5 mt-1">
-                  {hasUpcoming && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
-                  {hasFull && <span className="w-1.5 h-1.5 rounded-full bg-cyan-500" />}
-                  {hasCompleted && <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
-                  {hasCancelled && <span className="w-1.5 h-1.5 rounded-full bg-red-500" />}
+                  {hasUpcoming && <span className="w-1.5 h-1.5 rounded-full bg-foreground" />}
+                  {hasFull && <span className="w-1.5 h-1.5 rounded-full bg-foreground/70" />}
+                  {hasCompleted && <span className="w-1.5 h-1.5 rounded-full bg-foreground/40" />}
+                  {hasCancelled && <span className="w-1.5 h-1.5 rounded-full border border-foreground/50" />}
                 </div>
                 {cell.matches.length > 0 && cell.inMonth && (
                   <span className="absolute bottom-0.5 right-1 text-[9px] font-bold text-muted-foreground">
@@ -264,16 +264,16 @@ export default function VenueOwnerCalendar({
                   <div key={m.id} className="rounded-xl border border-border/50 p-3 space-y-1.5">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-bold">{m.join_code}</p>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
                         isCompleted
-                          ? "bg-blue-500/10 text-blue-500"
+                          ? "bg-secondary text-muted-foreground border-border"
                           : isCancelled
-                          ? "bg-red-500/10 text-red-500"
+                          ? "bg-destructive/10 text-destructive border-destructive/20"
                           : m.status === "live"
-                          ? "bg-amber-500/10 text-amber-500"
+                          ? "bg-foreground/10 text-foreground border-foreground/20"
                           : m.status === "full"
-                          ? "bg-cyan-500/10 text-cyan-500"
-                          : "bg-emerald-500/10 text-emerald-500"
+                          ? "bg-secondary text-foreground border-border"
+                          : "bg-foreground text-background border-foreground"
                       }`}>
                         {m.status === "full" ? "FULL" : m.status}
                       </span>
@@ -290,7 +290,7 @@ export default function VenueOwnerCalendar({
                       {m.core_paid_count} paid · {m.format}
                     </div>
                     <div className="flex items-center justify-between pt-1">
-                      <div className="flex items-center gap-1 text-xs font-bold text-emerald-600">
+                      <div className="flex items-center gap-1 text-xs font-bold text-foreground">
                         <Trophy className="w-3 h-3" />
                         ₵{escrow.toFixed(0)} escrow
                       </div>

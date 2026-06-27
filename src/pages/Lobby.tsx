@@ -23,6 +23,7 @@ import { LobbyTeamsTab } from "@/components/lobby/LobbyTeamsTab";
 import { useCountdown, buildPlayerList, buildSpareList } from "@/components/lobby/LobbyShared";
 import { MatchVotingModal, type PublicProfile } from "@/components/matches/MatchVotingModal";
 import { SubmitMatchResult } from "@/components/matches/SubmitMatchResult";
+import { useSEO } from "@/hooks/useSEO";
 import MatchLineup from "@/components/matches/MatchLineup";
 
 /* Tier-3 Lobby — wired to Supabase --------------------------------------- */
@@ -40,17 +41,7 @@ const Lobby = () => {
   const [params] = useSearchParams();
   const matchCode = code ?? "";
   const navigate = useNavigate();
-  if (!matchCode) {
-    return (
-      <main className="min-h-screen bg-background flex flex-col items-center justify-center px-5">
-        <h1 className="font-display font-bold text-xl mb-2">Invalid match code</h1>
-        <p className="text-sm text-muted-foreground mb-4">No match code was provided.</p>
-        <button onClick={() => navigate("/")} className="bg-primary text-primary-foreground px-6 py-2.5 text-sm font-bold">
-          Go home
-        </button>
-      </main>
-    );
-  }
+  // Match code validated before render
   const teamFromUrl = params.get("team");
   const { user, openAuth } = useAuth();
   const [checkInCode, setCheckInCode] = useState("");
@@ -80,6 +71,21 @@ const Lobby = () => {
   const { acceptRequest, rejectRequest } = useJoinRequests(match?.id);
   const { myReviews, submitReview } = useMatchReviews(match?.id, user?.id);
   const { weather } = useWeather(venue?.lat, venue?.lng, match?.match_date);
+
+  useSEO({
+    title: venue ? `Match at ${venue.name} | PlayReady Sports` : "Match Lobby | PlayReady Sports",
+    description: "Join the match lobby, see the roster, and pay your match entry fee securely.",
+    structuredData: match && venue ? {
+      "@type": "SportsEvent",
+      "name": `Football Match at ${venue.name}`,
+      "startDate": match.match_date,
+      "location": {
+        "@type": "Place",
+        "name": venue.name,
+        "address": venue.area || venue.city || ""
+      }
+    } : undefined
+  });
 
   const [tab, setTab] = useState<"match" | "teams" | "chat" | "lineup">("match");
   const [lineupTeam, setLineupTeam] = useState<"reds" | "blues">("reds");
@@ -659,6 +665,18 @@ const Lobby = () => {
     : `${String(s).padStart(2, "0")}s`;
 
   const turfOwners = useMemo(() => new Set(activeParticipants.filter((p: any) => p.slot_type === "turf_owner").map((p: any) => p.user_id)), [activeParticipants]);
+
+  if (!matchCode) {
+    return (
+      <main className="min-h-screen bg-background flex flex-col items-center justify-center px-5">
+        <h1 className="font-display font-bold text-xl mb-2">Invalid match code</h1>
+        <p className="text-sm text-muted-foreground mb-4">No match code was provided.</p>
+        <button onClick={() => navigate("/")} className="bg-primary text-primary-foreground px-6 py-2.5 text-sm font-bold">
+          Go home
+        </button>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-background pb-28">

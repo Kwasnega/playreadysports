@@ -31,7 +31,6 @@ export const FriendsSheet = ({ trigger }: Props) => {
     const loadSuggested = async () => {
       setSuggestedLoading(true);
       // Get friend ids
-      // @ts-ignore
       const { data: friendships } = await supabase
         .from("friendships")
         .select("requester_id, recipient_id, status")
@@ -77,7 +76,7 @@ export const FriendsSheet = ({ trigger }: Props) => {
           .eq("status", "active")
           .neq("user_id", user.id)
           .limit(30);
-        const coIds = [...new Set((coPlayers ?? []).map((p: any) => p.user_id))]
+        const coIds = [...new Set<string>((coPlayers ?? []).map((p: any) => p.user_id as string))]
           .filter((id) => !friendIds.has(id) && !pendingIds.has(id));
         if (coIds.length > 0) {
           const { data: coProfiles } = await (supabase as any)
@@ -113,7 +112,6 @@ export const FriendsSheet = ({ trigger }: Props) => {
 
   const handleSendRequest = async (recipientId: string) => {
     setSendingTo(recipientId);
-    
     // Explicit session check to ensure the user is genuinely logged in
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {

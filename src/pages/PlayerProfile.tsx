@@ -10,6 +10,7 @@ import { useFriends } from "@/hooks/useFriends";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getFormattedTime } from "@/lib/matchHelpers";
+import { useSEO } from "@/hooks/useSEO";
 
 /* ---- Player Profile Page ---- */
 
@@ -113,6 +114,18 @@ const PlayerProfile = () => {
   const navigate = useNavigate();
   const { user, openAuth } = useAuth();
   const { profile, stats, matchHistory, reviews, loading } = useProfile(username);
+
+  useSEO({
+    title: profile ? `${profile.full_name || profile.username} | PlayReady Sports Profile` : "Player Profile | PlayReady Sports",
+    description: profile ? `View ${profile.full_name || profile.username}'s football stats, reputation, and match history on PlayReady Sports.` : "View player profiles, match history, and football stats on PlayReady Sports.",
+    structuredData: profile ? {
+      "@type": "Person",
+      name: profile.full_name || profile.username,
+      description: `Football player based in ${profile.city || "Ghana"}`,
+      url: `https://joinplayready.com/player/${profile.username}`
+    } : undefined
+  });
+
   const { sendRequest, acceptRequest, unfriend, getFriendshipStatus } = useFriends();
   const [reportOpen, setReportOpen] = useState(false);
   const [friendStatus, setFriendStatus] = useState<"none" | "pending_sent" | "pending_received" | "friends">("none");
@@ -127,13 +140,12 @@ const PlayerProfile = () => {
       setFriendStatus(status);
     });
     // Also fetch the friendship ID for unfriend/cancel
-    // @ts-ignore — friendships table not in generated types yet
+    // friendships table not in generated types yet
     (supabase as any)
       .from("friendships")
       .select("id, requester_id, status")
       .or(`and(requester_id.eq.${user.id},recipient_id.eq.${profile.id}),and(requester_id.eq.${profile.id},recipient_id.eq.${user.id})`)
       .maybeSingle()
-      // @ts-ignore
       .then((res: any) => {
         if (cancelled) return;
         if (res.data) setFriendshipId(res.data.id);

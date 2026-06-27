@@ -66,8 +66,8 @@ export function AdminCheckinLog() {
         <ul className="divide-y divide-border/60 max-h-[400px] overflow-y-auto">
           {events.map((ev) => (
             <li key={ev.id} className="px-5 py-3 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
-                <QrCode className="w-4 h-4 text-emerald-600" />
+              <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center shrink-0">
+                <QrCode className="w-4 h-4 text-foreground" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold truncate">

@@ -59,7 +59,7 @@ async function fetchLeaderboard(timeframe: Timeframe, city?: string | null) {
     q = q.order("reputation_score", { ascending: false }).limit(50);
   }
 
-  let { data, error } = await q;
+  const { data, error } = await q;
   if (error) throw new Error(error.message);
 
   let list = (data ?? []) as LeaderboardPlayer[];

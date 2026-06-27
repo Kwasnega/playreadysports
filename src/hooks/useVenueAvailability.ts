@@ -22,7 +22,7 @@ export function useVenueAvailability(venueId: string | null, monthDate: Date) {
   useEffect(() => {
     if (!venueId) { setMatches([]); return; }
 
-    let cancelled = false;
+    const cancelled = false;
     setLoading(true);
 
     const start = startOfMonth(monthDate);

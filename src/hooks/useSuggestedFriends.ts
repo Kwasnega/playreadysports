@@ -96,7 +96,6 @@ export function useSuggestedFriends() {
       // Mutual friends
       if (friendIds.size > 1) {
         const friendArray = Array.from(friendIds).filter((id) => id !== user.id);
-        // @ts-ignore
         const { data: theirFriends } = await supabase
           .from("friendships")
           .select("requester_id, recipient_id")

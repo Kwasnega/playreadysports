@@ -158,12 +158,15 @@ export function useBrowseMatches(filters: BrowseFilters) {
         (profs ?? []).forEach((p: any) => { organizerMap[p.id] = p; });
       }
 
-      const normalized = rows.map((row: any) => ({
-        ...row,
-        venue: Array.isArray(row.venue) ? row.venue[0] ?? null : row.venue ?? null,
-        organizer: organizerMap[row.organizer_id] ?? null,
-        participants: Array.isArray(row.participants) ? row.participants : [],
-      })) as BrowseMatch[];
+      const normalized = rows.map((row: any) => {
+        if (!row) return null;
+        return {
+          ...row,
+          venue: Array.isArray(row.venue) ? row.venue[0] ?? null : row.venue ?? null,
+          organizer: organizerMap[row.organizer_id] ?? null,
+          participants: Array.isArray(row.participants) ? row.participants : [],
+        };
+      }).filter(Boolean) as BrowseMatch[];
       setMatches(normalized);
     }
 

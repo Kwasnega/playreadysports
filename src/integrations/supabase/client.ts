@@ -8,13 +8,47 @@ const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || impor
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+// Mock query builder that supports full chaining
+const createMockFilterBuilder = () => ({
+  eq: (col: string, val: any) => createMockFilterBuilder(),
+  in: (col: string, val: any[]) => createMockFilterBuilder(),
+  maybeSingle: async () => ({ data: null, error: null }),
+  single: async () => ({ data: null, error: null }),
+  order: (col: string, opts?: any) => createMockFilterBuilder(),
+  limit: (n: number) => createMockFilterBuilder(),
+});
+
+const createMockQueryBuilder = () => ({
+  select: (cols?: string) => createMockFilterBuilder(),
+  insert: (data: any) => ({
+    select: () => ({ single: async () => ({ data: null, error: null }) }),
+  }),
+  update: (data: any) => createMockFilterBuilder(),
+  delete: () => createMockFilterBuilder(),
+});
+
+// Mock client for development without credentials
+const createMockClient = (): any => ({
+  from: (table: string) => createMockQueryBuilder(),
+  channel: (name: string) => ({ on: () => ({ subscribe: () => {} }), unsubscribe: () => {} }),
+  removeChannel: (ch: any) => {},
   auth: {
     storage: localStorage,
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
     flowType: 'pkce',
+    getSession: async () => ({ data: { session: null }, error: null }),
+    onAuthStateChange: (callback: any) => {
+      callback('INITIAL_SESSION', null);
+      return { data: { subscription: { unsubscribe: () => {} } } };
+    },
+    signUp: async () => ({ data: null, error: { message: 'No Supabase configured' } }),
+    signInWithPassword: async () => ({ data: null, error: { message: 'No Supabase configured' } }),
+    signInWithOAuth: async () => ({ data: null, error: { message: 'No Supabase configured' } }),
+    signOut: async () => ({ error: null }),
+    resetPasswordForEmail: async () => ({ data: null, error: null }),
+    verifyOtp: async () => ({ data: null, error: null }),
   },
   realtime: {
     params: {
@@ -22,3 +56,30 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     },
   },
 });
+
+let supabaseInstance: any = null;
+
+try {
+  if (SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY && !SUPABASE_URL.includes('your-project-id')) {
+    supabaseInstance = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+      auth: {
+        storage: localStorage,
+        persistSession: true,
+        autoRefreshToken: true,
+      },
+      realtime: {
+        params: {
+          eventsPerSecond: 10,
+        },
+      },
+    });
+  } else {
+    console.warn('⚠️  Supabase credentials not configured. Running in mock mode. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.local');
+    supabaseInstance = createMockClient();
+  }
+} catch (error) {
+  console.error('Failed to initialize Supabase:', error);
+  supabaseInstance = createMockClient();
+}
+
+export const supabase = supabaseInstance;

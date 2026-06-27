@@ -156,7 +156,7 @@ const App = () => {
     try { return sessionStorage.getItem("prs_splash_seen") === "1"; } catch { return false; }
   });
   const handleSplashDone = () => {
-    try { sessionStorage.setItem("prs_splash_seen", "1"); } catch {}
+    try { sessionStorage.setItem("prs_splash_seen", "1"); } catch { /* ignore sessionStorage errors */ }
     setSplashDone(true);
   };
   return (

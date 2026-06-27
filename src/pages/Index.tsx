@@ -14,6 +14,7 @@ import { NotificationsBell } from "@/components/NotificationsBell";
 import { FriendsSheet } from "@/components/FriendsSheet";
 import { useHomeMatches, HomeMatch } from "@/hooks/useHomeMatches";
 import { useHomeFeed } from "@/hooks/useHomeFeed";
+import { useSEO } from "@/hooks/useSEO";
 import { useWallet } from "@/hooks/useWallet";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -266,15 +267,22 @@ function transformMatches(
   userId?: string,
   friendIds?: Set<string>
 ): Parameters<typeof NearYou>[0]["items"] {
-  const isJoined = (m: HomeMatch) =>
-    userId ? m.participants.some((p) => p.user_id === userId && p.status === "active") : false;
+  const isJoined = (m: any) =>
+    userId ? (m?.participants || []).some((p: any) => p.user_id === userId && p.status === "active") : false;
 
   const getFriendInfo = (m: HomeMatch) => {
     if (!friendIds) return { friendCount: 0, friendAvatars: [] };
-    const count = m.participants.filter(
+    const count = (m?.participants || []).filter(
       (p) => friendIds.has(p.user_id) && p.status === "active"
     ).length;
     return { friendCount: count, friendAvatars: [] };
+  };
+
+  const getCoreCount = (m: any) => {
+    const count = (m?.participants || []).filter(
+      (p: any) => p.status === "active" && p.slot_type === "core",
+    ).length;
+    return count;
   };
 
   return matches
@@ -445,6 +453,16 @@ const Index = () => {
   const friendIds = useMemo(() => new Set(friends.map((f) => f.id)), [friends]);
   const feedItems = transformMatches(matches, userLat, userLng, user?.id, friendIds);
   console.log('Feed items count:', feedItems.length, 'Matches count:', matches.length);
+
+  useSEO({
+    title: "PlayReady Sports | Discover Football Matches in Ghana",
+    description: "Find local pickup football matches, join tournaments, and connect with players near you.",
+    structuredData: {
+      "@type": "WebSite",
+      "name": "PlayReady Sports",
+      "url": "https://joinplayready.com/"
+    }
+  });
 
   return (
     <main className="min-h-screen bg-background pb-20">
