@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { UserPlus, Copy, Check, Building2, Mail, Phone, Calendar } from "lucide-react";
+import { UserPlus, Copy, Check, Building2, Mail, Phone, Calendar, Key, X } from "lucide-react";
 
 interface VenueOption {
   id: string;
@@ -33,6 +33,14 @@ export default function AdminCreateOwner() {
   const [loadingOwners, setLoadingOwners] = useState(true);
   const [logs, setLogs] = useState<string[]>([]);
   const [showLogs, setShowLogs] = useState(false);
+
+  // Reset password state
+  const [resetModalOpen, setResetModalOpen] = useState(false);
+  const [resetTarget, setResetTarget] = useState<{ id: string; name: string } | null>(null);
+  const [resetPasswordInput, setResetPasswordInput] = useState("");
+  const [resetBusy, setResetBusy] = useState(false);
+  const [resetTempPassword, setResetTempPassword] = useState<string | null>(null);
+
 
   const loadOwners = async () => {
     setLoadingOwners(true);
@@ -135,6 +143,48 @@ export default function AdminCreateOwner() {
     navigator.clipboard.writeText(tempPassword);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const copyResetPassword = () => {
+    if (!resetTempPassword) return;
+    navigator.clipboard.writeText(resetTempPassword);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const submitReset = async () => {
+    if (!resetTarget) return;
+    setResetBusy(true);
+    setResetTempPassword(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-reset-venue-owner-password`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session?.access_token ?? ""}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: resetTarget.id,
+          password: resetPasswordInput.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || "Failed to reset password");
+
+      toast.success("Password reset successful. Email sent to owner.");
+      if (data.temporaryPassword) {
+        setResetTempPassword(data.temporaryPassword);
+      } else {
+        setResetModalOpen(false);
+        setResetPasswordInput("");
+        setResetTarget(null);
+      }
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Reset failed");
+    } finally {
+      setResetBusy(false);
+    }
   };
 
   return (
@@ -267,6 +317,7 @@ export default function AdminCreateOwner() {
                     <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Owner</th>
                     <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Venue(s)</th>
                     <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Created</th>
+                    <th className="text-right px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -306,6 +357,20 @@ export default function AdminCreateOwner() {
                             {new Date(o.created_at).toLocaleDateString()}
                           </span>
                         </td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            onClick={() => {
+                              setResetTarget({ id: o.id, name: o.full_name || o.email || "Owner" });
+                              setResetModalOpen(true);
+                              setResetTempPassword(null);
+                              setResetPasswordInput("");
+                            }}
+                            className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-slate-400 hover:text-emerald-400 transition-colors inline-flex"
+                            title="Reset Password"
+                          >
+                            <Key className="w-4 h-4" />
+                          </button>
+                        </td>
                       </tr>
                     );
                   })}
@@ -315,6 +380,85 @@ export default function AdminCreateOwner() {
           </div>
         )}
       </div>
+
+      {/* Password Reset Modal */}
+      {resetModalOpen && resetTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => !resetTempPassword && setResetModalOpen(false)}>
+          <div className="bg-[#0F172A] border border-white/10 rounded-xl p-6 w-full max-w-md space-y-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-start">
+              <div>
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Key className="w-5 h-5 text-emerald-400" />
+                  Reset Password
+                </h2>
+                <p className="text-sm text-slate-400 mt-1">
+                  For <strong className="text-white">{resetTarget.name}</strong>
+                </p>
+              </div>
+              {!resetTempPassword && (
+                <button onClick={() => setResetModalOpen(false)} className="text-slate-400 hover:text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+
+            {!resetTempPassword ? (
+              <>
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-400">New Password</label>
+                  <input
+                    placeholder="Leave blank to auto-generate"
+                    type="text"
+                    value={resetPasswordInput}
+                    onChange={(e) => setResetPasswordInput(e.target.value)}
+                    className="w-full rounded-xl bg-white/[0.04] border border-white/[0.08] px-3 py-2.5 text-sm text-white placeholder:text-slate-500 outline-none focus:border-emerald-500/40"
+                  />
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    If auto-generated, the user will be forced to change it on next login.
+                  </p>
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button type="button" onClick={() => setResetModalOpen(false)} className="flex-1 py-2.5 rounded-xl bg-white/[0.04] text-slate-300 text-sm font-semibold hover:bg-white/[0.08]">
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={resetBusy}
+                    onClick={submitReset}
+                    className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-500 disabled:opacity-50"
+                  >
+                    {resetBusy ? "Resetting..." : "Confirm Reset"}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="space-y-4">
+                <div className="bg-amber-500/10 border border-amber-500/25 rounded-xl p-4">
+                  <p className="text-sm font-semibold text-amber-200">Temporary password</p>
+                  <p className="text-xs text-amber-300/80 mt-1">An email has been sent. You can also share this securely with the owner.</p>
+                  <div className="flex items-center gap-2 mt-3">
+                    <code className="flex-1 text-sm bg-black/30 rounded-lg px-3 py-2 text-amber-100 font-mono">{resetTempPassword}</code>
+                    <button type="button" onClick={copyResetPassword} className="p-2 rounded-lg bg-white/10 hover:bg-white/15">
+                      {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4 text-slate-300" />}
+                    </button>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setResetModalOpen(false);
+                    setResetTempPassword(null);
+                    setResetTarget(null);
+                  }}
+                  className="w-full py-2.5 rounded-xl bg-white/10 text-white text-sm font-semibold hover:bg-white/20"
+                >
+                  Close
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
