@@ -130,75 +130,99 @@ const HaveCode = () => {
     const withDash = joinCode.includes("-") ? joinCode : joinCode.slice(0, 3) + "-" + joinCode.slice(3);
     const withoutDash = joinCode.replace("-", "");
 
-    // Fetch match with venue and organizer — try both code formats
-    const { data: matchData, error: matchErr } = await supabase
-      .from("matches")
-      .select(`
-        id, join_code, match_mode, format, match_date, entry_fee,
-        max_core_players, players_per_side, status,
-        venue:venues(name, city, area),
-        organizer:profiles(full_name, username)
-      `)
-      .or(`join_code.eq.${withDash},join_code.eq.${withoutDash}`)
-      .maybeSingle();
+    try {
+      // Fetch match with venue and organizer — try both code formats
+      const { data: matchData, error: matchErr } = await supabase
+        .from("matches")
+        .select(`
+          id, join_code, match_mode, format, match_date, entry_fee,
+          max_core_players, players_per_side, status,
+          venue:venues(name, city, area),
+          organizer:profiles(full_name, username)
+        `)
+        .or(`join_code.eq.${withDash},join_code.eq.${withoutDash}`)
+        .maybeSingle();
 
-    if (matchErr || !matchData) {
-      setStatus("notfound");
-      return;
-    }
+      // FIX: PrivateMatchJoin - Distinguish between network failure and not found
+      if (matchErr) {
+        // Check the specific error type
+        if (matchErr.code === 'PGRST116') {
+          // This is the genuine "no rows found" error from PostgREST
+          setStatus("notfound");
+          return;
+        }
 
-    const m = {
-      ...matchData,
-      venue: Array.isArray(matchData.venue) ? matchData.venue[0] ?? null : matchData.venue ?? null,
-      organizer: Array.isArray(matchData.organizer) ? matchData.organizer[0] ?? null : matchData.organizer ?? null,
-    } as FoundMatch;
+        // Any other error is a network/server problem — not a missing match
+        console.error('Match lookup error:', matchErr);
+        toast.error("Connection error. Please check your internet and try again.");
+        setStatus("idle");
+        return;
+      }
 
-    // FIX: Issue 3 - Check match status BEFORE showing the join UI, with specific
-    // error messages for each state so users aren't confused by a blank screen.
-    if (m.status === "cancelled") {
-      setStatus("cancelled");
-      return;
-    }
-    if (m.status === "completed") {
-      setStatus("completed");
-      return;
-    }
+      if (!matchData) {
+        setStatus("notfound");
+        return;
+      }
 
-    // Fetch participants for team counts
-    const { data: partsData } = await supabase
-      .from("match_participants")
-      .select(`
-        id, user_id, team, status, slot_type, payment_status, attendance_scanned,
-        profile:profiles(full_name, username, avatar_url)
-      `)
-      .eq("match_id", m.id)
-      .eq("status", "active");
+      const m = {
+        ...matchData,
+        venue: Array.isArray(matchData.venue) ? matchData.venue[0] ?? null : matchData.venue ?? null,
+        organizer: Array.isArray(matchData.organizer) ? matchData.organizer[0] ?? null : matchData.organizer ?? null,
+      } as FoundMatch;
 
-    const normalized = (partsData ?? []).map((row: any) => {
-      const prof = Array.isArray(row.profile) ? row.profile[0] ?? null : row.profile ?? null;
-      return { ...row, profile: prof } as ParticipantRow;
-    });
+      // FIX: Issue 3 - Check match status BEFORE showing the join UI, with specific
+      // error messages for each state so users aren't confused by a blank screen.
+      if (m.status === "cancelled") {
+        setStatus("cancelled");
+        return;
+      }
+      if (m.status === "completed") {
+        setStatus("completed");
+        return;
+      }
 
-    // Check if the logged-in user is already a participant
-    if (user && normalized.some((p) => p.user_id === user.id)) {
+      // Fetch participants for team counts
+      const { data: partsData } = await supabase
+        .from("match_participants")
+        .select(`
+          id, user_id, team, status, slot_type, payment_status, attendance_scanned,
+          profile:profiles(full_name, username, avatar_url)
+        `)
+        .eq("match_id", m.id)
+        .eq("status", "active");
+
+      const normalized = (partsData ?? []).map((row: any) => {
+        const prof = Array.isArray(row.profile) ? row.profile[0] ?? null : row.profile ?? null;
+        return { ...row, profile: prof } as ParticipantRow;
+      });
+
+      // Check if the logged-in user is already a participant
+      if (user && normalized.some((p) => p.user_id === user.id)) {
+        setMatch(m);
+        setParticipants(normalized);
+        setStatus("already_joined");
+        return;
+      }
+
+      // FIX: Issue 3 - Check if the match is full (all slots taken)
+      const totalCap = m.max_core_players ?? (m.players_per_side ?? 5) * 2;
+      const totalFilled = normalized.length;
+      if (totalFilled >= totalCap) {
+        setMatch(m); // keep match data so we can show the venue name in the error
+        setStatus("full");
+        return;
+      }
+
       setMatch(m);
       setParticipants(normalized);
-      setStatus("already_joined");
-      return;
+      setStatus("found");
+    } catch (fetchError) {
+      // FIX: PrivateMatchJoin - Catch TypeError: Failed to fetch
+      // This happens when the service worker or network blocks the request
+      console.error('Fetch failed entirely:', fetchError);
+      toast.error("Could not connect to PlayReady Sports. Please check your internet connection and try again.");
+      setStatus("idle");
     }
-
-    // FIX: Issue 3 - Check if the match is full (all slots taken)
-    const totalCap = m.max_core_players ?? (m.players_per_side ?? 5) * 2;
-    const totalFilled = normalized.length;
-    if (totalFilled >= totalCap) {
-      setMatch(m); // keep match data so we can show the venue name in the error
-      setStatus("full");
-      return;
-    }
-
-    setMatch(m);
-    setParticipants(normalized);
-    setStatus("found");
   };
 
   const reset = () => {

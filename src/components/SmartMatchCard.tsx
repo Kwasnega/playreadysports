@@ -70,7 +70,9 @@ export function SmartMatchCard({
     );
   }
 
+// FIX: PrivateMatchJoin - prevent join when match is cancelled
   const isFull = playerCount >= maxPlayers;
+  const isJoinable = !countdown.isPast && !isFull && status?.status !== 'cancelled';
   const isJoinable = !countdown.isPast && !isFull;
 
   if (compact) {
@@ -176,7 +178,7 @@ export function SmartMatchCard({
             disabled={!isJoinable}
             variant={countdown.isPast ? 'ghost' : 'default'}
           >
-            {isFull ? 'Full' : countdown.isPast ? 'Ended' : 'Join Match'}
+            {status?.status === 'cancelled' ? 'Cancelled' : isFull ? 'Full' : countdown.isPast ? 'Ended' : 'Join Match'}
           </Button>
         )}
       </CardFooter>
