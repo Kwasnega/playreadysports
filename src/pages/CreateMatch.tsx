@@ -110,7 +110,7 @@ const CreateMatch = () => {
   const [maxCore, setMaxCore] = useState<number>(10);
   const [notes, setNotes] = useState("");
   const [teamName, setTeamName] = useState("");
-  const [profitAmount, setProfitAmount] = useState<number>(0);
+
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const selectedVenue = venues.find((v) => v.id === venueId);
@@ -749,26 +749,6 @@ const CreateMatch = () => {
                         <span>₵{basePerPlayer}</span>
                       </div>
 
-                      <div className="flex justify-between items-center pt-2">
-                        <span className="text-foreground font-black uppercase tracking-widest text-[11px] font-sans">Organizer Profit</span>
-                        <div className="flex items-center gap-1.5 bg-card border-2 border-border rounded-lg px-2 py-1">
-                          <span className="text-xs font-black font-sans text-muted-foreground">+₵</span>
-                          <input
-                            type="number"
-                            min={0}
-                            value={profitAmount || ""}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              if (val === "") { setProfitAmount(0); return; }
-                              const num = Number(val);
-                              setProfitAmount(isNaN(num) ? 0 : Math.max(0, num));
-                            }}
-                            className="w-16 bg-transparent text-sm font-black focus:outline-none text-right font-mono text-foreground"
-                            placeholder="0"
-                          />
-                        </div>
-                      </div>
-                      {errors.profitAmount && <p className="text-[11px] text-destructive font-sans font-bold">{errors.profitAmount}</p>}
                       <div className="border-t-2 border-dashed border-border pt-3 flex items-center justify-between mt-4">
                         <span className="font-sans font-black uppercase tracking-widest text-foreground text-[10px]">Player Pays</span>
                         <span className="font-display font-black text-2xl text-foreground">₵{entryFee}</span>
