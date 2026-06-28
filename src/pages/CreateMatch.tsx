@@ -110,6 +110,7 @@ const CreateMatch = () => {
   const [maxCore, setMaxCore] = useState<number>(10);
   const [notes, setNotes] = useState("");
   const [teamName, setTeamName] = useState("");
+  const [profitAmount, setProfitAmount] = useState<number>(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const selectedVenue = venues.find((v) => v.id === venueId);
