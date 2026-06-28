@@ -164,9 +164,6 @@ const App = () => {
     setSplashDone(true);
   };
   
-  // Session timeout management
-  const { showWarning, timeRemaining, extendSession, logoutNow } = useSessionTimeout();
-  
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -175,14 +172,9 @@ const App = () => {
         {!splashDone && <SplashScreen onDone={handleSplashDone} />}
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <AuthProvider>
+            <SessionTimeoutManager />
             <AuthModal />
             <OrganizerIncentiveModal />
-            <SessionTimeoutModal
-              show={showWarning}
-              timeRemaining={timeRemaining}
-              onExtend={extendSession}
-              onLogout={logoutNow}
-            />
             <ConfirmProvider>
               <ErrorBoundary>
               <Suspense fallback={<PageSpinner />}>
@@ -197,6 +189,20 @@ const App = () => {
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
+  );
+};
+
+// Wrapper component to use session timeout inside AuthProvider context
+const SessionTimeoutManager = () => {
+  const { showWarning, timeRemaining, extendSession, logoutNow } = useSessionTimeout();
+  
+  return (
+    <SessionTimeoutModal
+      show={showWarning}
+      timeRemaining={timeRemaining}
+      onExtend={extendSession}
+      onLogout={logoutNow}
+    />
   );
 };
 
