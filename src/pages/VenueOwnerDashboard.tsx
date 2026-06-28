@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, MapPin, Wallet, Calendar,
   TrendingUp, Clock, Building2, Plus, X, Upload, Shield,
@@ -201,12 +201,19 @@ function VenueOwnerLoginGate({ onSuccess }: { onSuccess: () => void }) {
 }
 
 export default function VenueOwnerDashboard() {
-  const { user, signOut, isTurfOwner, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+  const { user, signOut, isTurfOwner, requiresPasswordChange, loading: authLoading } = useAuth();
   
   useSEO({
     title: "Venue Owner Dashboard | PlayReady Sports",
     description: "Manage your football pitches, view bookings, track earnings, and withdraw funds on PlayReady Sports."
   });
+
+  useEffect(() => {
+    if (requiresPasswordChange) {
+      navigate("/turf-owner/change-password?forced=true", { replace: true });
+    }
+  }, [requiresPasswordChange, navigate]);
 
   const [venues, setVenues] = useState<VenueRow[]>([]);
   const [venueBalance, setVenueBalance] = useState(0);

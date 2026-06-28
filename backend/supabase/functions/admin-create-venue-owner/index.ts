@@ -109,6 +109,8 @@ Deno.serve(async (req) => {
           full_name: fullName,
           email,
           phone_number: phone || null,
+          requires_password_change: false,
+          is_first_login: false,
         }).eq("id", existing.id);
 
         if (venueId) {
@@ -167,6 +169,8 @@ Deno.serve(async (req) => {
       full_name: fullName,
       email,
       phone_number: phone || null,
+      requires_password_change: !adminSuppliedPassword,
+      is_first_login: true,
     }).eq("id", newUserId);
 
     await svc.from("user_roles").upsert(

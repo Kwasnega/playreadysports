@@ -59,8 +59,14 @@ interface CancellationReason {
 
 export default function TurfOwnerDashboard() {
   const nav = useNavigate();
-  const { user } = useAuth();
+  const { user, requiresPasswordChange } = useAuth();
   const { venueId } = useParams();
+
+  useEffect(() => {
+    if (requiresPasswordChange) {
+      nav("/turf-owner/change-password?forced=true", { replace: true });
+    }
+  }, [requiresPasswordChange, nav]);
 
   const [venues, setVenues] = useState<VenueWithStats[]>([]);
   const [selectedVenue, setSelectedVenue] = useState<VenueWithStats | null>(null);

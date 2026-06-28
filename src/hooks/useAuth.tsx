@@ -57,6 +57,7 @@ type AuthCtx = {
   profileRole: string | null;
   isAdmin: boolean;
   isTurfOwner: boolean;
+  requiresPasswordChange: boolean;
   signUpWithEmail: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>;
   verifySignupOtp: (otp: string) => Promise<{ error: string | null }>;
   signInWithEmail: (email: string, password: string) => Promise<{ error: string | null }>;
@@ -82,6 +83,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [sbUser, setSbUser] = useState<any>(null);
   const [profileRole, setProfileRole] = useState<string | null>(null);
   const [profileIsAdminFlag, setProfileIsAdminFlag] = useState(false);
+  const [requiresPasswordChange, setRequiresPasswordChange] = useState(false);
   const [loading, setLoading] = useState(true);
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
@@ -135,13 +137,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!sbUserId || !userVerified) {
       setProfileRole(null);
       setProfileIsAdminFlag(false);
+      setRequiresPasswordChange(false);
       return;
     }
     let cancelled = false;
     (async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("role, is_admin")
+        .select("role, is_admin, requires_password_change")
         .eq("id", sbUserId)
         .maybeSingle();
       if (cancelled) return;
@@ -149,6 +152,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const r = (prof?.role as string | undefined) ?? null;
       setProfileRole(r);
       setProfileIsAdminFlag(!!prof?.is_admin);
+      setRequiresPasswordChange(!!prof?.requires_password_change);
     })();
     return () => { cancelled = true; };
   }, [sbUserId, userVerified]);
@@ -385,6 +389,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         profileRole,
         isAdmin,
         isTurfOwner,
+        requiresPasswordChange,
         signUpWithEmail,
         verifySignupOtp,
         signInWithEmail,

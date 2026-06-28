@@ -29,6 +29,7 @@ const EditProfile = lazy(() => import("./pages/EditProfile.tsx"));
 const WalletPage = lazy(() => import("./pages/Wallet.tsx"));
 const VenueOwnerDashboard = lazy(() => import("./pages/VenueOwnerDashboard.tsx"));
 const TurfOwnerDashboard = lazy(() => import("./pages/TurfOwnerDashboard.tsx"));
+const TurfOwnerChangePassword = lazy(() => import("./pages/TurfOwnerChangePassword.tsx"));
 const MyMatches = lazy(() => import("./pages/MyMatches.tsx"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard.tsx"));
 const AdminLayout = lazy(() => import("@/components/admin/AdminLayout"));
@@ -124,6 +125,7 @@ function AppRoutes() {
       <Route path="/venue/earnings" element={<VenueOwnerDashboard />} />
       <Route path="/venue/dashboard" element={<VenueOwnerDashboard />} />
       <Route path="/turf-owner" element={<TurfOwnerDashboard />} />
+      <Route path="/turf-owner/change-password" element={<ProtectedRoute><TurfOwnerChangePassword /></ProtectedRoute>} />
       <Route path="/turf/owner" element={<Navigate to="/turf-owner" replace />} />
       {/* HIDDEN — Leaderboard: re-enable when feature is released */}
       {/* <Route path="/leaderboard" element={<Leaderboard />} /> */}
