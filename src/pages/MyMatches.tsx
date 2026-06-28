@@ -19,7 +19,7 @@ interface MyMatch {
   match_mode: string;
   entry_fee: number;
   status: string;
-  intelligent_status: 'upcoming' | 'soon' | 'live_now' | 'ended' | 'cancelled' | 'archived';
+  intelligent_status: 'upcoming' | 'soon' | 'live_now' | 'ended' | 'cancelled' | 'archived' | 'confirmed' | 'full' | 'live' | 'finished' | 'canceled' | 'completed';
   booking_duration_minutes: number;
   core_paid_count: number;
   max_core_players: number | null;

@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useTheme } from "@/components/ThemeToggle";
 import { AuthProvider, setAuthQueryClient, useAuth } from "@/hooks/useAuth";
+import { useSessionTimeout } from "@/hooks/useSessionTimeout";
 import { AuthModal } from "@/components/AuthModal";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { SplashScreen } from "@/components/SplashScreen";
@@ -12,6 +13,7 @@ import { ConfirmProvider } from "@/components/ui/ConfirmProvider";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { MaintenanceScreen } from "@/components/MaintenanceScreen";
 import { OrganizerIncentiveModal } from "@/components/OrganizerIncentiveModal";
+import { SessionTimeoutModal } from "@/components/SessionTimeoutModal";
 import { Seo } from "@/components/Seo";
 import { usePlatformSettings } from "@/hooks/usePlatformSettings";
 import { useEffect, useRef, useState, ReactNode, lazy, Suspense } from "react";
@@ -161,6 +163,10 @@ const App = () => {
     try { sessionStorage.setItem("prs_splash_seen", "1"); } catch { /* ignore sessionStorage errors */ }
     setSplashDone(true);
   };
+  
+  // Session timeout management
+  const { showWarning, timeRemaining, extendSession, logoutNow } = useSessionTimeout();
+  
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -171,6 +177,12 @@ const App = () => {
           <AuthProvider>
             <AuthModal />
             <OrganizerIncentiveModal />
+            <SessionTimeoutModal
+              show={showWarning}
+              timeRemaining={timeRemaining}
+              onExtend={extendSession}
+              onLogout={logoutNow}
+            />
             <ConfirmProvider>
               <ErrorBoundary>
               <Suspense fallback={<PageSpinner />}>
