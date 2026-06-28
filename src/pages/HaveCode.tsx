@@ -138,7 +138,7 @@ const HaveCode = () => {
           id, join_code, match_mode, format, match_date, entry_fee,
           max_core_players, players_per_side, status,
           venue:venues(name, city, area),
-          organizer:profiles(full_name, username)
+          organizer:profiles!organizer_id(full_name, username)
         `)
         .or(`join_code.eq.${withDash},join_code.eq.${withoutDash}`)
         .maybeSingle();
@@ -186,7 +186,7 @@ const HaveCode = () => {
         .from("match_participants")
         .select(`
           id, user_id, team, status, slot_type, payment_status, attendance_scanned,
-          profile:profiles(full_name, username, avatar_url)
+          profile:profiles!user_id(full_name, username, avatar_url)
         `)
         .eq("match_id", m.id)
         .eq("status", "active");
