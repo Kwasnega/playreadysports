@@ -64,6 +64,7 @@ const buildGhanaDateTime = (dateString: string, hour: number, minute: number) =>
 };
 
 const CreateMatch = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
   const { createMatch, creating } = useCreateMatch();
@@ -257,51 +258,60 @@ const CreateMatch = () => {
   };
 
   const next = async () => {
-    if (step === 1 && matchFormat && !availableFormats.includes(matchFormat)) setMatchFormat(null);
+    // If not on the final step, just advance the wizard
     if (step < STEP_LABELS.length - 1) {
+      if (step === 1 && matchFormat && !availableFormats.includes(matchFormat)) setMatchFormat(null);
       setStep((s) => s + 1);
       return;
     }
 
-    // Final step — create match via edge function
-    if (!user) { toast.error("Sign in to create a match"); return; }
-    if (!venueId || !matchFormat || !matchDate) return;
-
-    setErrors({});
-    if (!validateForm()) return;
-
-    const dateObj = buildGhanaDateTime(matchDate, matchHour, matchMinute);
-    const matchDateIso = dateObj.toISOString();
-
+    // Final step – create match via edge function
+    if (isSubmitting) return; // prevent double submission
+    setIsSubmitting(true);
     try {
-      const venueConflict = await checkVenueConflict(venueId, dateObj, duration);
-      if (venueConflict) {
-        toast.error("This turf is already booked for that time. Please choose a different time or turf.");
+      if (!user) { toast.error("Sign in to create a match"); return; }
+      if (!venueId || !matchFormat || !matchDate) return;
+
+      setErrors({});
+      if (!validateForm()) return;
+
+      const dateObj = buildGhanaDateTime(matchDate, matchHour, matchMinute);
+      const matchDateIso = dateObj.toISOString();
+
+      try {
+        const venueConflict = await checkVenueConflict(venueId, dateObj, duration);
+        if (venueConflict) {
+          toast.error("This turf is already booked for that time. Please choose a different time or turf.");
+          return;
+        }
+      } catch (err: any) {
+        toast.error(err?.message || "Failed to verify turf availability. Please try again.");
         return;
       }
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to verify turf availability. Please try again.");
-      return;
-    }
-    const result = await createMatch({
-      title: title.trim(),
-      sportType,
-      venueId,
-      matchType: type === "public" ? "public" : "private",
-      matchMode: mode === "gala" ? "gala" : "two_team",
-      format: matchFormat,
-      matchDate: matchDateIso,
-      durationMinutes: duration,
-      entryFee: entryFeeEnabled ? entryFee : 0,
-      maxCore,
-      notes: notes || undefined,
-    });
+      const result = await createMatch({
+        title: title.trim(),
+        sportType,
+        venueId,
+        matchType: type === "public" ? "public" : "private",
+        matchMode: mode === "gala" ? "gala" : "two_team",
+        format: matchFormat,
+        matchDate: matchDateIso,
+        durationMinutes: duration,
+        entryFee: entryFeeEnabled ? entryFee : 0,
+        maxCore,
+        notes: notes || undefined,
+      });
 
-    if (result.success) {
-      setCreatedCode(result.match.join_code);
-      setCreated(true);
-    } else if ("field" in result && result.field) {
-      setErrors((prev) => ({ ...prev, [result.field as string]: result.error }));
+      if (result.success) {
+        setCreatedCode(result.match.join_code);
+        setCreated(true);
+      } else if ("field" in result && result.field) {
+        setErrors((prev) => ({ ...prev, [result.field as string]: result.error }));
+      }
+    } catch (err) {
+      toast.error("Failed to create match. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -920,7 +930,7 @@ const CreateMatch = () => {
             </button>
             <button
               onClick={next}
-              disabled={!canNext() || creating}
+              disabled={!canNext() || creating || isSubmitting}
               className="flex-1 inline-flex items-center justify-center gap-2 h-12 rounded-xl bg-foreground text-background text-[10px] font-black uppercase tracking-widest disabled:opacity-40 active:scale-[0.99] transition-all border-2 border-foreground"
             >
               {creating ? "PROCESSING…" : step === STEP_LABELS.length - 1 ? "CREATE MATCH" : "CONTINUE"}
