@@ -120,6 +120,18 @@ export function extractFormatNumber(fmt: string): string {
   return fmt.split("v")[0] ?? fmt;
 }
 
+// FIX: DurationExtension - Dynamic duration display everywhere
+// Formats minutes into human-readable duration string
+// Examples: 60 → "1H", 90 → "1H 30MIN", 120 → "2H", 150 → "2H 30MIN", 180 → "3H"
+export function formatDuration(minutes: number | null | undefined): string {
+  if (!minutes) return 'N/A';
+  if (minutes < 60) return `${minutes} MIN`;
+  if (minutes % 60 === 0) return `${minutes / 60}H`;
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return `${hours}H ${mins}MIN`;
+}
+
 /** Count distinct teams in a gala match (teams != 'unassigned') */
 export function getGalaTeamsIn(match: Partial<HomeMatch> | null | undefined): number {
   const participants = Array.isArray(match?.participants) ? match.participants : [];
