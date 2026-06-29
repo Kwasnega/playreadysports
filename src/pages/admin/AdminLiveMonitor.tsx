@@ -266,7 +266,8 @@ export default function AdminLiveMonitor() {
         .order("match_date", { ascending: true });
 
       const normalized = (matchesRaw ?? []).map((m: any) => {
-        // Calculate escrow by summing entry_fee transactions for this match
+        // FIX: EscrowDisplay - Calculate per-match escrow by summing both entry_fee and turf_booking_payment transactions
+        // This works for both free matches (turf_booking_payment) and paid matches (entry_fee)
         const actualEscrow = (m.wallet_transactions ?? [])
           .filter((t: any) => t.type === 'entry_fee' || t.type === 'turf_booking_payment')
           .reduce((sum: number, t: any) => sum + Math.abs(Number(t.amount)), 0);
@@ -290,12 +291,11 @@ export default function AdminLiveMonitor() {
       const liveMatches = normalized.filter((m) => m.status === "live");
       const playersOnPitch = liveMatches.reduce((sum, m) => sum + m.participants.filter((p: any) => p.status === "active").length, 0);
       
-      // Escrow: sum of entry fees for confirmed paid core spots
+      // FIX: EscrowDisplay - Include both entry_fee and turf_booking_payment transactions in total escrow
+      // Previously only counted entry_fee matches, excluding free match escrow (turf_booking_payment)
       const totalEscrow = normalized
-        .filter((m: any) => (Number(m.entry_fee ?? 0) > 0))
         .reduce((sum, m: any) => {
-          const paidCoreCount = Number(m.core_paid_count ?? 0);
-          return sum + (Number(m.entry_fee ?? 0) * paidCoreCount);
+          return sum + ((m as any).actual_escrow_amount ?? 0);
         }, 0);
       
       setStats({ live_matches: liveMatches.length, players_on_pitch: playersOnPitch, total_escrow: totalEscrow, active_users: 0 });
