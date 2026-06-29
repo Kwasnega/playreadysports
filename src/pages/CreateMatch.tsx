@@ -35,7 +35,8 @@ const STEP_LABELS = ["Setup", "Venue", "Details"] as const;
 const DEFAULT_HOURS = Array.from({ length: 24 }, (_, i) => i);
 const MINUTES = [0, 15, 30, 45];
 
-const DURATIONS = [60, 90, 120];
+// FIX: Extend duration options to support up to 180 MIN (3 hours)
+const DURATIONS = [60, 90, 120, 150, 180];
 const GHANA_TIME_ZONE = "Africa/Accra";
 
 const getGhanaDateParts = (date: Date) => {
@@ -663,12 +664,12 @@ const CreateMatch = () => {
             {/* Duration */}
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Duration</label>
-              <div className="flex flex-wrap gap-2">
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                 {DURATIONS.map((d) => (
                   <button
                     key={d}
                     onClick={() => setDuration(d)}
-                    className={`flex-1 rounded-xl py-3 text-xs font-black uppercase tracking-widest transition-all duration-300 border-2 ${
+                    className={`rounded-xl py-3 text-xs font-black uppercase tracking-widest transition-all duration-300 border-2 ${
                       duration === d 
                         ? "bg-foreground text-background border-foreground shadow-md scale-105" 
                         : "bg-background text-foreground border-border hover:border-foreground hover:scale-105 active:scale-95"
