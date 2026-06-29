@@ -20,18 +20,8 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
   
-  // CRITICAL: Never intercept Supabase API requests
-  // Let them go straight to the network every time
-  if (
-    url.hostname.includes("supabase.co") ||
-    url.hostname.includes("paystack.co") ||
-    url.pathname.startsWith("/rest/v1") ||
-    url.pathname.startsWith("/auth/v1") ||
-    url.pathname.startsWith("/storage/v1") ||
-    url.pathname.startsWith("/realtime/v1") ||
-    url.pathname.startsWith("/functions/v1")
-  ) {
-    // Do NOT call event.respondWith — let the browser handle it natively
+  // Bypass service worker for asset files (dynamic imports) to avoid stale cache issues
+  if (url.pathname.startsWith('/assets/')) {
     return;
   }
   
