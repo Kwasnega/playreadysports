@@ -66,7 +66,7 @@ const Pitch = memo(function Pitch({
 
     if (isNaN(clampedX) || isNaN(clampedY)) return;
 
-    onPlayerDrop(playerId, Math.round(clampedX * 100) / 100, Math.round(clampedY * 100) / 100);
+    onPlayerDrop(playerId, Math.round(clampedX), Math.round(clampedY));
     setDragOverlay(null);
     setDraggedPlayer(null);
   };
@@ -102,8 +102,8 @@ const Pitch = memo(function Pitch({
 
     onPlayerDrop(
       draggedPlayer,
-      Math.round(dragOverlay.x * 100) / 100,
-      Math.round(dragOverlay.y * 100) / 100
+      Math.round(dragOverlay.x),
+      Math.round(dragOverlay.y)
     );
     
     setDragOverlay(null);

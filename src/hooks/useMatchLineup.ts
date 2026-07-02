@@ -138,8 +138,8 @@ export function useMatchLineup(matchId: string | null, teamSide: TeamSide | null
             .from("match_lineups")
             .update({
               assigned_position: position,
-              x_position: x,
-              y_position: y,
+              x_position: x !== undefined ? Math.round(x) : undefined,
+              y_position: y !== undefined ? Math.round(y) : undefined,
               updated_at: new Date().toISOString(),
               updated_by: user.id,
             })
@@ -155,8 +155,8 @@ export function useMatchLineup(matchId: string | null, teamSide: TeamSide | null
               team_side: teamSide,
               player_id: playerId,
               assigned_position: position,
-              x_position: x,
-              y_position: y,
+              x_position: x !== undefined ? Math.round(x) : undefined,
+              y_position: y !== undefined ? Math.round(y) : undefined,
               formation: currentFormation || "4-3-3",
               is_starting_player: true,
               updated_by: user.id,
@@ -175,8 +175,8 @@ export function useMatchLineup(matchId: string | null, teamSide: TeamSide | null
               copy[idx] = {
                 ...copy[idx],
                 assigned_position: position,
-                x_position: x,
-                y_position: y,
+                x_position: x !== undefined ? Math.round(x) : undefined,
+                y_position: y !== undefined ? Math.round(y) : undefined,
                 updated_at: updatedAt,
                 updated_by: user.id,
               } as any;
@@ -190,8 +190,8 @@ export function useMatchLineup(matchId: string | null, teamSide: TeamSide | null
                 team_side: teamSide,
                 player_id: playerId,
                 assigned_position: position,
-                x_position: x,
-                y_position: y,
+                x_position: x !== undefined ? Math.round(x) : undefined,
+                y_position: y !== undefined ? Math.round(y) : undefined,
                 formation: currentFormation || "4-3-3",
                 is_starting_player: true,
                 updated_at: updatedAt,
