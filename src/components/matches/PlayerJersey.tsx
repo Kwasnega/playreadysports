@@ -50,6 +50,16 @@ const PlayerJersey = memo(function PlayerJersey({
     setIsDragging(false);
   };
 
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!canEdit) return;
+    setIsDragging(true);
+    onDragStart?.(player.player_id);
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+  };
+
   const nameLabel = player.player?.full_name ? getInitials(player.player.full_name) : player.assigned_position;
   // Use jersey number if available, otherwise show position abbreviation
   const mainDisplay = player.jersey_number ? player.jersey_number.toString() : player.assigned_position;
@@ -59,28 +69,25 @@ const PlayerJersey = memo(function PlayerJersey({
       draggable={canEdit}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
       onClick={onClick}
-      className="group relative flex flex-col items-center gap-1.5 hover:scale-105 active:scale-95 transition-transform focus:outline-none"
+      className="group relative flex flex-col items-center gap-1.5 hover:scale-105 active:scale-95 transition-transform focus:outline-none touch-none"
       style={{ cursor: canEdit ? "grab" : "default" }}
       aria-label={`${player.player?.full_name} - ${player.assigned_position}`}
       title={`${player.player?.full_name || 'Unknown'}\n${player.assigned_position}${player.jersey_number ? ` #${player.jersey_number}` : ""}`}
     >
       <div
         className={`relative w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center ${circleClass} ${
-          isDragging ? "scale-110 shadow-xl ring-2 ring-amber-500 ring-offset-2 ring-offset-green-800" : ""
+          isDragging ? "scale-110 shadow-xl ring-2 ring-white ring-offset-2 ring-offset-slate-900" : ""
         } transition-all duration-200`}
       >
         <span className="font-display font-black text-sm sm:text-lg leading-none">
           {mainDisplay}
         </span>
         
-        {/* Yellow card indicator placeholder - could be connected to actual data later */}
-        {player.is_starting_player && Math.random() > 0.9 && (
-          <div className="absolute -top-1 -right-1 w-3 h-4 bg-yellow-400 rounded-sm shadow-sm border border-yellow-500" />
-        )}
-        
         {canEdit && isDragging && (
-          <div className="absolute inset-0 rounded-full border-2 border-amber-400/50 animate-ping" />
+          <div className="absolute inset-0 rounded-full border-2 border-white/50 animate-ping" />
         )}
       </div>
 

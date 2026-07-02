@@ -64,7 +64,48 @@ const Pitch = memo(function Pitch({
     const clampedX = Math.max(0, Math.min(100, x));
     const clampedY = Math.max(0, Math.min(100, y));
 
-    onPlayerDrop(playerId, clampedX, clampedY);
+    if (isNaN(clampedX) || isNaN(clampedY)) return;
+
+    onPlayerDrop(playerId, Math.round(clampedX * 100) / 100, Math.round(clampedY * 100) / 100);
+    setDragOverlay(null);
+    setDraggedPlayer(null);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!canEdit || !draggedPlayer) return;
+
+    // Prevent scrolling while dragging a player. 
+    // Using cancelable check in case we're in passive listener.
+    if (e.cancelable) {
+      e.preventDefault();
+    }
+
+    const touch = e.touches[0];
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((touch.clientX - rect.left) / rect.width) * 100;
+    const y = ((touch.clientY - rect.top) / rect.height) * 100;
+
+    const clampedX = Math.max(0, Math.min(100, x));
+    const clampedY = Math.max(0, Math.min(100, y));
+
+    if (!isNaN(clampedX) && !isNaN(clampedY)) {
+      setDragOverlay({ x: clampedX, y: clampedY });
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!canEdit || !draggedPlayer || !dragOverlay) {
+      setDraggedPlayer(null);
+      setDragOverlay(null);
+      return;
+    }
+
+    onPlayerDrop(
+      draggedPlayer,
+      Math.round(dragOverlay.x * 100) / 100,
+      Math.round(dragOverlay.y * 100) / 100
+    );
+    
     setDragOverlay(null);
     setDraggedPlayer(null);
   };
@@ -75,6 +116,9 @@ const Pitch = memo(function Pitch({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
     >
       {/* Pitch Grass Pattern (subtle stripes) */}
       <div className="absolute inset-0 opacity-10 flex flex-col pointer-events-none">
@@ -164,7 +208,7 @@ const Pitch = memo(function Pitch({
             opacity: 0.5,
           }}
         >
-          <div className="w-12 h-12 rounded-full bg-amber-500/50 border-2 border-amber-400 shadow-lg" />
+          <div className="w-12 h-12 rounded-full bg-white/50 border-2 border-white shadow-lg" />
         </div>
       )}
 

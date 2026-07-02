@@ -55,7 +55,7 @@ const PositionModal = memo(function PositionModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md bg-slate-900 border-2 border-amber-500/30">
+      <DialogContent className="max-w-md bg-slate-900 border-2 border-white/30">
         <DialogHeader className="space-y-4">
           <div className="flex items-start justify-between">
             <div>
@@ -66,23 +66,18 @@ const PositionModal = memo(function PositionModal({
                 {player?.player?.full_name || "Player"}
               </p>
             </div>
-            <DialogClose asChild>
-              <button className="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors">
-                <X className="w-4 h-4" />
-              </button>
-            </DialogClose>
           </div>
         </DialogHeader>
 
         {/* Current Position */}
         {currentPosition && (
-          <div className="bg-amber-500/10 border-2 border-amber-500/30 rounded-lg p-3">
-            <p className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-1">
+          <div className="bg-white/10 border-2 border-white/30 rounded-lg p-3">
+            <p className="text-[10px] font-black uppercase tracking-widest text-white/70 mb-1">
               Current Position
             </p>
             <p className="font-display font-black text-lg">
               {currentPosition} -{" "}
-              <span className="text-amber-500">
+              <span className="text-white/70">
                 {POSITION_DESCRIPTIONS[currentPosition] || currentPosition}
               </span>
             </p>
@@ -103,8 +98,8 @@ const PositionModal = memo(function PositionModal({
                   onClick={() => handlePositionClick(position)}
                   className={`py-3 rounded-lg font-black uppercase tracking-widest text-[11px] transition-all border-2 flex flex-col items-center justify-center gap-1 ${
                     isSelected
-                      ? "bg-amber-500 text-black border-amber-500"
-                      : "bg-slate-800 text-white border-white/10 hover:border-amber-500/50"
+                      ? "bg-white text-black border-white"
+                      : "bg-slate-800 text-white border-white/10 hover:border-white/50"
                   }`}
                   title={POSITION_DESCRIPTIONS[position] || position}
                 >

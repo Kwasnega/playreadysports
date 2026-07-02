@@ -134,11 +134,11 @@ export default function MatchLineup({
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-foreground">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-slate-950/95 backdrop-blur-sm border-b-2 border-amber-500/20">
+      <header className="sticky top-0 z-40 bg-slate-950/95 backdrop-blur-sm border-b-2 border-white/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between gap-4">
           <button
             onClick={() => nav(-1)}
-            className="w-10 h-10 -ml-2 rounded-full border-2 border-transparent hover:border-amber-500/50 flex items-center justify-center transition-colors"
+            className="w-10 h-10 -ml-2 rounded-full border-2 border-transparent hover:border-white/50 flex items-center justify-center transition-colors"
             aria-label="Back"
           >
             <ChevronLeft className="w-5 h-5" />
@@ -156,7 +156,7 @@ export default function MatchLineup({
           </div>
 
           <div className="text-right">
-            <p className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-1">
+            <p className="text-[10px] font-black uppercase tracking-widest text-white/70 mb-1">
               Players
             </p>
             <p className="font-display font-black text-xl">
@@ -193,9 +193,9 @@ export default function MatchLineup({
 
         {/* Permission Notice */}
         {!canEdit && (
-          <div className="bg-amber-500/10 border-2 border-amber-500/30 rounded-xl p-4 flex items-start gap-3">
-            <Lock className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
-            <p className="text-sm font-bold text-amber-500/80 uppercase tracking-widest">
+          <div className="bg-white/10 border-2 border-white/30 rounded-xl p-4 flex items-start gap-3">
+            <Lock className="w-5 h-5 text-white flex-shrink-0 mt-0.5" />
+            <p className="text-sm font-bold text-white/80 uppercase tracking-widest">
               Only the match organizer can edit lineups. Discuss lineup changes in the chat section.
             </p>
           </div>
@@ -231,7 +231,7 @@ export default function MatchLineup({
         {loading ? (
           <div className="flex items-center justify-center aspect-video bg-gradient-to-b from-green-600 to-green-700 rounded-2xl">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-4 border-amber-500/30 border-t-amber-500 mx-auto mb-4" />
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-white/30 border-t-white mx-auto mb-4" />
               <p className="text-sm font-bold text-white/60 uppercase tracking-widest">
                 Loading lineup…
               </p>
@@ -268,21 +268,21 @@ export default function MatchLineup({
         )}
 
         {/* Stats Footer */}
-        <div className="grid grid-cols-3 gap-4 mt-12 pt-8 border-t-2 border-amber-500/10">
+        <div className="grid grid-cols-3 gap-4 mt-12 pt-8 border-t-2 border-white/10">
           <div className="text-center">
-            <p className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-2">
+            <p className="text-[10px] font-black uppercase tracking-widest text-white/70 mb-2">
               Starting
             </p>
             <p className="font-display font-black text-3xl">{startingCount}</p>
           </div>
           <div className="text-center">
-            <p className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-2">
+            <p className="text-[10px] font-black uppercase tracking-widest text-white/70 mb-2">
               Substitutes
             </p>
             <p className="font-display font-black text-3xl">{benchCount}</p>
           </div>
           <div className="text-center">
-            <p className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-2">
+            <p className="text-[10px] font-black uppercase tracking-widest text-white/70 mb-2">
               Formation
             </p>
             <p className="font-display font-black text-3xl">{currentFormation || "—"}</p>
